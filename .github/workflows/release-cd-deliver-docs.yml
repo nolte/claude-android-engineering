@@ -1,0 +1,20 @@
+name: Release CD Deliver Docs
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  id-token: write
+  pages: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deliver-docs:
+    uses: nolte/gh-plumbing/.github/workflows/reusable-mkdocs.yaml@v2.0.0
+    with:
+      requirements: docs/requirements.txt

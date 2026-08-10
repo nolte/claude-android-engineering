@@ -1,0 +1,42 @@
+# MkDocs site per spec/project/mkdocs-structure (baseline; no extension specs
+# active yet — the skill-agent-catalog extension activates with .claude-plugin/).
+site_name: Claude Android Engineering
+site_description: Claude Code skills and agents for native Android engineering
+site_url: https://nolte.github.io/claude-android-engineering/
+repo_url: https://github.com/nolte/claude-android-engineering
+edit_uri: edit/develop/docs/
+
+theme:
+  name: material
+
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+        - locale: de
+          name: Deutsch
+          build: true
+          nav_translations:
+            Home: Startseite
+            Getting Started: Erste Schritte
+            Guides: Anleitungen
+            References: Referenzen
+            Project: Projekt
+  - include-markdown
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started/index.md
+  - Guides: guides/index.md
+  - References: references/index.md
+  - Project: project/index.md
