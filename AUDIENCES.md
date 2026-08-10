@@ -24,33 +24,33 @@ Portfolio-baseline track defaults applied: `user` → `user-docs`; `contributor`
 
 ### Direct consumers
 
-- **Operator as Android developer (nolte)** — _category_: direct-consumer · _surface_: skill invocations in Claude Code sessions; specs as authoring reference · _expects_: skills that scaffold, build, audit, and debug Android projects in conformance with their underlying specs, leaving green builds (REQ-1) · _track_: `user-docs` · _status_: `confirmed` (self-identified by the operator in this run) · _criticality_: primary
+- **Operator as Android developer (nolte)** — _id_: `android-dev-operator` · _category_: direct-consumer · _surface_: skill invocations in Claude Code sessions; specs as authoring reference · _expects_: skills that scaffold, build, audit, and debug Android projects in conformance with their underlying specs, leaving green builds (REQ-1) · _track_: `user-docs` · _status_: `confirmed` (self-identified by the operator in this run) · _criticality_: primary
   - Open questions: none
-- **Public plugin consumers** — _category_: direct-consumer · _surface_: plugin installation, README/onboarding docs, skill invocations · _expects_: portable skills without operator-specific hardcoding; clear onboarding; documented conventions (REQ-10) · _track_: `user-docs` · _status_: `assumed` (no real external representative validated yet) · _criticality_: secondary
+- **Public plugin consumers** — _id_: `public-plugin-consumers` · _category_: direct-consumer · _surface_: plugin installation, README/onboarding docs, skill invocations · _expects_: portable skills without operator-specific hardcoding; clear onboarding; documented conventions (REQ-10) · _track_: `user-docs` · _status_: `assumed` (no real external representative validated yet) · _criticality_: secondary
   - Open questions: primary docs language for external users (repo docs are bilingual en/de, canonical en); which distribution channel (marketplace vs git reference) they will install through
 
 ### Operators
 
-- **Plugin maintainer in operations mode (nolte)** — _category_: operator · _surface_: GitHub Actions, release workflow, Renovate, spec-inherit pin maintenance (`nolte-shared@v0.1.11`), portfolio audits · _expects_: green CI, low-friction release flow, visible drift signals · _track_: `developer-docs` · _status_: `confirmed` (self-identified by the operator in this run) · _criticality_: secondary
+- **Plugin maintainer in operations mode (nolte)** — _id_: `maintainer-operations` · _category_: operator · _surface_: GitHub Actions, release workflow, Renovate, spec-inherit pin maintenance (`nolte-shared@v0.1.11`), portfolio audits · _expects_: green CI, low-friction release flow, visible drift signals · _track_: `developer-docs` · _status_: `confirmed` (self-identified by the operator in this run) · _criticality_: secondary
   - Open questions: none
 
 ### Contributors / maintainers
 
-- **Maintainer (nolte)** — _category_: contributor-maintainer · _surface_: authoring skills/specs, merging PRs, review plans · _expects_: spec corpus and skill conventions that make authoring deterministic · _track_: `developer-docs` · _status_: `confirmed` (self-identified by the operator in this run) · _criticality_: secondary
+- **Maintainer (nolte)** — _id_: `maintainer` · _category_: contributor-maintainer · _surface_: authoring skills/specs, merging PRs, review plans · _expects_: spec corpus and skill conventions that make authoring deterministic · _track_: `developer-docs` · _status_: `confirmed` (self-identified by the operator in this run) · _criticality_: secondary
   - Open questions: none
-- **External OSS contributors** — _category_: contributor-maintainer · _surface_: GitHub PRs, issues, CONTRIBUTING docs · _expects_: contribution guidance, spec-first workflow explained, reviewable artifact conventions · _track_: `developer-docs` · _status_: `assumed` (hypothetical until the first external PR) · _criticality_: peripheral
+- **External OSS contributors** — _id_: `external-contributors` · _category_: contributor-maintainer · _surface_: GitHub PRs, issues, CONTRIBUTING docs · _expects_: contribution guidance, spec-first workflow explained, reviewable artifact conventions · _track_: `developer-docs` · _status_: `assumed` (hypothetical until the first external PR) · _criticality_: peripheral
   - Open questions: is CONTRIBUTING documentation needed before the first external PR arrives?
-- **Claude Code agents** — _category_: contributor-maintainer · _surface_: the specs under `spec/` and `CLAUDE.md` as machine-readable guardrails; skill/agent definitions they execute · _expects_: unambiguous, complete specs (their only "documentation"); no undocumented conventions (REQ-6) · _track_: `developer-docs` · _status_: `assumed` (operator included them; promote once agent-authored artifacts demonstrably rely on the guardrails) · _criticality_: secondary
+- **Claude Code agents** — _id_: `claude-agents` · _category_: contributor-maintainer · _surface_: the specs under `spec/` and `CLAUDE.md` as machine-readable guardrails; skill/agent definitions they execute · _expects_: unambiguous, complete specs (their only "documentation"); no undocumented conventions (REQ-6) · _track_: `developer-docs` · _status_: `assumed` (operator included them; promote once agent-authored artifacts demonstrably rely on the guardrails) · _criticality_: secondary
   - Open questions: none
 
 ### Governing parties
 
-- **Portfolio governance (nolte-shared spec layer + portfolio audits)** — _category_: governing-party · _surface_: inherited portfolio-scope specs (pinned `v0.1.11` in `spec/.spec-config.yml`), `portfolio-audit` / `portfolio-inflight-triage` runs · _expects_: conformance to portfolio conventions; declared overrides instead of silent divergence · _track_: `developer-docs` · _status_: `assumed` (inheritance is declared in-repo; drift-check not yet exercised) · _criticality_: peripheral
+- **Portfolio governance (nolte-shared spec layer + portfolio audits)** — _id_: `portfolio-governance` · _category_: governing-party · _surface_: inherited portfolio-scope specs (pinned `v0.1.11` in `spec/.spec-config.yml`), `portfolio-audit` / `portfolio-inflight-triage` runs · _expects_: conformance to portfolio conventions; declared overrides instead of silent divergence · _track_: `developer-docs` · _status_: `assumed` (inheritance is declared in-repo; drift-check not yet exercised) · _criticality_: peripheral
   - Open questions: none
 
 ### Indirect audiences
 
-- **End users of apps built with these skills** — _category_: indirect · _surface_: none toward this repo — they experience the UX/quality standards the specs encode, without ever seeing the plugin · _expects_: fluid, accessible, well-performing apps (motivates the UX-audit and perceived-performance skills) · _track_: `user-docs` (nominal — override rationale: this audience never reads this repository's docs; the entry exists to ground design decisions, not documentation) · _status_: `assumed` · _criticality_: peripheral
+- **End users of apps built with these skills** — _id_: `app-end-users` · _category_: indirect · _surface_: none toward this repo — they experience the UX/quality standards the specs encode, without ever seeing the plugin · _expects_: fluid, accessible, well-performing apps (motivates the UX-audit and perceived-performance skills) · _track_: `user-docs` (nominal — override rationale: this audience never reads this repository's docs; the entry exists to ground design decisions, not documentation) · _status_: `assumed` · _criticality_: peripheral
   - Open questions: none
 
 ## Open questions (cross-cutting)

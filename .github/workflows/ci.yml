@@ -25,6 +25,8 @@ jobs:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install tooling
-        run: pip install pre-commit
+        run: pip install pre-commit -r docs/requirements.txt
       - name: Quality gate
         run: task check
+      - name: Docs build (strict)
+        run: task docs

@@ -3,3 +3,6 @@
 
 # Audit reports are generated artifacts
 /.audits/
+
+# MkDocs build output
+/site/
