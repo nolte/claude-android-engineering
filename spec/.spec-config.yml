@@ -1,0 +1,6 @@
+canonical_language: en
+languages: [en, de]
+spec_root: spec
+inherits:
+  - source: nolte-shared
+    ref: v0.1.11

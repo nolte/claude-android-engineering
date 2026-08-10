@@ -1,0 +1,5 @@
+# Resume working copies (spec/claude/resumable-work: gitignored persistence layer)
+.resume/
+
+# Audit reports are generated artifacts
+.audits/
