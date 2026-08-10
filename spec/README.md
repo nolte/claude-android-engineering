@@ -4,6 +4,6 @@
 
 | Topic | Slug | Title (en) | Title (de) | Status | Scope | Last updated |
 | --- | --- | --- | --- | --- | --- | --- |
-| android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | unversioned |
+| android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | 2026-08-10 |
 
 Inherited portfolio specs: this repository inherits the portfolio-scope spec layer from `nolte-shared` (see `.spec-config.yml`, pinned at `v0.1.11`).
