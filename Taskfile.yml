@@ -1,0 +1,39 @@
+# Repository automation entry points. Local and CI runs share these targets.
+# Canonical target vocabulary per spec/project/taskfile/ (nolte-shared).
+# No remote includes from nolte/taskfiles yet: the collection (v0.1.4) ships no
+# target this prompt-only repo can run in a project-local environment.
+version: "3"
+
+tasks:
+  setup:
+    desc: One-command onboarding — install dev tooling and git hooks
+    cmds:
+      - pip install pre-commit
+      - pre-commit install
+
+  lint:
+    desc: Run all configured linters over the repository
+    cmds:
+      - pre-commit run --all-files
+
+  test:
+    desc: Validate the plugin surface (skill/agent contracts)
+    cmds:
+      - |
+        if [ -f scripts/validate_skills.py ]; then
+          python scripts/validate_skills.py
+        else
+          echo "No plugin surface yet — wire scripts/validate_skills.py when the first skill lands."
+        fi
+
+  docs:
+    desc: Build the MkDocs site strictly
+    preconditions:
+      - sh: test -f mkdocs.yml
+        msg: "mkdocs.yml not present yet (docs skeleton pending)"
+    cmds:
+      - mkdocs build --strict
+
+  check:
+    desc: Aggregate quality gate (identical locally and in CI)
+    deps: [lint, test]

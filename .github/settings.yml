@@ -1,0 +1,10 @@
+# Repository settings as code, applied by the Probot Settings App.
+# Portfolio defaults (branch protection, labels, merge options) come from the
+# commons file; keep only repo-specific fields here.
+_extends: nolte/gh-plumbing:.github/commons-settings.yml
+
+repository:
+  name: claude-android-engineering
+  description: Claude Code skills and agents for native Android engineering
+  homepage: https://nolte.github.io/claude-android-engineering
+  topics: claude-code, claude-plugin, android, jetpack-compose, skills

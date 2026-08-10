@@ -1,0 +1,18 @@
+# Pre-commit hooks for a prompt/spec-first Claude plugin repository.
+# Content here is Markdown + YAML; hooks pin accordingly.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [--strict, -d, "{extends: default, rules: {line-length: {max: 140}, truthy: {check-keys: false}, document-start: disable}}"]
