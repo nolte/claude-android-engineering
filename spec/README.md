@@ -5,14 +5,14 @@
 | Topic | Slug | Title (en) | Title (de) | Status | Scope | Last updated |
 | --- | --- | --- | --- | --- | --- | --- |
 | android | adb-workflows | ADB Workflows | ADB-Workflows | draft | local | 2026-08-11 |
-| android | app-design-navigation | App Design and Navigation | App-Design und Navigation | draft | local | unversioned |
-| android | iconography | Iconography | Ikonografie | draft | local | unversioned |
-| android | localization | Localization | Lokalisierung | draft | local | unversioned |
+| android | app-design-navigation | App Design and Navigation | App-Design und Navigation | draft | local | 2026-08-11 |
+| android | iconography | Iconography | Ikonografie | draft | local | 2026-08-11 |
+| android | localization | Localization | Lokalisierung | draft | local | 2026-08-11 |
 | android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | 2026-08-10 |
-| android | screen-formats | Screen Formats | Bildschirmformate | draft | local | unversioned |
-| android | security | App Security | App-Sicherheit | draft | local | unversioned |
+| android | screen-formats | Screen Formats | Bildschirmformate | draft | local | 2026-08-11 |
+| android | security | App Security | App-Sicherheit | draft | local | 2026-08-11 |
 | android | test-automation | Android Test Automation | Android-Testautomatisierung | draft | local | 2026-08-10 |
-| android | ui-components | UI Components | UI-Komponenten | draft | local | unversioned |
-| android | uvc-microscope | USB-C (UVC) Microscope Cameras | USB-C-(UVC-)Mikroskopkameras | draft | local | unversioned |
+| android | ui-components | UI Components | UI-Komponenten | draft | local | 2026-08-11 |
+| android | uvc-microscope | USB-C (UVC) Microscope Cameras | USB-C-(UVC-)Mikroskopkameras | draft | local | 2026-08-11 |
 
 Inherited portfolio specs: this repository inherits the portfolio-scope spec layer from `nolte-shared` (see `.spec-config.yml`, pinned at `v0.1.11`).

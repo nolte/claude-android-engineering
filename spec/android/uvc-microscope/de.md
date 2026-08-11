@@ -42,7 +42,7 @@ Leserschaft: Autorinnen und Autoren der Android-Skills dieses Repositories, die 
 - **SOLLTE [SHOULD]** Camera2s `LENS_FACING_EXTERNAL` als unzuverlässig statt als nicht vorhanden behandeln: Die Konstante existiert [R5], doch die Abdeckung für USB-Kameras hängt vom OEM ab und darf auf einem Zielgerät nicht vorausgesetzt werden — ein Skill **DARF NICHT [MUST NOT]** eine erforderliche Fähigkeit darauf bauen, ohne sie auf dieser Hardware zu verifizieren
 - **MUSS [MUST]** deshalb für jede erforderliche Externkamera-Fähigkeit eine native `libuvc`-basierte Engine einbinden [R4]; in diesem Portfolio ist das AUSBC (AndroidUSBCamera) [R1]
 - **SOLLTE [SHOULD]** die Deskriptoren des konkreten Zielgeräts erfassen, bevor darum herum entworfen wird — Vendor-/Produkt-ID, Pixelformat und Moduliste —, weil Aushandlung und Standbildstrategie davon abhängen; das Referenzgerät ist `1b3f:2002`, `iProduct = "GENERAL - UVC"`, UVC 1.00, buspowered, MJPEG, Modi 3840×2160 / 2048×1024 / 1920×1080 / 1280×720 [R7]
-- **DARF NICHT [MUST NOT]** der angegebenen Bildrate trauen: Der Deskriptor des Referenzgeräts nennt 30 fps, liefert aber rund 4,7 fps bei 4K und 17 fps bei 1080p [R7]; vor der Wahl eines Vorschaumodus messen
+- **DARF NICHT [MUST NOT]** der angegebenen Bildrate trauen: Der Deskriptor des Referenzgeräts nennt 30 fps, liefert aber rund 4,7 fps bei 4K und 17 fps bei 1080p [R7][M]; vor der Wahl eines Vorschaumodus messen
 - **MUSS [MUST]** ein neu vermessenes Gerät in §Verifizierte Geräte eintragen — Vendor-/Produkt-ID, Modi, gemessene Raten, welche Körpertasten USB erreichen und ob die UVC-Zoomsteuerung unterstützt wird —, damit das nächste Projekt die Messung erbt statt eine Hardwaresitzung zu wiederholen
 
 ### B. Engine-Integrationsebene und Artefaktbereitstellung
@@ -94,7 +94,7 @@ Leserschaft: Autorinnen und Autoren der Android-Skills dieses Repositories, die 
 
 ### G. Auflösungsstrategie
 
-- **SOLLTE [SHOULD]** die Vorschau in einem Modus halten, der zum Ausrichten schnell genug ist, und die Auflösung nur für das Standbild anheben — bei 4,7 fps ist eine 4K-Vorschau zum Ausrichten eines Mikroskops unbrauchbar, während die Bildrate für eine Einzelaufnahme bedeutungslos ist [R7]
+- **SOLLTE [SHOULD]** die Vorschau in einem Modus halten, der zum Ausrichten schnell genug ist, und die Auflösung nur für das Standbild anheben — bei 4,7 fps ist eine 4K-Vorschau zum Ausrichten eines Mikroskops unbrauchbar, während die Bildrate für eine Einzelaufnahme bedeutungslos ist [R7][M]
 - **MUSS [MUST]** einkalkulieren, was ein Moduswechsel kostet, und ihn **MUSS [MUST]** messen statt annehmen: AUSBCs `updateResolution` ist ein vollständiges Schließen und Wiederöffnen mit fest kodierter Sekundenpause, wodurch Hin- und Rückschalten die Vorschau rund vier bis fünf Sekunden einfriert [M]. `UVCCamera` direkt zu steuern (§B) erlaubt die günstigere Folge `stopPreview` → `setPreviewSize` → `startPreview`, ohne das Gerät freizugeben; in beiden Fällen **MUSS [MUST]** ein Skill die Wartezeit in der UI sichtbar machen und Aufnahmen serialisieren, damit zwei sich nicht überlappen
 - **MUSS [MUST]** degradieren statt zu scheitern: Greift der Wechsel nicht innerhalb eines begrenzten Zeitlimits, wird in der laufenden Auflösung aufgenommen statt einen Fehler zurückzugeben, und der Vorschaumodus wird auch nach einer abgebrochenen Aufnahme wiederhergestellt
 - **SOLLTE [SHOULD]** den größten unterstützten Modus beim Gerät erfragen statt einen fest zu kodieren, damit derselbe Code sich über Gerätekörper hinweg anpasst; auf dem Referenzgerät ergibt das 3840×2160 mit rund 673 kB JPEG gegenüber 130 kB bei 1080p [M]
@@ -153,7 +153,7 @@ Die folgenden Kriterien sind eine bewusst repräsentative Zusammenfassung von §
 
 ## Referenzen
 
-Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/autoritative Hersteller- oder Standarddokumentation, (S) sekundär (gepflegte Tool-Repositories), (M) gemessen — eigene Beobachtung aus der in §Kontext beschriebenen hardwareverifizierten Integration, im Text als [M] zitiert.
+Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/autoritative Hersteller- oder Standarddokumentation, (S) sekundär (gepflegte Tool-Repositories, deren Build-Logs und vorgelagerte Issue-Tracker), (M) gemessen — eigene Beobachtung aus der in §Kontext beschriebenen hardwareverifizierten Integration, im Text als [M] zitiert.
 
 - [R1] AndroidUSBCamera (AUSBC) — die in diesem Portfolio genutzte `libuvc`-basierte Engine (S): <https://github.com/jiangdongguo/AndroidUSBCamera>
 - [R2] JitPack-Build-Log für AUSBC 3.3.3, zeigt den `:libuvc:ndkClean`-Fehlschlag hinter der unvollständigen Veröffentlichung (S): <https://jitpack.io/com/github/jiangdongguo/AndroidUSBCamera/3.3.3/build.log>

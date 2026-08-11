@@ -42,7 +42,7 @@ Readers: authors of this repo's Android skills who add microscope or external-ca
 - **SHOULD** treat Camera2's `LENS_FACING_EXTERNAL` as unreliable rather than absent: the constant exists [R5], but coverage for USB cameras is OEM-dependent and cannot be assumed on a target device — a skill **MUST NOT** build a required capability on it without verifying on that hardware
 - **MUST** therefore integrate a `libuvc`-based native engine [R4] for any required external-camera capability; in this portfolio the engine is AUSBC (AndroidUSBCamera) [R1]
 - **SHOULD** record the concrete target device's descriptors before designing around it — vendor/product ID, pixel format, and the mode list — because negotiation and still strategy depend on them; the reference device is `1b3f:2002`, `iProduct = "GENERAL - UVC"`, UVC 1.00, bus-powered, MJPEG, modes 3840×2160 / 2048×1024 / 1920×1080 / 1280×720 [R7]
-- **MUST NOT** trust the advertised frame rate: the reference device's descriptor claims 30 fps while delivering roughly 4.7 fps at 4K and 17 fps at 1080p [R7]; measure before choosing a preview mode
+- **MUST NOT** trust the advertised frame rate: the reference device's descriptor claims 30 fps while delivering roughly 4.7 fps at 4K and 17 fps at 1080p [R7][M]; measure before choosing a preview mode
 - **MUST** record a newly measured device in §Verified devices — vendor/product ID, modes, measured rates, which body buttons reach USB, and whether the UVC zoom control is supported — so the next project inherits the measurement instead of repeating a hardware session
 
 ### B. Engine integration layer and artifact supply
@@ -94,7 +94,7 @@ Readers: authors of this repo's Android skills who add microscope or external-ca
 
 ### G. Resolution strategy
 
-- **SHOULD** keep the preview at a mode fast enough to frame by and raise resolution only for the still — at 4.7 fps a 4K preview is unusable for aiming a microscope, while the frame rate is irrelevant to a single shot [R7]
+- **SHOULD** keep the preview at a mode fast enough to frame by and raise resolution only for the still — at 4.7 fps a 4K preview is unusable for aiming a microscope, while the frame rate is irrelevant to a single shot [R7][M]
 - **MUST** budget for what a mode change costs and **MUST** measure it rather than assume it: AUSBC's `updateResolution` is a full close-and-reopen with a hard-coded one-second pause, which makes a switch up and back freeze the preview for roughly four to five seconds [M]. Driving `UVCCamera` directly (§B) allows the cheaper `stopPreview` → `setPreviewSize` → `startPreview` sequence without releasing the device; either way a skill **MUST** surface the wait in the UI and **MUST** serialize captures so two cannot overlap
 - **MUST** degrade rather than fail: if the switch does not take within a bounded timeout, capture at the live resolution instead of returning an error, and restore the preview mode even when the capture was cancelled
 - **SHOULD** query the device's largest supported mode instead of hard-coding one, so the same code adapts across bodies; measured on the reference device this yields 3840×2160 at roughly 673 kB of JPEG against 130 kB at 1080p [M]
@@ -153,7 +153,7 @@ The criteria below are a representative rollup of §A–§I, not a 1:1 mapping; 
 
 ## References
 
-Sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendor or standards documentation, (S) secondary (maintained tool repositories), (M) measured — first-party observation from the hardware-verified integration described in §Context, cited inline as [M].
+Sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendor or standards documentation, (S) secondary (maintained tool repositories, their build logs, and upstream issue trackers), (M) measured — first-party observation from the hardware-verified integration described in §Context, cited inline as [M].
 
 - [R1] AndroidUSBCamera (AUSBC) — the `libuvc`-based engine used in this portfolio (S): <https://github.com/jiangdongguo/AndroidUSBCamera>
 - [R2] JitPack build log for AUSBC 3.3.3, showing the `:libuvc:ndkClean` failure behind the incomplete publication (S): <https://jitpack.io/com/github/jiangdongguo/AndroidUSBCamera/3.3.3/build.log>
