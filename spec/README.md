@@ -13,5 +13,6 @@
 | android | security | App Security | App-Sicherheit | draft | local | unversioned |
 | android | test-automation | Android Test Automation | Android-Testautomatisierung | draft | local | 2026-08-10 |
 | android | ui-components | UI Components | UI-Komponenten | draft | local | unversioned |
+| android | uvc-microscope | USB-C (UVC) Microscope Cameras | USB-C-(UVC-)Mikroskopkameras | draft | local | unversioned |
 
 Inherited portfolio specs: this repository inherits the portfolio-scope spec layer from `nolte-shared` (see `.spec-config.yml`, pinned at `v0.1.11`).
