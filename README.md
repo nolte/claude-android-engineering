@@ -35,11 +35,15 @@ task check   # aggregate quality gate (lint + test), identical to CI
 ## Structure
 
 ```text
-spec/       # bilingual spec corpus (en canonical + de); android/ topic holds the Android specs
-project/    # planning artifacts (requirements; mission/roadmap pending)
-docs/       # MkDocs site sources, per-language trees (en/, de/)
-AUDIENCES.md  # audience analysis for this repository
-skills/     # plugin skills (pending — scaffolded per skill via skill-management)
+.claude-plugin/  # plugin manifest (plugin.json)
+skills/          # four skills: android-project-scaffold, android-compose-ui,
+                 #   android-perceived-performance, android-debugging
+agents/          # android-ux-reviewer (read-only UI audit)
+spec/            # bilingual spec corpus (en canonical + de); android/ holds the Android specs
+project/         # planning artifacts (requirements; mission/roadmap pending)
+docs/            # MkDocs site sources, per-language trees (en/, de/)
+scripts/         # validate_skills.py (the `task test` frontmatter gate)
+AUDIENCES.md     # audience analysis for this repository
 ```
 
 ## Related repositories
@@ -50,8 +54,9 @@ skills/     # plugin skills (pending — scaffolded per skill via skill-manageme
 
 ## Status
 
-Early stage: spec corpus and repository structure are in place; the first
-skills are not yet published.
+Early stage: the spec corpus, repository structure, and the first skills
+(project scaffold, Compose UI, perceived performance, debugging) plus the
+UX-review agent are in place. Play-Store release is out of scope.
 
 ## License
 
