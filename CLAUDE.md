@@ -30,8 +30,12 @@ explicitly out of scope.
 - `spec/` — bilingual spec corpus (`spec/README.md` is the generated index)
 - `project/requirements/` — elicited requirement artifacts
 - `AUDIENCES.md` — audience analysis for this repo
-- `skills/`, `agents/`, `.claude-plugin/` — plugin surface (scaffolded per
-  skill via `nolte-claude-dev:skill-management`; not yet present)
+- `.claude-plugin/plugin.json` — plugin manifest
+- `skills/` — `android-project-scaffold` (REQ-12), `android-compose-ui`
+  (REQ-13), `android-perceived-performance` (REQ-15), `android-debugging`
+  (REQ-16); each grounded in the matching `spec/android/` spec
+- `agents/android-ux-reviewer` — read-only UI audit (REQ-14)
+- `scripts/validate_skills.py` — frontmatter contract check wired as `task test`
 
 ## Command entry points
 

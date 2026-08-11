@@ -17,14 +17,9 @@ tasks:
       - pre-commit run --all-files
 
   test:
-    desc: Validate the plugin surface (skill/agent contracts)
+    desc: Validate the plugin surface (skill/agent frontmatter contracts)
     cmds:
-      - |
-        if [ -f scripts/validate_skills.py ]; then
-          python scripts/validate_skills.py
-        else
-          echo "No plugin surface yet — wire scripts/validate_skills.py when the first skill lands."
-        fi
+      - python3 scripts/validate_skills.py
 
   docs:
     desc: Build the MkDocs site strictly

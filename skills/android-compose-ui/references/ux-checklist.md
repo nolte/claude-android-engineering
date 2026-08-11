@@ -1,0 +1,130 @@
+# Authoring-time UX checklist
+
+The rule set every generated screen is checked against, distilled from the six grounding specs
+under `spec/android/`. This is a working digest, not a source of truth: on any conflict the
+named spec wins. Apply these while writing the screen, not after.
+
+## Table of contents
+
+- [1. Material 3 foundations](#1-material-3-foundations) — `app-design-navigation` §A
+- [2. Navigation architecture and UI](#2-navigation-architecture-and-ui) — `app-design-navigation` §B/§C/§D
+- [3. Adaptivity and screen formats](#3-adaptivity-and-screen-formats) — `screen-formats`
+- [4. Components](#4-components) — `ui-components`
+- [5. Iconography](#5-iconography) — `iconography`
+- [6. Localization](#6-localization) — `localization`
+- [7. Accessibility baseline](#7-accessibility-baseline) — cross-cutting
+- [8. Research-backed usability](#8-research-backed-usability) — `app-design-navigation` §F
+
+## 1. Material 3 foundations
+
+- Every color resolves through a Material color role (`primary`/`onPrimary`,
+  `surface`/`onSurface`, container variants) from `MaterialTheme` — no hard-coded values.
+- Content is paired with its `on-*` role so the contrast guarantee holds (4.5:1 small text,
+  3:1 large text/graphics).
+- Typography uses the display/headline/title/body/label roles; radii use shape tokens; depth
+  comes from tonal surface-container roles, never shadow overlays.
+- Dark theme is a real dark `ColorScheme` with light/dark/system choice (system default);
+  never rely on force-dark. Dynamic color (Android 12+) with a static brand fallback.
+- Edge-to-edge is handled via `Scaffold`/insets; no interactive element inside system-gesture
+  zones. Launch uses the SplashScreen API — no custom splash activity.
+
+## 2. Navigation architecture and UI
+
+- Single-activity, Navigation 3. Back stack is app-owned state: keys implement `NavKey`, are
+  `@Serializable`, held in `rememberNavBackStack`; rendering via `NavDisplay` +
+  `entryProvider`. Navigation 2 is prohibited in new code.
+- Screen ViewModels scope to nav entries via the official decorators
+  (`rememberSaveableStateHolderNavEntryDecorator` + `rememberViewModelStoreNavEntryDecorator`).
+- Navigation arguments are IDs/simple values only — never entity objects.
+- Never navigate during composition; screens expose event lambdas and never receive a
+  `NavController`. Guard rapid double-taps (`dropUnlessResumed`-style).
+- Top-level: 3–5 destinations in a navigation bar on compact (rail from medium); icon *and*
+  label on every item; visible selected state (filled-icon convention).
+- Primary actions in the thumb-friendly bottom zone; the top app bar carries only
+  secondary/rare actions. One FAB maximum per screen.
+- Predictive back: `android:enableOnBackInvokedCallback="true"`, no `onBackPressed()`
+  interception; Compose uses `BackHandler`/`PredictiveBackHandler` enabled only while their
+  condition holds. Up and Back are identical inside the task.
+- State preservation: rotation, recents return, and process death land the user exactly where
+  they were (serializable keys + `rememberSaveable`/`SavedStateHandle`).
+
+## 3. Adaptivity and screen formats
+
+- Top-level layout branches only on `currentWindowAdaptiveInfo().windowSizeClass` — never on
+  device type, physical size, or deprecated size-class APIs.
+- Switch content structure at the expanded boundary: one pane on compact/medium, two panes on
+  expanded where content is list-detail or main-supporting (feed is the single-pane exception).
+- Replace/show/hide layout components across classes — never stretch a phone layout.
+- On large windows, cap the width of dialogs, sheets, buttons, and text fields; grids widen
+  (`LazyVerticalGrid(GridCells.Adaptive(...))`) instead of stretching one column.
+- No orientation, aspect-ratio, or resizability restriction anywhere. Fully functional in
+  multi-window (multi-resume; release/reacquire exclusive resources).
+- Canonical layouts: list-detail via `NavigableListDetailPaneScaffold` (or the Nav-3
+  `ListDetailSceneStrategy`), supporting-pane ~70/30, feed as an adaptive grid. Selection
+  state survives class changes; two-pane back uses `PopUntilScaffoldValueChange`.
+- Target Play adaptive-quality Tier 3 unconditionally, Tier 2 as the goal.
+
+## 4. Components
+
+- Button emphasis ladder: filled = the one important final action; tonal = emphasized
+  secondary; outlined = medium; text = lowest/multi-option. Labels 1–3 words, single-line, at
+  most one leading icon, never underlined.
+- Exactly one primary action (filled button or FAB, never both competing) per screen; no two
+  equally-emphasized actions in a row.
+- Message surface by severity: dialog for blocking decisions (≤2 actions, dismissive never
+  disabled); snackbar for low/medium process feedback (≤1 action, no icon, never critical);
+  modal bottom sheet for long action lists; toast only for background context.
+- Selection controls: checkbox = multi-select in lists; radio = single (≤5, one pre-selected,
+  vertical); switch = standalone binary that applies immediately (never in a multi-select list
+  or behind a save step).
+- Wait indication: nothing below ~200 ms; loading indicator 200 ms–5 s; determinate progress
+  beyond ~5 s; one variant per process app-wide.
+- Text fields: one variant (filled OR outlined) per form; always-visible label (placeholder is
+  not a label); error text replaces supporting text.
+- Cards never scroll internally or host swipeable content. Chips represent forking paths, not
+  task progression; input chips carry a remove icon.
+- No superseded baseline components: segmented buttons, baseline bottom app bar, small FAB.
+
+## 5. Iconography
+
+- Material Symbols only, exactly one style family per app (default `outlined`); never mix
+  families or weights. No `material-icons-core`/`material-icons-extended`.
+- Fill axis is the selected-state signal (filled = active); weight bump is the fallback when
+  no filled variant exists — selection is never carried by color alone.
+- Icons are checked-in vector drawables under `res/drawable/ic_<name>.xml`, accessed through
+  one central registry object in the design system; tinted via `LocalContentColor`/theme roles.
+- Directional icons use auto-mirrored forms (`Icons.AutoMirrored.*`); media/clock icons do not
+  mirror. Standard icon 24dp on a 48dp touch target.
+
+## 6. Localization
+
+- Every user-visible string in `strings.xml`; `HardcodedText` is error-level. English source
+  in `values/`, German in `values-de/`, both complete (`MissingTranslation` error-level).
+- Positional placeholders (`%1$s`) everywhere; `<plurals>` with an `other` case and the number
+  in the text for counts; never concatenate translated fragments.
+- Read strings via `stringResource`/`pluralStringResource` in composables; never concatenate
+  in a composable or cache locale-dependent values in `remember` without a config key.
+- RTL end-to-end: `supportsRtl="true"`, start/end (never left/right). Dates/numbers via
+  `java.time`/`NumberFormat`, not hand-built patterns.
+- `localeFilters += listOf("en", "de")` and `generateLocaleConfig = true`; in-app picker via
+  `AppCompatDelegate.setApplicationLocales()`. Pseudolocales (`en-XA`, `ar-XB`) in debug.
+
+## 7. Accessibility baseline
+
+- 48dp minimum touch targets; text/line heights in `sp`; layouts survive 200% non-linear font
+  scaling without clipping critical UI.
+- Every functional icon/control has an action-phrased `contentDescription`; decorative
+  elements pass `null`. Stateful icon-only controls describe their state.
+- Icon-to-container contrast ≥ 3:1; color is never the only carrier of meaning.
+
+## 8. Research-backed usability
+
+- Error states: visible near the source, specific, constructive (next step), no blame/codes as
+  primary text, user input preserved for correction.
+- Empty states are onboarding moments with a direct call-to-action — never a dead end.
+- Forms: correct keyboard type per field, autofill hints, validation on field exit (not per
+  keystroke), input preserved on error, minimize typing.
+- No function reachable only by a custom gesture; swipe actions have visible alternatives and
+  undo for destructive ones. No forced tutorial carousels.
+- Permissions requested in context with a prior rationale, never up front cold.
+- Prefer undo (snackbar) over confirmation dialogs for frequent reversible actions.
