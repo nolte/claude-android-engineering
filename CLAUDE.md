@@ -35,15 +35,20 @@ explicitly out of scope.
   (REQ-13), `android-perceived-performance` (REQ-15), `android-debugging`
   (REQ-16); each grounded in the matching `spec/android/` spec
 - `agents/android-ux-reviewer` — read-only UI audit (REQ-14)
-- `scripts/validate_skills.py` — frontmatter contract check wired as `task test`
+- `scripts/validate_skills.py` — frontmatter contract check wired as `task test`;
+  scope one target with `python3 scripts/validate_skills.py skills/<name>/`. Only
+  `Critical` findings fail CI (exit 1); Warning/Suggestion/Info are advisory.
+- `docs/{en,de}/` — bilingual MkDocs site (`mkdocs.yml`), built strictly in CI
 
 ## Command entry points
 
 All automation runs through the Taskfile (`task --list`):
 
 - `task setup` — install dev tooling (pre-commit hooks)
-- `task check` — aggregate quality gate (lint + test); identical in CI
+- `task check` — aggregate quality gate (lint + test)
 - `task lint` / `task test` / `task docs` — individual targets
+- CI runs `task check` **and** `task docs` (strict MkDocs build) as separate
+  steps (`.github/workflows/ci.yml`) — a green local gate means both pass
 
 ## Branching
 
