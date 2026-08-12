@@ -56,6 +56,7 @@ Return a single report in this exact structure. Findings are grouped by the seve
 | Responsiveness & form factors | … | … | … | … |
 | Iconography | … | … | … | … |
 | Localizability | … | … | … | … |
+| Lists & scrolling | … | … | … | … |
 | Accessibility | … | … | … | … |
 | **Total** | **…** | **…** | **…** | **…** |
 
@@ -83,11 +84,14 @@ Go/no-go: <one line — e.g. "No-go for mobile-UX conformance: N Critical open">
 ### Localizability
 - …
 
+### Lists & scrolling
+- …
+
 ### Accessibility
 - …
 
 ## Health
-- Spec sections checked: <list of §sections across the five specs the audit covered>
+- Spec sections checked: <list of §sections across the six specs the audit covered>
 - Surfaces with zero hits: <dimensions that were scanned clean>
 - Deferred scope: <e.g. "runtime state-preservation on rotation → needs a device, spec/android/test-automation/ §D", "./gradlew lint HardcodedText verification → android-compose-ui (needs Bash)">
 
@@ -147,7 +151,7 @@ Seven dimensions, each grounded in one spec. Every finding cites the concrete §
 - **§D behavior:** hand-built date/number formats or string interpolation of numbers instead of `java.time`/`NumberFormat`; `left`/`right` instead of `start`/`end`.
 
 ### Dimension 6 — Lists & continuous scrolling (`spec/android/long-list-scrolling/`)
-- **§A containers:** a data-driven or unbounded collection rendered in a `Column`/`Row` with `Modifier.verticalScroll` instead of a lazy container — grep for `verticalScroll` near `forEach`/`map` emitting composables; a `LazyColumn` nested inside a same-direction scroll container; several logical entries emitted from one `item {}`; an item whose size depends on unarrived data (an async image without a declared `size`/`aspectRatio`), which makes the container compose every row at once; a snapping fling or `HorizontalPager`/`VerticalPager` used to browse many entries.
+- **§A containers:** a data-driven or unbounded collection rendered in a `Column`/`Row` with `Modifier.verticalScroll` instead of a lazy container — grep for `verticalScroll` near `forEach`/`map` emitting composables; a `LazyColumn` nested inside a same-direction scroll container **without** a fixed inner size (with one it is legal — report at most a Suggestion); several logical entries emitted from one `item {}`; an item whose size depends on unarrived data (an async image without a declared `size`/`aspectRatio`), which makes the container compose every row at once; a snapping fling or `HorizontalPager`/`VerticalPager` used to browse many entries.
 - **§B identity & recomposition:** `items(list)` without a `key`, or `key = { index -> … }` keyed on position; a heterogeneous list without `contentType`; `animateItem` without keys; sorting/filtering/formatting inside an item body or lazy scope without `remember`; `firstVisibleItemIndex` read directly in composition instead of through `derivedStateOf`/`snapshotFlow`; item composables taking a bare `List`/`Map`/`Set` parameter (unstable under strong skipping) instead of `ImmutableList` or an `@Immutable` type.
 - **§C/§D continuity & position:** a hand-rolled "observe last visible index and append" loop instead of Paging 3; a `PagingData` flow without `cachedIn`; a placeholder row whose height differs from the loaded row; `refresh`/`append`/`prepend` collapsed into one state, or a failed load rendered as an empty list; a full-screen loading state covering existing cached data; a `scrollToItem` compensating for a jump after a refresh.
 - **§E/§F findability & a11y:** an unbounded scroll as the only access path to a large collection (no search/filter/sort); no recognizable end-of-list element; content stranded below an endless list; a hand-built scroll container without `collectionInfo`/`collectionItemInfo`; newly appended content never announced.
@@ -176,4 +180,4 @@ Never invent severity levels beyond these four; never downgrade a severity on lo
 - **Never** flag a dimension whose signal is genuinely absent (for example no `strings.xml` in a single-screen sample); report the absence under "Surfaces with zero hits" instead of manufacturing drift.
 - **Always** ground every finding in a concrete `file:line` and a spec §section; findings without both are not findings.
 - **Always** classify a clean surface as an `Info` finding rather than an empty report; a clean run is still a recorded run.
-- **Always** reread the five grounding specs before producing the report; when this agent disagrees with a spec, the spec wins and the agent's behavior is updated, not the spec.
+- **Always** reread the six grounding specs before producing the report; when this agent disagrees with a spec, the spec wins and the agent's behavior is updated, not the spec.

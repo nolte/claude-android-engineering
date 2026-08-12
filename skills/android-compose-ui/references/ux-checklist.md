@@ -133,8 +133,10 @@ named spec wins. Apply these while writing the screen, not after.
 ## 9. Lists and continuous scrolling
 
 - Any data-driven, unbounded, or longer-than-viewport collection uses a lazy container; a short
-  fixed set uses a plain `Column`. Never nest two scroll containers of the same direction — a
-  `LazyColumn` inside `Modifier.verticalScroll` throws. Headers and footers go *inside* the
+  fixed set uses a plain `Column`. Never nest a same-direction scroll container with an
+  unbounded inner size — a `LazyColumn` inside `Modifier.verticalScroll` throws, because the
+  inner container is offered infinite height. With a fixed inner size it is legal but is a
+  smell (two scroll surfaces competing for one gesture). Headers and footers go *inside* the
   lazy container via its `item`/`items` DSL.
 - One logical entry per `item {}`. Several entries in one item break per-item reuse and
   desynchronize the indices `scrollToItem` addresses.

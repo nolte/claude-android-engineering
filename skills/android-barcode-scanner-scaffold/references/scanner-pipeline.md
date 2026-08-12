@@ -121,21 +121,38 @@ under 32 ms at 30 fps.
 
 ## 4. Detector configuration
 
+The options must be **built after `bindToLifecycle`**, not as a property initializer: the max
+zoom ratio comes from the bound `Camera`, and a property initialized before binding would fall
+back to `1f` and silently disable the zoom suggestion the prose below calls load-bearing.
+
 ```kotlin
-private val options = BarcodeScannerOptions.Builder()
-    .setBarcodeFormats(Barcode.FORMAT_QR_CODE)   // faster, and narrows the input surface
-    .enableAllPotentialBarcodes()                // optional; see the caveat below
-    .setZoomSuggestionOptions(
-        // The ZoomCallback receives the suggested ratio and is always invoked on the
-        // main thread. Check its exact signature against the version the project
-        // resolves before copying this call shape — it is not pinned by this template.
-        ZoomSuggestionOptions.Builder(zoomCallback)
-            // LOAD-BEARING: without a bound the library may suggest an unbounded ratio.
-            .setMaxSupportedZoomRatio(camera.cameraInfo.zoomState.value?.maxZoomRatio ?: 1f)
-            .build(),
-    )
-    .build()
+// Called once, AFTER cameraProvider.bindToLifecycle(...) returned the Camera.
+private fun buildScanner(camera: Camera): BarcodeScanner {
+    val zoomCallback = ZoomSuggestionOptions.ZoomCallback { ratio ->
+        // Always invoked on the main thread. Apply and report success.
+        camera.cameraControl.setZoomRatio(ratio)
+        true
+    }
+    val options = BarcodeScannerOptions.Builder()
+        .setBarcodeFormats(Barcode.FORMAT_QR_CODE)   // faster, and narrows the input surface
+        .enableAllPotentialBarcodes()                // optional; see the caveat below
+        .setZoomSuggestionOptions(
+            ZoomSuggestionOptions.Builder(zoomCallback)
+                // LOAD-BEARING: without a bound the library may suggest an unbounded
+                // ratio. Read the real maximum from the bound camera — never a literal.
+                .setMaxSupportedZoomRatio(
+                    camera.cameraInfo.zoomState.value?.maxZoomRatio
+                        ?: error("zoomState unavailable — bind the camera before building options"),
+                )
+                .build(),
+        )
+        .build()
+    return BarcodeScanning.getClient(options)
+}
 ```
+
+Check the `ZoomCallback` signature against the version the project resolves before copying this
+shape — it is not pinned by this template.
 
 The callback body applies the suggested ratio through `CameraControl.setZoomRatio(ratio)` and
 nothing else — do not add a re-detection trigger there; the next frame carries it anyway.

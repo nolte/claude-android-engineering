@@ -5,7 +5,7 @@
 
 Reusable, spec-based [Claude Code](https://claude.com/claude-code) skills and
 agents for native Android engineering — project setup, Jetpack Compose UI,
-mobile UX, perceived performance, and local debugging.
+mobile UX, perceived performance, QR/barcode scanning, and local debugging.
 
 ## Purpose
 
@@ -56,8 +56,9 @@ AUDIENCES.md     # audience analysis for this repository
 ## Status
 
 Early stage: the spec corpus, repository structure, and the first skills
-(project scaffold, Compose UI, perceived performance, debugging) plus the
-UX-review agent are in place. Play-Store release is out of scope.
+(project scaffold, Compose UI, perceived performance, debugging, barcode
+scanner) plus the UX-review agent are in place. Play-Store release is out of
+scope.
 
 ## License
 

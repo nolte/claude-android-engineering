@@ -50,8 +50,9 @@ Google Play services, which returns only the result. Image processing is stated 
 device.
 
 - Artifact: `com.google.android.gms:play-services-code-scanner`.
-- It is an **unbundled** library that must be downloaded before use. Pre-request it or handle
-  the not-yet-available state — see §5.
+- It is an **unbundled** library that must be downloaded before use. Pre-request it **and**
+  handle the not-yet-available state — both, not either. Pre-requesting narrows the window; it
+  does not close it. See §5.
 - Two options are **off by default** and both should be enabled: `allowManualInput()` (the
   accessibility fallback, already required by the spec's §H) and `enableAutoZoom()`.
 - Restrict the formats to what the feature consumes.
@@ -106,8 +107,10 @@ accident.
 
 For any downloaded module: request it at install time via the
 `com.google.mlkit.vision.DEPENDENCIES` manifest metadata, or explicitly through
-`ModuleInstallClient`. Until the download completes, **inference requests fail**. The
-not-yet-available case is a state the UI must handle, never a silent no-op.
+`ModuleInstallClient`. Until the download completes, **inference requests fail**. Pre-requesting
+is required *and* so is handling the not-yet-available case as a real UI state — never a silent
+no-op. The two are not alternatives: a pre-request that has not finished still leaves the user
+on a screen that must say something.
 
 Which options exist at all is version-bound — auto-zoom and `enableAllPotentialBarcodes` arrived
 in specific releases. Check an option against the version the project actually resolves rather

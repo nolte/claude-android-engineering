@@ -71,6 +71,8 @@ probability. A requirement is `confirmed` only after an explicit teach-back.
   - _dimension_: `functional` · _status_: `confirmed` · _source_: opening answer "Lokales entwickeln und debugging" + final teach-back
 - **REQ-17** — Every skill SHALL be grounded in a well-formulated spec under `spec/`, authored before or with the skill; the spec is written first when missing.
   - _dimension_: `constraints` · _status_: `confirmed` · _source_: "Alle Skills sollen auf gut Fomulierten Specs basieren" + operator pivot "Erzeuge erst eine ausführliche spec" + baseline confirmation
+- **REQ-18** — The repository SHALL provide a barcode-scanning skill: WHEN the operator adds code-scanning capability to an existing app, the skill SHALL decide the access path on evidence (preferring the path that needs no camera permission where it suffices), SHALL configure the capture pipeline against the decodability budget, and SHALL require every decoded payload to pass a trust boundary before the app acts on it. The skill SHALL also cover generating codes that the same scanners can read.
+  - _dimension_: `functional` · _status_: `confirmed` · _source_: operator request 2026-08-12 "erzeuge den fehlenden skill für eine möglichst gute barcode scanner entwicklung innerhalb der app", grounded in `spec/android/barcode-scanning/` authored first per REQ-17
 
 ## Surviving assumptions / open risks
 

@@ -160,9 +160,9 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
   (segmented buttons, baseline bottom app bar, small FAB) — all outdated per the specs (REQ-9).
 - **Never** emit more than one primary action (filled button or FAB) per screen
   (`spec/android/ui-components/` §B).
-- **Never** key a lazy list by index, emit several logical entries from one `item {}`, nest two
-  scroll containers of the same direction, or let an asynchronously filled item measure to zero
-  in the scroll direction (`spec/android/long-list-scrolling/` §A/§B).
+- **Never** key a lazy list by index, emit several logical entries from one `item {}`, nest a
+  same-direction scroll container with an unbounded inner size, or let an asynchronously filled
+  item measure to zero in the scroll direction (`spec/android/long-list-scrolling/` §A/§B).
 - **Never** overwrite an existing file without explicit per-item confirmation (REQ-8).
 - **Always** generate the stateless content composable, its previews, and the Compose test in
   the same pass — a screen is not "done" without them.

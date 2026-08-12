@@ -42,8 +42,9 @@ regardless of the wait class.
 
 - **Frame deadline:** 16.67 ms on a 60 Hz display; 11.11 ms at 90 Hz; 8.33 ms at 120 Hz. Report the deadline for the device's actual refresh rate — a frame that passes at 60 Hz can be jank at 120 Hz.
 - **Janky frame:** a rendered frame whose duration exceeds the deadline (Macrobenchmark `frameOverrunMs` > 0; `gfxinfo` "Janky frames").
-- **Budget (documented convention, not spec-fixed):** target **< 1 %** janky frames on a critical scrolling/animation path; P99 frame duration within the deadline. Treat a screen above this as a finding.
-- **Freeze frames:** any single frame over ~700 ms is a user-visible freeze and is always a finding regardless of the aggregate percentage.
+- **Budget (documented convention, not spec-fixed):** target **< 1 %** janky frames on a critical animation path; P99 frame duration within the deadline. Treat a screen above this as a finding. **This convention does not apply to a scrolling list** — see below.
+- **Freeze frames:** any single frame over ~700 ms is a user-visible freeze and is always a finding regardless of the aggregate percentage. This threshold is **spec-fixed** for scroll journeys by `spec/android/long-list-scrolling/` §G and is no longer a working default there.
+- **Scrolling lists are owned by `spec/android/long-list-scrolling/` §G**, which overrides this section for that surface: measure with `FrameTimingMetric` over a scroll journey on a non-debuggable release build, read `frameOverrunMs` at P50/P90/P95/P99, and always state the refresh-rate deadline. That spec **deliberately refuses** to fix a pass/fail percentile for scroll jank — so **do not** classify a scroll measurement against the `< 1 %` convention above. Report the number with its percentile tail and surface the missing budget as a methodology gap instead of inventing a verdict.
 
 ## Startup targets
 
@@ -60,7 +61,6 @@ The following numbers are **documented-tooling conventions, not spec-fixed** for
 repository. When a run depends on pinning any of them, surface the gap and propose
 `spec/android/perceived-performance/` per the skill's operating principle (REQ-6/REQ-17):
 
-- The exact janky-frame percentage budget (< 1 % is the working default).
+- The exact janky-frame percentage budget for animation paths (< 1 % is the working default). For **scroll** journeys the gap is explicit and owned: `spec/android/long-list-scrolling/` §Open Questions states that no vendor source fixes a percentile, so no number may be invented for that surface.
 - The exact TTID/TTFD absolute targets (vs. baseline-relative regression).
-- The freeze-frame threshold (~700 ms working default).
 - Any benchmark-module layout or golden-trace storage convention.
