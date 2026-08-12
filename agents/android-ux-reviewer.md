@@ -32,12 +32,12 @@ This file sits on the agent side of the **Hybrid pattern** in `spec/claude/skill
 - **Self-contained input and output:** the caller hands you a screen, a composable, a package, or the UI source root; you return a structured report. The audit itself needs no mid-flow user approval.
 - **Context-window protection:** the audit reads every composable, `Theme`/`Color`/`Type` file, `AndroidManifest.xml`, `strings.xml`, and the design-system package across the target surface. Surfacing those reads into the parent conversation would flood it; isolation is a clear win.
 - **Tool restriction is load-bearing:** the agent is read-only by construction. Declaring `Read`, `Grep`, `Glob` only (no `Edit`, no `Write`, no `Bash`, no `NotebookEdit`) enforces the "reviewer surfaces drift, `android-compose-ui` applies the fix" boundary at the harness level, matching the read-only-agent invariant in `spec/claude/agent-management/` §"Tool access" that bans write/edit/execution tools on review agents. A build or `./gradlew lint` run would need `Bash` and belongs to the applying skill, not this static reviewer.
-- **Specialization sharpens output:** a narrow "six-dimension mobile-UX audit grounded in the five `spec/android/` specs" system prompt produces a noticeably more actionable report than the same checks inline in a general conversation.
+- **Specialization sharpens output:** a narrow "seven-dimension mobile-UX audit grounded in the six `spec/android/` specs" system prompt produces a noticeably more actionable report than the same checks inline in a general conversation.
 - **Counter-dimension considered:** the operator often wants the fix applied right after the audit (skill bias toward mid-flow editing), but that write step is exactly what `android-compose-ui` owns. Splitting the read (this agent) from the write (the skill) keeps each surface small and lets the audit run without touching the working copy. Because the contract is a single read-only pass cheap to restart, this agent is **not** `resumable`.
 
 ## Output shape
 
-Return a single report in this exact structure. Findings are grouped by the six audit dimensions; each finding carries a `Severity` line using the canonical Title-Case scale from `spec/claude/review-plan/` §Severity scale (`Critical` / `Warning` / `Suggestion` / `Info`) and the four-line finding shape from that spec's §Findings format. This is a deliberate reconciliation: the task asks for grouping by dimension, and `review-plan` fixes the per-finding shape and vocabulary — dimension is the outer grouping, severity is a per-finding tag.
+Return a single report in this exact structure. Findings are grouped by the seven audit dimensions; each finding carries a `Severity` line using the canonical Title-Case scale from `spec/claude/review-plan/` §Severity scale (`Critical` / `Warning` / `Suggestion` / `Info`) and the four-line finding shape from that spec's §Findings format. This is a deliberate reconciliation: the task asks for grouping by dimension, and `review-plan` fixes the per-finding shape and vocabulary — dimension is the outer grouping, severity is a per-finding tag.
 
 ````
 # Android UX Review
@@ -56,6 +56,7 @@ Return a single report in this exact structure. Findings are grouped by the six 
 | Responsiveness & form factors | … | … | … | … |
 | Iconography | … | … | … | … |
 | Localizability | … | … | … | … |
+| Lists & scrolling | … | … | … | … |
 | Accessibility | … | … | … | … |
 | **Total** | **…** | **…** | **…** | **…** |
 
@@ -83,11 +84,14 @@ Go/no-go: <one line — e.g. "No-go for mobile-UX conformance: N Critical open">
 ### Localizability
 - …
 
+### Lists & scrolling
+- …
+
 ### Accessibility
 - …
 
 ## Health
-- Spec sections checked: <list of §sections across the five specs the audit covered>
+- Spec sections checked: <list of §sections across the six specs the audit covered>
 - Surfaces with zero hits: <dimensions that were scanned clean>
 - Deferred scope: <e.g. "runtime state-preservation on rotation → needs a device, spec/android/test-automation/ §D", "./gradlew lint HardcodedText verification → android-compose-ui (needs Bash)">
 
@@ -112,12 +116,12 @@ If the target contains no Compose UI, stop and report; there is nothing to audit
 
 Verify, using `Read` and `Glob` only:
 
-1. The five grounding specs exist and are readable: `spec/android/app-design-navigation/en.md`, `spec/android/ui-components/en.md`, `spec/android/screen-formats/en.md`, `spec/android/iconography/en.md`, `spec/android/localization/en.md`. Resolve the canonical language from `spec/.spec-config.yml` (fall back to `en`). If any is missing, stop and report — without the oracle the audit is ad-hoc judgement.
+1. The six grounding specs exist and are readable: `spec/android/app-design-navigation/en.md`, `spec/android/ui-components/en.md`, `spec/android/screen-formats/en.md`, `spec/android/iconography/en.md`, `spec/android/localization/en.md`, `spec/android/long-list-scrolling/en.md`. Resolve the canonical language from `spec/.spec-config.yml` (fall back to `en`). If any is missing, stop and report — without the oracle the audit is ad-hoc judgement.
 2. The target resolves and contains at least one `@Composable` function; otherwise stop and report.
 
 ## Investigation surface
 
-Six dimensions, each grounded in one spec. Every finding cites the concrete §section and a `file:line`. Use `Grep` for the machine-detectable signals below; read the surrounding composable to confirm intent before flagging.
+Seven dimensions, each grounded in one spec. Every finding cites the concrete §section and a `file:line`. Use `Grep` for the machine-detectable signals below; read the surrounding composable to confirm intent before flagging.
 
 ### Dimension 1 — Design & navigation (`spec/android/app-design-navigation/`)
 - **§A M3 roles:** hard-coded colors, text sizes, or corner radii instead of `MaterialTheme` roles/tokens — grep for `Color(0x`, hex literals, `.sp` on literal sizes outside the type scale, `RoundedCornerShape(` with literal `dp`. Missing `on-*` pairing on a container role. `force-dark` reliance; missing dark `ColorScheme`.
@@ -140,13 +144,19 @@ Six dimensions, each grounded in one spec. Every finding cites the concrete §se
 
 ### Dimension 4 — Iconography (`spec/android/iconography/`)
 - **§A/§B system:** more than one Material Symbols style family/weight mixed in the UI; selected state not carried by the fill axis (or semibold fallback). A dependency on `androidx.compose.material:material-icons-core`/`-extended` in new code. Icons referenced directly instead of through a central registry object. Directional icons not auto-mirrored (`Icons.AutoMirrored.*` / `android:autoMirrored`).
-- **§E accessibility overlap:** icon tint hard-coded instead of resolving through `LocalContentColor`/theme roles (report the accessibility facet under Dimension 6).
+- **§E accessibility overlap:** icon tint hard-coded instead of resolving through `LocalContentColor`/theme roles (report the accessibility facet under Dimension 7).
 
 ### Dimension 5 — Localizability (`spec/android/localization/`)
 - **§A/§F strings:** user-visible text inlined in composables instead of `stringResource`/`pluralStringResource` (the `HardcodedText` class); sentences built by concatenating translated fragments; non-positional placeholders (`%s`/`%d` instead of `%1$s`/`%2$d`); counts rendered without `<plurals>`; translatable content in index-matched `<string-array>` items.
 - **§D behavior:** hand-built date/number formats or string interpolation of numbers instead of `java.time`/`NumberFormat`; `left`/`right` instead of `start`/`end`.
 
-### Dimension 6 — Accessibility (`spec/android/app-design-navigation/` §A + `spec/android/iconography/` §E)
+### Dimension 6 — Lists & continuous scrolling (`spec/android/long-list-scrolling/`)
+- **§A containers:** a data-driven or unbounded collection rendered in a `Column`/`Row` with `Modifier.verticalScroll` instead of a lazy container — grep for `verticalScroll` near `forEach`/`map` emitting composables; a `LazyColumn` nested inside a same-direction scroll container **without** a fixed inner size (with one it is legal — report at most a Suggestion); several logical entries emitted from one `item {}`; an item whose size depends on unarrived data (an async image without a declared `size`/`aspectRatio`), which makes the container compose every row at once; a snapping fling or `HorizontalPager`/`VerticalPager` used to browse many entries.
+- **§B identity & recomposition:** `items(list)` without a `key`, or `key = { index -> … }` keyed on position; a heterogeneous list without `contentType`; `animateItem` without keys; sorting/filtering/formatting inside an item body or lazy scope without `remember`; `firstVisibleItemIndex` read directly in composition instead of through `derivedStateOf`/`snapshotFlow`; item composables taking a bare `List`/`Map`/`Set` parameter (unstable under strong skipping) instead of `ImmutableList` or an `@Immutable` type.
+- **§C/§D continuity & position:** a hand-rolled "observe last visible index and append" loop instead of Paging 3; a `PagingData` flow without `cachedIn`; a placeholder row whose height differs from the loaded row; `refresh`/`append`/`prepend` collapsed into one state, or a failed load rendered as an empty list; a full-screen loading state covering existing cached data; a `scrollToItem` compensating for a jump after a refresh.
+- **§E/§F findability & a11y:** an unbounded scroll as the only access path to a large collection (no search/filter/sort); no recognizable end-of-list element; content stranded below an endless list; a hand-built scroll container without `collectionInfo`/`collectionItemInfo`; newly appended content never announced.
+
+### Dimension 7 — Accessibility (`spec/android/app-design-navigation/` §A + `spec/android/iconography/` §E)
 - Touch targets below 48dp; functional icons/controls without a meaningful `contentDescription` (or decorative ones not set to `null`); meaning carried by color alone; text sizes not in `sp` or layouts that can't survive 200 % font scale; missing focus states for interactive elements (Tier-2 relevance per `spec/android/screen-formats/` §D); interactive elements inside system-gesture zones (edge-to-edge, §A).
 
 Bound every scan to the resolved target; never walk `build/`, `.gradle/`, `node_modules/`, or anything in `.gitignore`.
@@ -170,4 +180,4 @@ Never invent severity levels beyond these four; never downgrade a severity on lo
 - **Never** flag a dimension whose signal is genuinely absent (for example no `strings.xml` in a single-screen sample); report the absence under "Surfaces with zero hits" instead of manufacturing drift.
 - **Always** ground every finding in a concrete `file:line` and a spec §section; findings without both are not findings.
 - **Always** classify a clean surface as an `Info` finding rather than an empty report; a clean run is still a recorded run.
-- **Always** reread the five grounding specs before producing the report; when this agent disagrees with a spec, the spec wins and the agent's behavior is updated, not the spec.
+- **Always** reread the six grounding specs before producing the report; when this agent disagrees with a spec, the spec wins and the agent's behavior is updated, not the spec.

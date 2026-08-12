@@ -61,7 +61,7 @@ Before writing anything:
   `spec/android/project-structure/`; if no `:app` module or `designsystem` package exists,
   stop and route the user to project setup first.
 - Read `references/ux-checklist.md` in full before proposing any screen — it is the
-  authoring-time rule set distilled from all six grounding specs, and every generated screen
+  authoring-time rule set distilled from all seven grounding specs, and every generated screen
   is checked against it.
 - Check for uncommitted changes in the paths to be touched (feature package, `strings.xml`,
   `src/test/`). If dirty, report and ask whether to stash, commit, or abort — never overwrite
@@ -90,6 +90,12 @@ stateless content composable that takes `uiState` plus event lambdas and passes 
 Apply, at authoring time: Material 3 roles/tokens only (no literals), window-size-class
 adaptivity, Material Symbols via the central icon registry, `stringResource` for every string,
 and the 48dp/`sp`/edge-to-edge accessibility baseline. Gate: confirm before writing.
+
+Where the screen shows a collection, apply `spec/android/long-list-scrolling/` in the same
+pass — the container choice (§A), a stable domain `key` plus `contentType` on every item and
+no derivation inside an item body (§B), and a declared item size so nothing measures to zero
+before its content arrives (§A). These are authoring-time properties: retrofitting them later
+means rewriting the list.
 
 ### 3. Externalize strings and icons
 
@@ -154,6 +160,9 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
   (segmented buttons, baseline bottom app bar, small FAB) — all outdated per the specs (REQ-9).
 - **Never** emit more than one primary action (filled button or FAB) per screen
   (`spec/android/ui-components/` §B).
+- **Never** key a lazy list by index, emit several logical entries from one `item {}`, nest a
+  same-direction scroll container with an unbounded inner size, or let an asynchronously filled
+  item measure to zero in the scroll direction (`spec/android/long-list-scrolling/` §A/§B).
 - **Never** overwrite an existing file without explicit per-item confirmation (REQ-8).
 - **Always** generate the stateless content composable, its previews, and the Compose test in
   the same pass — a screen is not "done" without them.

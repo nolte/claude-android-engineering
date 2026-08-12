@@ -28,6 +28,7 @@ Strongest-signal-first order:
 2. **Move work off the main thread.** Long computations, IO, DB, and image decoding on the UI thread are the dominant jank cause. Inject dispatchers and move the work to `Dispatchers.Default`/`IO`; never hard-code dispatchers (aligns with `spec/android/test-automation/` §B testability).
 3. **Compose-specific:** stabilize parameters to avoid needless recomposition, hoist state, use `remember`/`derivedStateOf` for expensive derivations, use `LazyColumn` keys, and defer reads with lambda-based modifiers. Confirm with a recomposition count, not a guess.
 4. **Reduce overdraw and layout cost:** flatten deep layouts, avoid full-screen redraws for local state changes.
+5. **When the janky surface is a list, `spec/android/long-list-scrolling/` owns the remedy set** and is authoritative over this entry: container choice and the constructions that silently defeat laziness (§A, including the zero-size item that makes the container compose every row at once), item identity — stable domain keys, `contentType`, no derivation in an item body, `derivedStateOf` for scroll-derived booleans, no backwards writes (§B), and paging continuity (§C). Note its exclusion: **a framework change is never a valid jank remedy** — since Compose 1.9 the measured scroll-jank rate matches the View implementation, so a slow list is a data, item, or image problem.
 
 ## Main-thread stalls
 

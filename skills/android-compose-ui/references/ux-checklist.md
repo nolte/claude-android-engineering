@@ -1,6 +1,6 @@
 # Authoring-time UX checklist
 
-The rule set every generated screen is checked against, distilled from the six grounding specs
+The rule set every generated screen is checked against, distilled from the seven grounding specs
 under `spec/android/`. This is a working digest, not a source of truth: on any conflict the
 named spec wins. Apply these while writing the screen, not after.
 
@@ -14,6 +14,7 @@ named spec wins. Apply these while writing the screen, not after.
 - [6. Localization](#6-localization) — `localization`
 - [7. Accessibility baseline](#7-accessibility-baseline) — cross-cutting
 - [8. Research-backed usability](#8-research-backed-usability) — `app-design-navigation` §F
+- [9. Lists and continuous scrolling](#9-lists-and-continuous-scrolling) — `long-list-scrolling`
 
 ## 1. Material 3 foundations
 
@@ -128,3 +129,37 @@ named spec wins. Apply these while writing the screen, not after.
   undo for destructive ones. No forced tutorial carousels.
 - Permissions requested in context with a prior rationale, never up front cold.
 - Prefer undo (snackbar) over confirmation dialogs for frequent reversible actions.
+
+## 9. Lists and continuous scrolling
+
+- Any data-driven, unbounded, or longer-than-viewport collection uses a lazy container; a short
+  fixed set uses a plain `Column`. Never nest a same-direction scroll container with an
+  unbounded inner size — a `LazyColumn` inside `Modifier.verticalScroll` throws, because the
+  inner container is offered infinite height. With a fixed inner size it is legal but is a
+  smell (two scroll surfaces competing for one gesture). Headers and footers go *inside* the
+  lazy container via its `item`/`items` DSL.
+- One logical entry per `item {}`. Several entries in one item break per-item reuse and
+  desynchronize the indices `scrollToItem` addresses.
+- Every item carries a stable, `Bundle`-compatible domain `key` (never the index), and any
+  collection with more than one item shape supplies `contentType`. `Modifier.animateItem` is
+  only correct with stable keys.
+- No item may measure to zero in the scroll direction: an asynchronously filled item (a network
+  image) declares its size *before* its content arrives, and that size equals the loaded size —
+  otherwise the container composes every item at once and the content shifts on arrival.
+- No sorting, filtering, grouping, or formatting inside an item body or a lazy scope without
+  `remember`; scroll-derived booleans go through `derivedStateOf`, scroll side effects through
+  `snapshotFlow`, scroll-driven visual offsets through lambda-taking modifiers.
+- Item composables receive skippable parameters (`ImmutableList` or an `@Immutable` state type);
+  a collection re-created by `map`/`filter` on every emission recomposes regardless of strong
+  skipping. Never add `List` to the compiler's stability configuration.
+- Paged collections use Paging 3 with a database source of truth behind any network source and
+  `cachedIn`; a page arriving never changes the offset of content already on screen, and
+  `refresh`/`append`/`prepend` are handled as distinct states with retry.
+- The scroll state is hoisted and never composed against an empty item list on the first frame
+  when a restored position exists — that is what makes a list jump to the top after process
+  death. Never compensate with a `scrollToItem` afterwards.
+- A large collection offers search/filter/sort, a recognizable end, and no content stranded
+  behind an endless scroll. Collection semantics reach the screen reader, and a non-scroll path
+  exists to anything scroll-driven loading would otherwise gate.
+- Item images load through a cache-backed loader at a declared target size with a placeholder of
+  that size — never a full-resolution decode per row.

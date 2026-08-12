@@ -1,7 +1,7 @@
 {
   "name": "claude-android-engineering",
   "version": "0.1.0",
-  "description": "Reusable, spec-based Claude Code skills and agents for native Android app development: project setup, Jetpack Compose UI, mobile UX audit, perceived performance, and local debugging. Every skill is grounded in a spec under spec/android/. Play-Store release is out of scope.",
+  "description": "Reusable, spec-based Claude Code skills and agents for native Android app development: project setup, Jetpack Compose UI, mobile UX audit, perceived performance, QR/barcode scanning, and local debugging. Every skill is grounded in a spec under spec/android/. Play-Store release is out of scope.",
   "author": {
     "name": "nolte",
     "url": "https://github.com/nolte"

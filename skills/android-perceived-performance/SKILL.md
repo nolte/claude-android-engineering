@@ -27,11 +27,13 @@ CLI-first: terminal, Gradle, and ADB are sufficient — Android Studio is never 
 - **Orchestrator role:** the measurement sweep MAY be dispatched to a sub-agent for context-window protection; the orchestrator that fans out is always a skill (`spec/claude/skill-vs-agent/` §Hybrid pattern).
 - **Counter-dimension (outweighed):** the MEASURE step performs heavy device reads and trace parsing, which biases toward an isolated agent for context protection — but that isolatable step is delegable, while the interactive FIX loop keeps the whole capability a skill.
 
-## Operating principle: no owning spec yet
+## Operating principle: a partly owned spec surface
 
-There is **no** `spec/android/perceived-performance/` spec. Several sibling specs name it as a future boundary: `spec/android/test-automation/` §F (Macrobenchmark/Microbenchmark are a separate scheduled lane, never the per-commit suite), `spec/android/adb-workflows/` §D (Perfetto `record_android_trace` is the boundary), and the UX budgets in `spec/android/app-design-navigation/` §F and `spec/android/ui-components/` §A.
+There is still **no** `spec/android/perceived-performance/` spec, but the surface is no longer entirely unowned. Sibling specs cover parts of it: `spec/android/long-list-scrolling/` §G owns **list-scroll measurement** (release-build precondition, `FrameTimingMetric` with `frameOverrunMs` at P50/P90/P95/P99, the per-refresh-rate deadline, the 700 ms frozen-frame rule, and the scroll journey in the Baseline Profile); `spec/android/test-automation/` §F owns the lane split (Macrobenchmark/Microbenchmark are a separate scheduled lane, never the per-commit suite); `spec/android/adb-workflows/` §D owns Perfetto `record_android_trace`; and the UX budgets live in `spec/android/app-design-navigation/` §F and `spec/android/ui-components/` §A.
 
-Consequently this skill measures and fixes with **documented tooling only** and **MUST NOT** silently invent methodology or structural conventions. When a run needs a decision no spec covers (a new budget number, a benchmark-module layout, a golden-trace convention), **report the gap and propose a `spec/android/perceived-performance/` spec** rather than deciding silently (REQ-6, REQ-17). Record the proposal in the run report; do not author the spec here.
+What remains unowned is **app-wide startup** (TTID/TTFD), general jank methodology beyond list scrolling, benchmark-module layout, and golden-trace conventions.
+
+Consequently this skill measures and fixes with **documented tooling only** and **MUST NOT** silently invent methodology or structural conventions. Where `long-list-scrolling` §G already states a rule, that rule is authoritative and **MUST NOT** be restated differently here. When a run needs a decision no spec covers, **report the gap and propose a `spec/android/perceived-performance/` spec** rather than deciding silently (REQ-6, REQ-17) — and scope the proposal to what is genuinely still missing rather than re-proposing scroll measurement. Record the proposal in the run report; do not author the spec here.
 
 ## Hard rules
 
@@ -59,6 +61,7 @@ Read `references/measurement.md` when you enter this phase — it holds the exac
 ### 3. Measure jank
 
 - Reset with `dumpsys gfxinfo <pkg> reset`, exercise the target screen, then read `dumpsys gfxinfo <pkg> framestats` (or a Macrobenchmark `FrameTimingMetric` run) and compute the janky-frame percentage and P50/P90/P99 frame durations against the budget in `references/thresholds.md`.
+- **For a scrolling list, follow `spec/android/long-list-scrolling/` §G rather than this skill's general recipe:** measure with `FrameTimingMetric` over a scroll journey, read `frameOverrunMs` as the primary number, report the P95/P99 tail (a healthy P50 proves nothing), and always state the refresh-rate deadline the budget is set against. A jank claim from a debug build is not a finding.
 - Capture a Perfetto trace with `record_android_trace` for any scroll/animation stutter that framestats flags, to locate the offending work on the main thread.
 
 ### 4. Audit loading-state correctness
