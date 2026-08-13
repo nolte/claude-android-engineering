@@ -99,6 +99,12 @@ Map every call outcome to exactly one case; handle all eight per feature.
 | 7 | server fault | retry if idempotent; never blame the user |
 | 8 | contract mismatch | surface as a contract defect; log endpoint + field, never the payload |
 
+Three boundaries the table leaves adjacent, resolved per `spec/android/backend-contract/` §B:
+
+- **Cancellation is not an outcome.** Rethrow `CancellationException`; never map it into a failure case.
+- **Unauthorized vs. domain rejection.** Refused because of *who* asks → unauthorized. Refused because of *what* is asked or the resource's state → domain rejection. Same status for both and no problem `type` to separate them → §6 trigger.
+- **429.** Classified as server fault, but honour `Retry-After` over your own backoff and don't spend the retry budget on it.
+
 - [ ] Explicit connect, read, and call timeouts
 - [ ] Automatic retry only for idempotent requests, or for keyed `POST`/`PATCH` where the
       backend honours `Idempotency-Key` (key persisted with a queued write)

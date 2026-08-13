@@ -12,7 +12,7 @@ Die Umfangsgrenze, einmal genannt und tragend: Die Anforderungen dieses Reposito
 
 Provenienz: Schreibtischrecherche (August 2026) über die Dokumentation zu R8-Shrinking, -Obfuskation und -Optimierung, die Android Core App Quality Guidelines mit ihren prüfbaren Kriterien-IDs, die Android-Vitals-Schwellen (die quantifizierte Stabilitätsobergrenze), die StrictMode-Referenz sowie die Gradle-/AGP-Build-Dokumentation. Versionsgebundene Aussagen nennen ihre AGP-Grenze; diese Spec kodiert Mechanismen, keine exakten Versionen.
 
-Grenzen: Sicherheitspflichten des Release-Builds — `android:debuggable=false`, keine committeten Secrets, Schwachstellen-Scan der Abhängigkeiten, die Regel „R8 ist keine Sicherheitsmaßnahme" — liegen in `spec/android/security/` §F/§G und werden referenziert, nicht wiederholt. Struktur der Build-Dateien, Version Catalog und Layout der Qualitätswerkzeuge liegen in `spec/android/project-structure/` §B/§G; Testbahnen und CI-Verdrahtung in `spec/android/test-automation/` §G; Messung der Scroll-Performance in `spec/android/long-list-scrolling/` §G; Geräte- und Log-Mechanik in `spec/android/adb-workflows/`.
+Grenzen: Sicherheitspflichten des Release-Builds — `android:debuggable=false`, keine committeten Secrets, Schwachstellen-Scan der Abhängigkeiten, die Regel „R8 ist keine Sicherheitsmaßnahme" — liegen in `spec/android/security/` §F/§G und werden referenziert, nicht wiederholt — mit einer bewussten Ausnahme, der `debuggable`-Regel, die §B wiederholt, damit die Schranke aus §E ohne das Öffnen einer zweiten Spec durchgegangen werden kann. Struktur der Build-Dateien, Version Catalog und Layout der Qualitätswerkzeuge liegen in `spec/android/project-structure/` §B/§G; was eine Testbahn *ist*, in `spec/android/test-automation/` §A/§D–§F und deren CI-Verdrahtung in dessen §G; Messung der Scroll-Performance in `spec/android/long-list-scrolling/` §G; Geräte- und Log-Mechanik in `spec/android/adb-workflows/`.
 
 Leser: Autoren der Android-Skills dieses Repos, die entscheiden müssen, ob eine Änderung fertig ist, sowie Reviewer, die eine „Fertig"-Behauptung beurteilen.
 
@@ -28,7 +28,7 @@ Leser: Autoren der Android-Skills dieses Repos, die entscheiden müssen, ob eine
 
 - Signaturschlüssel und ihre Verwahrung, Store-Metadaten, Einträge, Screenshots, Release-Tracks, gestufter Rollout und der Data-Safety-Fragebogen — per Anforderung außerhalb des Umfangs dieses Repositorys
 - Sicherheitsmaßnahmen des Release-Builds — `spec/android/security/` §F/§G
-- Erstellung von CI-Workflows, Runner-Aufbau und Zusammenstellung der Testbahnen — `spec/android/test-automation/` §G
+- Zusammenstellung der Testbahnen — `spec/android/test-automation/` §A/§D–§F; Erstellung von CI-Workflows und Runner-Aufbau — dessen §G
 - Methodik zur Messung von Startzeit und Jank sowie das Erstellen von Baseline Profiles — dafür existiert noch keine Spec (§Offene Fragen); die Budgets unten referenzieren sie, ohne die Methode zu definieren
 - Versionsschemata und Changelog-Erzeugung — ein Release-Thema auf Portfolioebene, kein Android-Thema
 - App-Größenoptimierung über die Vorgaben des Shrinkers hinaus
@@ -67,14 +67,14 @@ Leser: Autoren der Android-Skills dieses Repos, die entscheiden müssen, ob eine
 - **MUSS [MUST]** `compileSdk` auf dem neuesten stabilen SDK und `targetSdk` auf dem neuesten stabilen SDK halten, gegen das die App geprüft wurde; ein zurückhängendes `targetSdk` wird mit Grund und Datum festgehalten, nie stillschweigend gelassen [R2]
 - **MUSS [MUST]** `minSdk` mit Begründung festhalten und **MUSS [MUST]** den berührten Ablauf auf der neuesten Plattformversion erneut prüfen, die die App zu unterstützen behauptet [R2]
 - **DARF NICHT [MUST NOT]** Non-SDK-(versteckte) Schnittstellen verwenden; der Lint-Check ist der mechanische Detektor [R2]
-- **MUSS [MUST]** Abhängigkeiten über den Version Catalog deklarieren und über automatisierte Updates aktuell halten (`spec/android/project-structure/` §B; Schwachstellen-Scan nach `spec/android/security/` §F); ein verhaltensändernder Abhängigkeits-Bump wird wie jede andere Änderung auf dem Release-Build geprüft
+- **MUSS [MUST]** Abhängigkeiten über den Version Catalog deklarieren (`spec/android/project-structure/` §B) und **MUSS [MUST]** sie aktuell halten. Die Automatisierung und der Schwachstellen-Scan, die Aktualität praktikabel machen — Renovate/Dependabot plus ein Scanner in der CI —, liegen in `spec/android/security/` §F und sind dort ein **SOLLTE**; diese Spec verschärft bewusst das *Ergebnis* (Abhängigkeiten sind aktuell) zu einem MUSS und belässt die *Mechanismuswahl* jener Spec bei einer Empfehlung. Ein verhaltensändernder Abhängigkeits-Bump wird wie jede andere Änderung auf dem Release-Build geprüft
 - **MUSS [MUST]** Plattform-Verhaltensänderungen, die das neue `targetSdk` aktiviert, vor dem Anheben behandeln — die Pflichten zu Adaptivität und Edge-to-Edge liegen in `spec/android/screen-formats/` §B/§D und `spec/android/app-design-navigation/` §A und sind Voraussetzung des Bumps, keine Nacharbeit
 
 ### E. Die Schranke
 
 - **MUSS [MUST]** diese Schranke als Definition von „fertig" für jede Änderung an einem Android-Projekt behandeln und **MUSS [MUST]** jedes rote Element melden statt still hinnehmen (Repository-REQ-1, REQ-7):
   1. `./gradlew build` ist grün
-  2. Android Lint meldet keinen Fund der Schwere Error in geändertem Code, und **es wurde kein neuer Baseline-Eintrag** dafür hinzugefügt; die in `spec/android/security/` §F genannten Sicherheitschecks bleiben auf Error-Schwere
+  2. Android Lint meldet keinen Fund der Schwere Error in geändertem Code, und **es wurde kein neuer Baseline-Eintrag** dafür hinzugefügt; die in `spec/android/security/` §F genannten Sicherheitschecks werden auf Error-Schwere durchgesetzt — jene Spec formuliert die Durchsetzung als SOLLTE, diese Schranke verlangt sie, sodass ein Projekt, das sie nie angehoben hat, das vor dem Beanspruchen der Schranke nachholt
   3. Unit-Tests bestehen, einschließlich der Fehlerfallabdeckung, die `spec/android/app-architecture/` §G und `spec/android/backend-contract/` §G verlangen
   4. Die Release-Variante baut mit aktivem Shrinker (§A)
   5. Der berührte Ablauf wurde manuell auf einem Gerät mit der **Release**-Variante ausgeübt (§A)
@@ -98,9 +98,12 @@ Die Kriterien sind eine repräsentative Zusammenfassung von §A–§F, keine 1:1
 - [ ] `mapping.txt` wird für jeden Release-Build aufbewahrt, der die Maschine verlässt
 - [ ] Der berührte Ablauf wurde aus der Release-Variante installiert und auf einem Gerät ausgeübt, und das Release-Artefakt baut
 - [ ] Keine Debug-only-Abhängigkeit, kein ausführliches Log, kein Nicht-Produktions-Endpunkt, kein Bypass-Schalter und kein versteckter Entwickler-Screen ist in der Release-Variante erreichbar
+- [ ] Die Release-Variante ist nicht debuggbar, keine Variante mit Zugriff auf Produktivdaten schwächt das TLS-Vertrauen, und auf keiner Stufe werden personenbezogene Daten, Credentials, Token oder Request-/Response-Nutzlasten geloggt
+- [ ] Im berührten Ablauf läuft keine blockierende Arbeit auf dem Main-Thread
 - [ ] StrictMode ist im Debug-Build mit Disk-, Netzwerk- und Leak-Erkennung aktiv, und der berührte Ablauf erzeugt keinen Verstoß
 - [ ] Absturzfreie und ANR-Raten sind messbar und liegen innerhalb der Vitals-Schwellen; in geändertem Code existiert kein leerer Catch-Block
-- [ ] Der berührte Ablauf übersteht Prozesstod und Konfigurationswechsel ohne Verlust von Nutzereingaben oder ungesendeten Schreibvorgängen
+- [ ] Der berührte Ablauf übersteht Prozesstod und Konfigurationswechsel ohne Verlust von Nutzereingaben oder ungesendeten Schreibvorgängen, geprüft mit „Activities nicht behalten" oder einem Hintergrund-Kill statt per Inspektion
+- [ ] Abhängigkeiten sind im Version Catalog deklariert und aktuell, und jede Plattform-Verhaltensänderung, die das eingesetzte `targetSdk` aktiviert, wurde vor dessen Übernahme behandelt
 - [ ] `compileSdk` ist das neueste stabile, `targetSdk` das neueste geprüfte (jeder Rückstand mit Grund und Datum festgehalten), `minSdk` trägt eine Begründung, und keine Non-SDK-Schnittstelle wird verwendet
 - [ ] Die sechs Elemente der Schranke aus §E sind grün, oder jedes rote oder übersprungene Element ist im Abschlussbericht mit Grund benannt
 - [ ] Es wurde kein Lint-Baseline-Eintrag, keine Check-Abschaltung und keine Unterdrückung hinzugefügt, um die Schranke für neuen Code zu bestehen

@@ -23,7 +23,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 - Play-Store-Release, App-Signierung für die Distribution und Store-Metadaten — für dieses Repository explizit außerhalb des Scopes
 - CI/CD-Pipeline-Design — abgedeckt durch die Portfolio-Specs `project/continuous-integration` und `project/continuous-delivery`
-- Laufzeit-Architekturverhalten jenseits seines strukturellen Abdrucks — State-Management-Details, Navigation-Graph-Design und UX-Patterns gehören in eigene künftige Specs unter `spec/android/`
+- Laufzeit-Architekturverhalten jenseits seines strukturellen Abdrucks — State-Management, Schicht-Autorität, Caching und Schreibstrategien gehören zu `spec/android/app-architecture/`, Navigation-Graph-Design zu `spec/android/app-design-navigation/` und UX-Patterns in eigene Specs unter `spec/android/`
 - Kotlin-Multiplatform-Projektlayout — diese Spec zielt auf Android-only-Apps; KMP strukturiert die oberste Ebene um (siehe Tivi) und bräuchte eine eigene Spec
 - Festschreiben exakter Tool- oder Library-Versionen — die Spec fixiert Mechanismen (Catalog, Wrapper, BOM); Versionen leben in der `libs.versions.toml` des generierten Projekts
 

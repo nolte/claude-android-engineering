@@ -65,6 +65,7 @@ suspend fun <T> apiCall(endpoint: String, block: suspend () -> T): CallResult<T>
 }
 ```
 
+- The catches are deliberately **specific**. A bare `catch (e: Exception)` would swallow `CancellationException` and turn a navigated-away screen into a spurious error state; cancellation is not one of the eight cases and is always rethrown.
 - `toDomainRejection()` parses `application/problem+json` per RFC 9457: branch on `type` and on
   defined extension members only. `detail` is display text, never control flow.
 - `messageWithoutPayload()` keeps the field path and drops the body — a mismatch is reported

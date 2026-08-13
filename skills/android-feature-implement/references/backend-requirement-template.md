@@ -95,6 +95,7 @@ Error cases the client will distinguish, and how each is rendered:
 - Idempotency: <needed for which writes; `Idempotency-Key` honoured?>
 - Cacheability: <validators the client can send: ETag / Last-Modified / sync token>
 - Data volume and growth: <rough expectation>
+- Urgency: <what is blocked without this capability, and by when the app needs it>
 
 ## 6. Acceptance criteria
 

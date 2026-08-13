@@ -12,7 +12,7 @@ Scope boundary, stated once and load-bearing: this repository's requirements put
 
 Provenance: desk research (August 2026) over the R8 shrinking, obfuscation, and optimization documentation, the Android core app quality guidelines and their testable criterion IDs, the Android vitals thresholds (the quantified stability ceiling), the StrictMode reference, and the Gradle/AGP build documentation. Version-bound statements name their AGP boundary; this spec encodes mechanisms, not exact versions.
 
-Boundaries: security obligations of the release build — `android:debuggable=false`, no committed secrets, dependency vulnerability scanning, the "R8 is not a security control" rule — are owned by `spec/android/security/` §F/§G and are referenced, not restated. Build-file structure, the version catalog, and quality-tooling layout belong to `spec/android/project-structure/` §B/§G; test lanes and CI wiring to `spec/android/test-automation/` §G; scroll-performance measurement to `spec/android/long-list-scrolling/` §G; device and log mechanics to `spec/android/adb-workflows/`.
+Boundaries: security obligations of the release build — `android:debuggable=false`, no committed secrets, dependency vulnerability scanning, the "R8 is not a security control" rule — are owned by `spec/android/security/` §F/§G and are referenced, not restated — with one deliberate exception, the `debuggable` rule, which §B restates so the §E gate can be walked without opening a second spec. Build-file structure, the version catalog, and quality-tooling layout belong to `spec/android/project-structure/` §B/§G; what a test lane *is* to `spec/android/test-automation/` §A/§D–§F and its CI wiring to that spec's §G; scroll-performance measurement to `spec/android/long-list-scrolling/` §G; device and log mechanics to `spec/android/adb-workflows/`.
 
 Readers: authors of this repository's Android skills who must decide whether a change is finished, and reviewers judging a claim of "done".
 
@@ -28,7 +28,7 @@ Readers: authors of this repository's Android skills who must decide whether a c
 
 - Signing key material and custody, store metadata, listings, screenshots, release tracks, staged rollout, and the Data Safety questionnaire — out of this repository's scope by requirement
 - Security controls of the release build — `spec/android/security/` §F/§G
-- CI workflow authoring, runner setup, and test-lane composition — `spec/android/test-automation/` §G
+- Test-lane composition — `spec/android/test-automation/` §A/§D–§F; CI workflow authoring and runner setup — that spec's §G
 - Startup-time and jank measurement methodology, and Baseline Profile authoring — no spec owns these yet (§Open Questions); the budgets below reference them without defining the method
 - Versioning schemes and changelog generation — a portfolio-level release concern, not an Android one
 - App size optimization beyond the shrinker defaults
@@ -67,14 +67,14 @@ Readers: authors of this repository's Android skills who must decide whether a c
 - **MUST** keep `compileSdk` at the latest stable SDK and `targetSdk` at the latest stable SDK the app has been verified against; a lagging `targetSdk` is recorded with a reason and a date, never left implicit [R2]
 - **MUST** record `minSdk` with its rationale, and **MUST** re-verify the touched flow on the newest platform version the app claims to support [R2]
 - **MUST NOT** use non-SDK (hidden) interfaces; the lint check is the mechanical detector [R2]
-- **MUST** declare dependencies through the version catalog and keep them current through automated updates (`spec/android/project-structure/` §B; vulnerability scanning per `spec/android/security/` §F); a dependency bump that changes behaviour is verified on the release build like any other change
+- **MUST** declare dependencies through the version catalog (`spec/android/project-structure/` §B) and **MUST** keep them current. The automation and the vulnerability scan that make currency practical — Renovate/Dependabot plus a scanner in CI — are owned by `spec/android/security/` §F, which states them as a **SHOULD**; this spec deliberately strengthens the *outcome* (dependencies are current) to a MUST while leaving that spec's choice of *mechanism* recommended rather than required. A dependency bump that changes behaviour is verified on the release build like any other change
 - **MUST** handle platform behaviour changes that the new `targetSdk` activates before raising it — the adaptive and edge-to-edge obligations are owned by `spec/android/screen-formats/` §B/§D and `spec/android/app-design-navigation/` §A, and are a precondition of the bump, not a follow-up
 
 ### E. The gate
 
 - **MUST** treat this gate as the definition of "done" for any change to an Android project, and **MUST** report — never silently accept — any red element (repository REQ-1, REQ-7):
   1. `./gradlew build` is green
-  2. Android Lint reports no error-severity finding in changed code, and **no new baseline entry was added** to achieve that; the security checks named in `spec/android/security/` §F stay at error severity
+  2. Android Lint reports no error-severity finding in changed code, and **no new baseline entry was added** to achieve that; the security checks named in `spec/android/security/` §F are enforced at error severity — that spec states the enforcement as a SHOULD, and this gate requires it, so a project that never elevated them raises them before claiming the gate
   3. Unit tests pass, including the failure-mode coverage required by `spec/android/app-architecture/` §G and `spec/android/backend-contract/` §G
   4. The release variant assembles with the shrinker on (§A)
   5. The touched flow was exercised manually on a device running the **release** variant (§A)
@@ -98,9 +98,12 @@ The criteria are a representative rollup of §A–§F, not a 1:1 mapping; every 
 - [ ] `mapping.txt` is retained for every release build that leaves the machine
 - [ ] The touched flow was installed and exercised on a device from the release variant, and the release artifact assembles
 - [ ] No debug-only dependency, verbose log, non-production endpoint, bypass switch, or hidden developer screen is reachable in the release variant
+- [ ] The release variant is non-debuggable, no variant reaching production data weakens TLS trust, and no personal data, credential, token, or request/response payload is logged at any level
+- [ ] No blocking work runs on the main thread in the touched flow
 - [ ] StrictMode is active in debug with disk, network, and leak detection, and the touched flow produces no violation
 - [ ] Crash-free and ANR rates are measurable and inside the vitals thresholds; no empty catch block exists in changed code
-- [ ] The touched flow survives process death and configuration change without losing user input or unsent writes
+- [ ] The touched flow survives process death and configuration change without losing user input or unsent writes, verified with "don't keep activities" or a background-kill rather than by inspection
+- [ ] Dependencies are declared in the version catalog and current, and any platform behaviour change activated by the `targetSdk` in use was handled before that SDK was adopted
 - [ ] `compileSdk` is the latest stable, `targetSdk` is the latest verified (any lag recorded with reason and date), `minSdk` carries a rationale, and no non-SDK interface is used
 - [ ] The six-element gate of §E is green, or every red or skipped element is named in the final report with its reason
 - [ ] No lint baseline entry, check disablement, or suppression was added to pass the gate on new code
