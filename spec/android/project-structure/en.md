@@ -23,7 +23,7 @@ Readers: authors of this repo's Android skills, and reviewers judging whether a 
 
 - Play Store release, app signing for distribution, and store metadata — explicitly out of scope for this repository
 - CI/CD pipeline design — covered by the portfolio specs `project/continuous-integration` and `project/continuous-delivery`
-- Runtime architecture behavior beyond its structural imprint — state-management details, navigation-graph design, and UX patterns belong to their own future specs under `spec/android/`
+- Runtime architecture behavior beyond its structural imprint — state management, layer authority, caching and write strategies belong to `spec/android/app-architecture/`, navigation-graph design to `spec/android/app-design-navigation/`, and UX patterns to their own specs under `spec/android/`
 - Kotlin Multiplatform project layout — this spec targets Android-only apps; KMP restructures the top level (see Tivi) and would need its own spec
 - Pinning exact tool or library versions — the spec fixes mechanisms (catalog, wrapper, BOM); versions live in the generated project's `libs.versions.toml`
 

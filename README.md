@@ -5,7 +5,8 @@
 
 Reusable, spec-based [Claude Code](https://claude.com/claude-code) skills and
 agents for native Android engineering — project setup, Jetpack Compose UI,
-mobile UX, perceived performance, QR/barcode scanning, and local debugging.
+feature implementation as a flat view layer, mobile UX, perceived performance,
+QR/barcode scanning, and local debugging.
 
 ## Purpose
 
@@ -36,9 +37,9 @@ task check   # aggregate quality gate (lint + test), identical to CI
 
 ```text
 .claude-plugin/  # plugin manifest (plugin.json)
-skills/          # five skills: android-project-scaffold, android-compose-ui,
-                 #   android-perceived-performance, android-debugging,
-                 #   android-barcode-scanner-scaffold
+skills/          # six skills: android-project-scaffold, android-compose-ui,
+                 #   android-feature-implement, android-perceived-performance,
+                 #   android-debugging, android-barcode-scanner-scaffold
 agents/          # android-ux-reviewer (read-only UI audit)
 spec/            # bilingual spec corpus (en canonical + de); android/ holds the Android specs
 project/         # planning artifacts (requirements; mission/roadmap pending)
@@ -56,9 +57,10 @@ AUDIENCES.md     # audience analysis for this repository
 ## Status
 
 Early stage: the spec corpus, repository structure, and the first skills
-(project scaffold, Compose UI, perceived performance, debugging, barcode
-scanner) plus the UX-review agent are in place. Play-Store release is out of
-scope.
+(project scaffold, Compose UI, feature implementation, perceived performance,
+debugging, barcode scanner) plus the UX-review agent are in place. Play-Store
+release tooling is out of scope; production-grade release-build quality of the
+source is covered by `spec/android/release-readiness/`.
 
 ## License
 

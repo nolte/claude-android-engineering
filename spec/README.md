@@ -5,12 +5,15 @@
 | Topic | Slug | Title (en) | Title (de) | Status | Scope | Last updated |
 | --- | --- | --- | --- | --- | --- | --- |
 | android | adb-workflows | ADB Workflows | ADB-Workflows | draft | local | 2026-08-11 |
+| android | app-architecture | App Architecture — The Flat View Layer | App-Architektur — Der flache View Layer | draft | local | 2026-08-13 |
 | android | app-design-navigation | App Design and Navigation | App-Design und Navigation | draft | local | 2026-08-11 |
+| android | backend-contract | Backend Contract and Requirement Handoff | Backend-Contract und Anforderungsübergabe | draft | local | 2026-08-13 |
 | android | barcode-scanning | QR and Barcode Scanning | QR- und Barcode-Scannen | draft | local | 2026-08-12 |
 | android | iconography | Iconography | Ikonografie | draft | local | 2026-08-11 |
 | android | localization | Localization | Lokalisierung | draft | local | 2026-08-11 |
 | android | long-list-scrolling | Long Lists and Continuous Scrolling | Lange Listen und stufenloses Scrollen | draft | local | 2026-08-12 |
 | android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | 2026-08-10 |
+| android | release-readiness | Release Readiness of the Source | Release-Reife des Quellcodes | draft | local | 2026-08-13 |
 | android | screen-formats | Screen Formats | Bildschirmformate | draft | local | 2026-08-11 |
 | android | security | App Security | App-Sicherheit | draft | local | 2026-08-11 |
 | android | test-automation | Android Test Automation | Android-Testautomatisierung | draft | local | 2026-08-10 |
