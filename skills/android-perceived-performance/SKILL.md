@@ -10,7 +10,7 @@ use_when:
   - "you want to find and fix jank or dropped frames"
   - "you want to add or repair Baseline Profiles"
   - "you want to check loading states against the response-time thresholds"
-allowed-tools: [Bash, Read, Grep, Glob]
+allowed-tools: [Bash, Read, Grep, Glob, Edit, Write]
 resumable: true
 ---
 
@@ -74,7 +74,7 @@ Read `references/measurement.md` when you enter this phase — it holds the exac
 
 ## Phase 2 — FIX
 
-Read `references/remediations.md` when a finding needs a fix — it maps each finding class to its concrete remediation. Apply remediations strongest-signal-first.
+Read `references/remediations.md` when a finding needs a fix — it maps each finding class to its concrete remediation. Apply them in the user-impact order `spec/android/perceived-performance/` §H fixes, not by signal strength.
 
 ### 1. Propose one remediation
 
@@ -97,6 +97,8 @@ Read `references/remediations.md` when a finding needs a fix — it maps each fi
 ## Report
 
 Conclude with: the baseline table (number, budget, verdict), the remediations applied with their before/after deltas, the final `./gradlew build` status, any red state left behind, and any `spec/android/perceived-performance/` gap surfaced during the run.
+
+Every number in that table carries the conditions `spec/android/perceived-performance/` §A requires — device model, Android version, build type, minification state, `CompilationMode`, refresh rate, iteration count — and every verdict drawn against a §C **portfolio decision** says so, so the operator can tell a corpus target from a platform requirement. A number without its conditions is not reportable.
 
 ## Resume
 

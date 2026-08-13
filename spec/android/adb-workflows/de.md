@@ -8,7 +8,7 @@ Die Skills dieses Repositories arbeiten CLI-first (REQ-3): Sie deployen Apps auf
 
 Der Inhalt ist aus einem Recherche-Durchlauf (August 2026) über drei Quellklassen destilliert: die offizielle ADB-/Platform-Tools-Dokumentation (developer.android.com und die AOSP-Quellen — hochaktuell mit Stand Platform-Tools 37.x: `adb server-status`, mDNS-Backend `libadbmdns`, Wireless-Debugging 2.0), die offizielle Logcat-/Debugging-/Bugreport-Dokumentation (inklusive des AOSP-`logcat --help`-Texts, der die maßgebliche Optionsreferenz ist, seit die Webseite die Optionen nicht mehr vollständig listet) sowie Community- und Produktionspraxis (Agent-Runbooks in realen Repos, die kanonische CI-Emulator-Action, Tool-Status von scrcpy/pidcat/adb-enhanced und Googles neue agentenorientierte `android`-CLI).
 
-Grenzen: Die Test-*Ausführungs*-Strategie gehört `spec/android/test-automation/`; Perfetto/Systemweit-Tracing in der Tiefe gehört `spec/android/perceived-performance/` (hier wird nur die Grenze gezogen); die Regeln zu `debuggable` in Release-Builds teilen sich mit der künftigen Security-Spec.
+Grenzen: Die Test-*Ausführungs*-Strategie gehört `spec/android/test-automation/`; das Lesen von Traces für ein Performance-Urteil gehört `spec/android/perceived-performance/` (diese Spec besitzt den Aufzeichnungsaufruf); die Regeln zu `debuggable` in Release-Builds teilen sich mit `spec/android/security/` §F.
 
 Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Projekt-Setup-Skill) sowie Reviewer, die beurteilen, ob die Geräteinteraktion eines Skills konform ist.
 
@@ -22,7 +22,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 ## Nicht-Ziele
 
 - Test-Ausführung und -Orchestrierung — gehört `spec/android/test-automation/` (diese Spec liefert nur die Geräte-Verkabelung darunter)
-- Performance-Tracing und Profiling in der Tiefe (Perfetto, gfxinfo-Analyse) — `spec/android/perceived-performance/`; hier nur als Grenze benannt
+- Das Lesen eines Traces für ein Performance-Urteil sowie Profiling in der Tiefe (gfxinfo-Analyse) — `spec/android/perceived-performance/`; diese Spec besitzt allein den Aufzeichnungsaufruf (§D)
 - Play-Store-Deployment — für dieses Repository außerhalb des Scopes; `bundletool` erscheint nur als lokaler Installationspfad für App Bundles
 - Rooted-Device- und userdebug-Build-Workflows — Produktions-Builds sind das Ziel; `adb root` ist dort dokumentiert nicht verfügbar und wird nicht vorausgesetzt
 - GUI-Tooling (Android Studio, scrcpy als Produkt) — scrcpy wird als Mirroring-Standard referenziert, aber kein Skill hängt von einer GUI ab
@@ -125,7 +125,7 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, 
 
 ## Referenzen
 
-Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor- oder AOSP-Dokumentation, (S) sekundär (gepflegte Tool-Repos, Engineering-Runbooks). Plattformverhaltens-Fakten zitieren die eine maßgebliche Primärquelle; Aussagen, die nachgelagertes Tooling steuern, tragen korroborierende Zitate inline.
+Alle Quellen abgerufen am 11.08.2026, außer [R29] (14.08.2026). Klassenmarker: (P) primäre/maßgebliche Vendor- oder AOSP-Dokumentation, (S) sekundär (gepflegte Tool-Repos, Engineering-Runbooks). Plattformverhaltens-Fakten zitieren die eine maßgebliche Primärquelle; Aussagen, die nachgelagertes Tooling steuern, tragen korroborierende Zitate inline.
 
 - [R1] Offizielle ADB-Dokumentation (Architektur, Targeting, Wireless, Install, Shell-Tools): <https://developer.android.com/tools/adb>
 - [R2] Platform-Tools-Release-Notes (versionsabhängiges Verhalten, mDNS-Backends): <https://developer.android.com/tools/releases/platform-tools>

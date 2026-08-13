@@ -110,7 +110,7 @@ Leser: Autoren der Android-Skills dieses Repos, die einen listentragenden Screen
 
 ## Akzeptanzkriterien
 
-Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, keine 1:1-Abbildung; jeder Anforderungspunkt oben ist für sich normativ. Zwei normative Punkte bleiben bewusst dem Reviewer-Urteil statt einem mechanischen Kriterium überlassen, weil beide Urteile über die *Argumentation* eines Skills sind und keine Eigenschaften eines Artefakts: das Verbot, einen Framework-Wechsel als Jank-Behebung vorzuschlagen, und die Pflicht, die fehlende Methodik-Spec zu melden statt eine Budgetzahl zu erfinden (beide §G).
+Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, keine 1:1-Abbildung; jeder Anforderungspunkt oben ist für sich normativ. Zwei normative Punkte bleiben bewusst dem Reviewer-Urteil statt einem mechanischen Kriterium überlassen, weil beide Urteile über die *Argumentation* eines Skills sind und keine Eigenschaften eines Artefakts: das Verbot, einen Framework-Wechsel als Jank-Behebung vorzuschlagen, und die Pflicht, die allgemeine Methodik aus `spec/android/perceived-performance/` zu übernehmen statt eine Budgetzahl zu erfinden (beide §G).
 
 - [ ] Jede datengetriebene oder unbegrenzte Sammlung nutzt einen Lazy-Container; kein Scroll-Container gleicher Richtung steckt in einem anderen; kein `item {}` emittiert mehr als einen logischen Eintrag
 - [ ] Kein Item kann in Scrollrichtung zu null messen: Jedes asynchron befüllte Item deklariert eine Größe vor dem Eintreffen seines Inhalts, und diese Größe bleibt danach unverändert

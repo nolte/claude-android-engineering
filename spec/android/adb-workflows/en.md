@@ -8,7 +8,7 @@ This repository's skills operate CLI-first (REQ-3): they deploy apps to devices 
 
 The content is distilled from a research pass (August 2026) over three source classes: the official ADB/platform-tools documentation (developer.android.com and the AOSP sources — notably current as of platform-tools 37.x: `adb server-status`, mDNS backend `libadbmdns`, Wireless-Debugging 2.0), the official logcat/debugging/bugreport documentation (including the AOSP `logcat --help` text, which is now the authoritative option reference after the web page stopped listing options), and community/production practice (agent runbooks shipped in real repos, the canonical CI emulator action, tool status of scrcpy/pidcat/adb-enhanced, and Google's new agent-oriented `android` CLI).
 
-Boundaries: test *execution* strategy is owned by `spec/android/test-automation/`; Perfetto/system-wide tracing depth belongs to `spec/android/perceived-performance/` (only the boundary is drawn here); the rules about `debuggable` in release builds are shared with the future security spec.
+Boundaries: test *execution* strategy is owned by `spec/android/test-automation/`; reading a trace for a performance verdict belongs to `spec/android/perceived-performance/` (this spec owns the capture invocation); the rules about `debuggable` in release builds are shared with `spec/android/security/` §F.
 
 Readers: authors of this repo's Android skills (especially the debugging and project-setup skills) and reviewers judging whether a skill's device interaction is conformant.
 
@@ -22,7 +22,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 ## Non-Goals
 
 - Test execution and orchestration — owned by `spec/android/test-automation/` (this spec only provides the device plumbing underneath)
-- Performance tracing and profiling depth (Perfetto, gfxinfo analysis) — `spec/android/perceived-performance/`; only named here as a boundary
+- Reading a trace for a performance verdict, and profiling depth (gfxinfo analysis) — `spec/android/perceived-performance/`; this spec owns only the capture invocation (§D)
 - Play-Store deployment — out of scope for this repository; `bundletool` appears only as the local install path for app bundles
 - Rooted-device and userdebug-build workflows — production builds are the target; `adb root` is documented as unavailable there and not built upon
 - GUI tooling (Android Studio, scrcpy as a product) — scrcpy is referenced as the mirroring standard, but no skill depends on a GUI
@@ -125,7 +125,7 @@ The criteria below are a deliberate representative rollup of §A–§G, not a 1:
 
 ## References
 
-All sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendor or AOSP documentation, (S) secondary (maintained tool repos, engineering runbooks). Platform-behavior facts cite the single authoritative primary source; assertions that direct downstream tooling carry corroborating citations inline.
+All sources retrieved 2026-08-11, except [R29] (2026-08-14). Class markers: (P) primary/authoritative vendor or AOSP documentation, (S) secondary (maintained tool repos, engineering runbooks). Platform-behavior facts cite the single authoritative primary source; assertions that direct downstream tooling carry corroborating citations inline.
 
 - [R1] ADB official documentation (architecture, targeting, wireless, install, shell tools): <https://developer.android.com/tools/adb>
 - [R2] Platform-tools release notes (version-gated behavior, mDNS backends): <https://developer.android.com/tools/releases/platform-tools>
