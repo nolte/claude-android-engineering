@@ -1,0 +1,159 @@
+# Backend Contract and Requirement Handoff
+
+Status: draft
+
+## Context
+
+A flat view layer (`spec/android/app-architecture/`) buys its simplicity with a dependency: everything the app cannot decide, the backend has to supply. That makes two things load-bearing that a client-heavy app can be sloppy about — how the app consumes the contract, and what happens when the contract does not contain what the screen needs.
+
+The second half is the one that goes wrong in practice. A missing field or an un-expressible filter is discovered mid-implementation, at the worst possible moment for a design conversation, and the cheapest local move is always the same: compute it on the device. That single decision is how a flat client stops being flat. This spec makes the alternative cheap instead — a fixed shape for capturing the missing capability as a requirement the backend side can pick up, so "raise it" costs less than "work around it".
+
+The consuming half is deliberately narrow: this spec fixes what the *client* does with the contract — how it is generated, where its types are allowed to appear, how failures are classified into a closed set, and which requests may be retried. It states nothing about how the backend is built.
+
+Provenance: desk research (August 2026) over the OpenAPI Generator Kotlin client documentation, RFC 9457 (Problem Details for HTTP APIs), the IETF HTTPAPI `Idempotency-Key` header draft, the Android architecture and offline-first guides, and this portfolio's own consuming app (`nolte/kamerplanter-android`, an OpenAPI-generated Retrofit client in `core/network`).
+
+Boundaries: TLS, certificate handling, credential storage, and the "no client-trusted authorization" rule are owned by `spec/android/security/` §C/§F/§G; caching, staleness, write strategies, and sync are owned by `spec/android/app-architecture/` §C/§D; paging *presentation* and the Paging 3 wiring by `spec/android/long-list-scrolling/` §C; error *message wording* and empty-state UX by `spec/android/app-design-navigation/` §F; test mechanics by `spec/android/test-automation/`.
+
+Readers: authors of this repository's Android skills who implement a feature against a backend, and reviewers judging whether a client stayed inside the contract instead of inventing around it.
+
+## Goals
+
+- Make the contract the single machine-readable source for wire types, so DTOs are never hand-maintained twice
+- Confine generated types to one layer, so the client survives a contract regeneration
+- Turn transport and protocol failures into a closed, exhaustively handled set instead of a `catch (e: Exception)`
+- Make retries safe by construction rather than by hope
+- Give "the backend cannot do this yet" a cheaper path than a client-side workaround
+- Produce a backend requirement that a backend specialist can implement without asking the app author anything
+
+## Non-Goals
+
+- Backend implementation, API design authority, or the backend's own quality gates — this spec only states what the client needs and how it asks
+- Transport security, authentication scheme design, and credential storage — `spec/android/security/` §C/§G
+- Cache, staleness, write strategy, conflict handling — `spec/android/app-architecture/` §C/§D
+- Paging UI behaviour and Paging 3 mechanics — `spec/android/long-list-scrolling/` §C
+- GraphQL, gRPC, and realtime transports; the requirements below assume an HTTP/JSON contract and would need extension for the others (§Open Questions)
+- Choosing the backend product or hosting; the app consumes whatever the operator's backend repository exposes
+
+## Requirements
+
+### A. Contract-first consumption
+
+- **MUST** consume a documented backend through a typed client generated from its published contract (OpenAPI) whenever a contract exists; hand-written DTOs that duplicate a published schema are non-conformant [R1]
+- **MUST** commit the contract document (or a pinned reference to a versioned artifact) into the app repository, so a build is reproducible without a live backend, and **MUST** regenerate deliberately — generated sources are never hand-edited
+- **MUST** generate into a dedicated network component (`core/network` or the single-module equivalent per `spec/android/project-structure/` §C) and **MUST** keep generated types, HTTP status codes, and serialization annotations behind the repository boundary (`spec/android/app-architecture/` §F)
+- **MUST** map generated DTOs to app models in the data source or repository, never above it
+- **SHOULD** configure the Kotlin generator as: `library` = `jvm-retrofit2` with `useCoroutines`, or `jvm-ktor` where a Ktor stack already exists; `serializationLibrary` = `kotlinx_serialization`; `dateLibrary` = `java8` (JVM-only apps) [R1]. A different combination is allowed but **MUST** be recorded with its reason
+- **MAY** hand-write the client when no contract document exists at all; in that case §E applies immediately — the absence of a contract is itself a backend requirement, and the hand-written types are an interim measure with a recorded end state
+- **MUST NOT** call the backend from more than one place per resource: one data source per API area, one repository per data type (naming per `spec/android/project-structure/` §E)
+
+### B. The closed failure set
+
+- **MUST** map every outcome of a call into exactly one of eight cases, and **MUST** handle all eight for every feature (the fakes in `spec/android/app-architecture/` §G exist to prove it):
+  1. **success**
+  2. **offline / unreachable** — no usable connection, DNS failure, connection refused
+  3. **timeout** — connect, read, or overall deadline exceeded
+  4. **unauthenticated** — the credential is missing or expired; the client's answer is a refresh or a sign-in prompt, never a generic error
+  5. **unauthorized** — the credential is valid and the action is not allowed; a *server decision*, rendered as such
+  6. **domain rejection** — the request was understood and refused on a business rule (validation, conflict, state); carries per-field or per-rule detail where the contract provides it
+  7. **server fault** — the backend failed; retryable per §C, never blamed on the user
+  8. **contract mismatch** — the response could not be parsed into the generated types, or a required field was absent
+- **MUST** treat contract mismatch as a defect against the contract, not as a runtime error to swallow: it is surfaced to the operator (log with the offending endpoint and field, never with the payload) and it becomes a backend requirement per §E when the backend deviates from its own document
+- **MUST** consume an RFC 9457 `application/problem+json` body when the backend emits one, reading `type` and defined extension members for control flow; **MUST NOT** parse `detail` for logic and **MUST NOT** switch behaviour on `title` [R2]
+- **MUST NOT** render a raw server string as a screen's primary error text; the client maps the case to its own message with a recovery action (wording per `spec/android/app-design-navigation/` §F). Server-supplied text **MAY** be shown as secondary detail when the contract states it is user-facing and localized
+- **MUST** route field-level rejections back to the corresponding input fields rather than to a single banner, where the contract carries field identity
+- **MUST NOT** log request or response bodies, headers carrying credentials, or any personal data (`spec/android/security/` §A); a failure log names endpoint, status, and error class only
+
+### C. Requests: timeouts, retries, idempotency
+
+- **MUST** set explicit connect, read, and call timeouts; the platform defaults are not a decision
+- **MUST** retry automatically only where the request is idempotent — `GET`, `HEAD`, `PUT`, `DELETE` as the contract defines them — with capped exponential backoff plus jitter, and a stated maximum attempt count [R4]
+- **MUST NOT** automatically retry `POST` or `PATCH` unless the request carries an idempotency key the backend honours; where the backend offers no such mechanism, the retry is manual (user-triggered) until the requirement is raised per §E [R3]
+- **SHOULD**, where the backend supports it, send `Idempotency-Key` as a client-generated UUID that stays stable across retries of the *same* logical write and changes for a new one; the key is persisted with a queued write so it survives process death [R3]
+- **MUST** single-flight credential refresh: concurrent 401s trigger one refresh, and the waiting calls are replayed once — a refresh storm is both a defect and a rate-limit hazard
+- **MUST** use the contract's own pagination mechanism (cursor-based preferred over offset) and **MUST NOT** emulate paging by requesting an unbounded page; client-side wiring follows `spec/android/long-list-scrolling/` §C
+- **MUST** send conditional-request validators (`ETag`/`If-None-Match`, `If-Modified-Since`) where the contract exposes them, since the replica's freshness metadata (`spec/android/app-architecture/` §C) exists precisely to make this possible
+- **SHOULD** keep one request per screen state where possible; a screen that needs three or more calls to render its first frame is a §E trigger, not a client-side orchestration exercise
+
+### D. Living with contract change
+
+- **MUST** configure deserialization to ignore unknown fields, so an additive backend change cannot crash a shipped app
+- **MUST** give every enum a fallback member and **MUST NOT** treat an unknown enum value as a fatal error; the UI shows a neutral representation and the case is logged as a contract observation
+- **MUST NOT** depend on field ordering, on an optional field being present, or on an undocumented field the backend happens to emit
+- **MUST** regenerate the client in CI from the committed contract and fail the build on a compilation break, so a contract update cannot land silently half-applied
+- **MUST** record the contract version (or commit) the app is built against, and **MUST** state the minimum backend version when the app requires one
+- **SHOULD** treat a field the app needs but the contract marks optional as a §E clarification item rather than assuming it is always present
+
+### E. When to raise a backend requirement
+
+- **MUST** raise a backend requirement — and **MUST NOT** implement a silent client-side workaround — as soon as delivering the feature would require any of:
+  - deriving a domain decision on the device (the §A rule of `spec/android/app-architecture/`)
+  - a field the UI must display that the contract does not carry
+  - filtering, sorting, searching, or paging the API cannot express, forcing the client to over-fetch and post-process
+  - three or more calls to render one screen's first frame, or an N+1 call pattern over a list
+  - a multi-step write that must succeed or fail as a unit but is exposed only as separate calls
+  - a non-idempotent write that the client is expected to retry (§C)
+  - polling where a conditional request, a push, or a sync token would do
+  - an error case the client must distinguish but the contract does not make distinguishable (for example: everything is a 400 with a prose message)
+- **MUST**, having raised it, agree the interim client behaviour with the operator rather than choosing it alone: wait, ship the feature without the affected part, or implement a time-boxed interim path that is recorded in the artifact and removed when the backend lands (repository REQ-6, REQ-8)
+- **MUST NOT** let an interim path become permanent silently — the artifact's status (§F) is the tracking mechanism
+
+### F. The handoff artifact
+
+- **MUST** write the requirement to `project/backend-requirements/<YYYY-MM-DD>-<slug>.md` in the *app* repository, with a stable identifier `BR-<n>` that code comments, commits, and issues can reference
+- **MUST** contain these sections, in this order, so the backend side can implement without a follow-up conversation:
+  1. **Trigger** — the feature, screen, and user step that produced the need
+  2. **Need** — one sentence, phrased as a capability, not as an implementation
+  3. **Consumer scenario** — what the app renders with the answer, including the loading, empty, and error states it must be able to show
+  4. **Proposed contract** — endpoint(s), method, request shape, response shape, and the error cases the client will distinguish, as an OpenAPI fragment (paths + schemas + responses), explicitly marked **proposal, not authoritative** — the backend owns the final design
+  5. **Non-functional needs** — latency budget for the consuming screen, expected page size and ordering, authentication scope, idempotency needs, cacheability and validators, data volume
+  6. **Acceptance criteria** — testable from the backend side alone, one bullet per criterion
+  7. **Interim client behaviour** — what the app does until this lands, and what must be removed afterwards
+  8. **Open questions** — every point the app side could not decide
+  9. **Status** — one of `draft` → `proposed` → `accepted` → `implemented` → `consumed`, with the date of the last transition
+- **MUST** use synthetic examples only; no production personal data, no credentials, no real user identifiers (`spec/android/security/` §E)
+- **MUST** state the *why* behind every field requested — a field list without the rendering purpose invites a backend design that satisfies the letter and misses the screen
+- **MUST** record, when the status reaches `accepted`, the contract version that will carry the change, and when it reaches `consumed`, remove the interim path and say so in the artifact
+- **MAY**, after explicit operator confirmation, open an issue in the backend repository whose body is derived from the artifact and links back to it; the artifact stays the source of truth and the issue link is recorded in it. Opening the issue without confirmation is forbidden (repository REQ-8)
+- **SHOULD** keep one artifact per capability; a second screen needing the same capability extends the existing artifact rather than filing a duplicate
+
+### G. Verification
+
+- **MUST** cover all eight failure cases of §B with fakes in JVM tests before a feature is called done (`spec/android/test-automation/` §B/§C)
+- **MUST** verify that no generated type crosses the repository boundary — a grep for the generated package outside the network component is the mechanical check
+- **MUST** verify that retried writes are idempotent-safe (§C), by test where a key is used and by inspection otherwise
+- **MUST** report a raised-but-unanswered backend requirement in the run's final report rather than closing the work silently (repository REQ-6, REQ-7)
+
+## Acceptance Criteria
+
+The criteria are a representative rollup of §A–§G, not a 1:1 mapping; every requirement bullet above is normative on its own.
+
+- [ ] The wire client is generated from a committed contract document; no hand-maintained DTO duplicates a published schema, and no generated source is hand-edited
+- [ ] Generated types, HTTP statuses, and serialization annotations appear only inside the network component; the repository exposes app models
+- [ ] Every call outcome maps to one of the eight cases in §B, and every feature handles all eight, proven by fakes in JVM tests
+- [ ] Contract mismatch is reported as a contract defect, not swallowed; no payload, credential, or personal data is logged
+- [ ] Problem-details bodies are read via `type` and extension members; `detail` is never parsed for logic; no raw server string is a screen's primary error text
+- [ ] Timeouts are explicit; automatic retries exist only for idempotent requests or keyed writes; credential refresh is single-flight
+- [ ] Pagination uses the contract's mechanism; conditional-request validators are sent where available
+- [ ] Unknown fields and unknown enum values are tolerated; CI regenerates the client from the committed contract and fails on a compilation break
+- [ ] Every §E trigger produced a `BR-<n>` artifact under `project/backend-requirements/` with all nine sections, synthetic examples only, and a current status
+- [ ] Every interim client path is recorded in its artifact and removed when the artifact reaches `consumed`
+- [ ] A backend-repository issue exists only where the operator confirmed it, and links back to the artifact
+
+## Open Questions
+
+Each question states the working default the requirements above already encode.
+
+- Should the app repository also hold a generated, human-readable diff of contract changes between versions, or is the committed contract plus git history enough? Default: git history is enough
+- Should `BR-<n>` numbering be per repository or portfolio-wide? Default: per repository, since the artifact lives in the app repo
+- GraphQL and gRPC backends: extend this spec with a transport-neutral §A/§B, or write a sibling spec? Default: out of scope until a portfolio project needs one
+- Should the client ever be allowed to ship a compatibility shim for a known backend defect (rather than raising a requirement)? Default: only as an interim path per §E, always recorded, never permanent
+
+## References
+
+- [R1] OpenAPI Generator — Kotlin client generator options (`library`, `serializationLibrary`, `dateLibrary`, `useCoroutines`): <https://openapi-generator.tech/docs/generators/kotlin/>
+- [R2] RFC 9457 — Problem Details for HTTP APIs (`application/problem+json`, `type`/`title`/`status`/`detail`/`instance`, extension members, "consumers SHOULD NOT parse `detail`"): <https://www.rfc-editor.org/rfc/rfc9457.html>
+- [R3] IETF HTTPAPI WG — The Idempotency-Key HTTP Header Field (draft; client key generation, server duplicate/concurrent handling, 409/422 semantics): <https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/>
+- [R4] Build an offline-first app — network error handling, exponential backoff, sync via WorkManager: <https://developer.android.com/topic/architecture/data-layer/offline-first>
+- [R5] Guide to app architecture — data layer, repositories, data sources: <https://developer.android.com/topic/architecture/data-layer>
+- [R6] kotlinx.serialization — JSON configuration (`ignoreUnknownKeys`, default values, unknown enum handling): <https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/json.md>
+- [R7] OpenAPI Specification 3.1: <https://spec.openapis.org/oas/latest.html>
