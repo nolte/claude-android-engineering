@@ -5,9 +5,11 @@ Guidance for AI-assisted development in this repository.
 ## What this repository is
 
 A Claude Code plugin providing reusable, **spec-based** skills for native Android
-app development: project setup, Compose UI authoring, mobile-UX audit, perceived
-performance, and local development/debugging. Play-Store release tooling is
-explicitly out of scope.
+app development: project setup, Compose UI authoring, feature implementation
+across layers, mobile-UX audit, perceived performance, and local
+development/debugging. Play-Store release *tooling* is explicitly out of scope;
+production-grade release-build quality of the source is in scope
+(`spec/android/release-readiness/`).
 
 ## Load-bearing conventions
 
@@ -33,8 +35,9 @@ explicitly out of scope.
 - `.claude-plugin/plugin.json` — plugin manifest
 - `skills/` — `android-project-scaffold` (REQ-12), `android-compose-ui`
   (REQ-13), `android-perceived-performance` (REQ-15), `android-debugging`
-  (REQ-16), `android-barcode-scanner-scaffold` (REQ-18); each grounded in the
-  matching `spec/android/` spec
+  (REQ-16), `android-barcode-scanner-scaffold` (REQ-18),
+  `android-feature-implement` (REQ-19); each grounded in the matching
+  `spec/android/` spec
 - `agents/android-ux-reviewer` — read-only UI audit (REQ-14)
 - `scripts/validate_skills.py` — frontmatter contract check wired as `task test`;
   scope one target with `python3 scripts/validate_skills.py skills/<name>/`. Only

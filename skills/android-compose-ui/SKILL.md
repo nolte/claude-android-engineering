@@ -9,6 +9,11 @@ use_when:
   - "you want to build a new Android screen or Compose component"
   - "you want a screen scaffolded with its preview and Compose test"
   - "you want a new navigation destination wired with UX patterns already applied"
+dont_use_when:
+  - situation: "You want a feature implemented across UI, ViewModel, repository, and backend boundary"
+    alternative: android-feature-implement
+see_also:
+  - android-feature-implement
 resumable: true
 ---
 
