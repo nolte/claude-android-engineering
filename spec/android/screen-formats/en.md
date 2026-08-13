@@ -26,7 +26,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 - Navigation component choice per size class — `spec/android/app-design-navigation/` §C owns it (this spec provides the class definitions it keys on)
 - Foldable posture-specific experiences (tabletop/book modes) and desktop Tier-1 differentiation — named as optional extensions, not required scope
 - Wear OS, TV, Auto — out of scope for this portfolio's apps
-- Performance characteristics of large screens — future perceived-performance spec
+- Performance characteristics of large screens — `spec/android/perceived-performance/`
 
 ## Requirements
 

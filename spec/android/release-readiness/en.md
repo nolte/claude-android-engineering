@@ -112,7 +112,7 @@ The criteria are a representative rollup of §A–§F, not a 1:1 mapping; every 
 
 Each question states the working default the requirements above already encode.
 
-- App-wide startup (TTID/TTFD) and jank measurement methodology has no spec in this corpus; the perceived-performance capability operates without one. Should it get its own spec, or should §E gain quantified startup budgets? Default: §E requires a regression *report*, not a fixed number
+- App-wide startup (TTID/TTFD) and jank methodology is owned by `spec/android/perceived-performance/`. Should §E additionally hard-gate on that spec's startup budget, or stay a regression *report*? Default: a report, so a slow-but-not-regressed screen does not block a change that did not cause it
 - Should crash reporting be a MUST rather than a SHOULD for the operator's own apps, given the vitals budget cannot be verified without it? Default: SHOULD, because the measurement path may also be the Play Console
 - Should the gate require a fresh-install run in addition to an upgrade-install run (migration paths break only on the latter)? Default: not required; §E's manual step does not fix the install mode
 - Is a size-delta threshold worth fixing (for example, flag any change adding more than *n* KB), or does the report suffice? Default: report only

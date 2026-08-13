@@ -8,7 +8,7 @@ Die Skills dieses Repositories arbeiten CLI-first (REQ-3): Sie deployen Apps auf
 
 Der Inhalt ist aus einem Recherche-Durchlauf (August 2026) über drei Quellklassen destilliert: die offizielle ADB-/Platform-Tools-Dokumentation (developer.android.com und die AOSP-Quellen — hochaktuell mit Stand Platform-Tools 37.x: `adb server-status`, mDNS-Backend `libadbmdns`, Wireless-Debugging 2.0), die offizielle Logcat-/Debugging-/Bugreport-Dokumentation (inklusive des AOSP-`logcat --help`-Texts, der die maßgebliche Optionsreferenz ist, seit die Webseite die Optionen nicht mehr vollständig listet) sowie Community- und Produktionspraxis (Agent-Runbooks in realen Repos, die kanonische CI-Emulator-Action, Tool-Status von scrcpy/pidcat/adb-enhanced und Googles neue agentenorientierte `android`-CLI).
 
-Grenzen: Die Test-*Ausführungs*-Strategie gehört `spec/android/test-automation/`; Perfetto/Systemweit-Tracing in der Tiefe gehört einer künftigen Perceived-Performance-Spec (hier wird nur die Grenze gezogen); die Regeln zu `debuggable` in Release-Builds teilen sich mit der künftigen Security-Spec.
+Grenzen: Die Test-*Ausführungs*-Strategie gehört `spec/android/test-automation/`; Perfetto/Systemweit-Tracing in der Tiefe gehört `spec/android/perceived-performance/` (hier wird nur die Grenze gezogen); die Regeln zu `debuggable` in Release-Builds teilen sich mit der künftigen Security-Spec.
 
 Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Projekt-Setup-Skill) sowie Reviewer, die beurteilen, ob die Geräteinteraktion eines Skills konform ist.
 
@@ -22,7 +22,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 ## Nicht-Ziele
 
 - Test-Ausführung und -Orchestrierung — gehört `spec/android/test-automation/` (diese Spec liefert nur die Geräte-Verkabelung darunter)
-- Performance-Tracing und Profiling in der Tiefe (Perfetto, gfxinfo-Analyse) — künftige Perceived-Performance-Spec; hier nur als Grenze benannt
+- Performance-Tracing und Profiling in der Tiefe (Perfetto, gfxinfo-Analyse) — `spec/android/perceived-performance/`; hier nur als Grenze benannt
 - Play-Store-Deployment — für dieses Repository außerhalb des Scopes; `bundletool` erscheint nur als lokaler Installationspfad für App Bundles
 - Rooted-Device- und userdebug-Build-Workflows — Produktions-Builds sind das Ziel; `adb root` ist dort dokumentiert nicht verfügbar und wird nicht vorausgesetzt
 - GUI-Tooling (Android Studio, scrcpy als Produkt) — scrcpy wird als Mirroring-Standard referenziert, aber kein Skill hängt von einer GUI ab
@@ -70,7 +70,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 - **MUSS [MUST]** Deep Links mit dem dokumentierten Kommando testen: `adb shell am start -W -a android.intent.action.VIEW -d "<uri>" <pkg>` (`&` in URIs escapen)
 - **MUSS [MUST]** Process-Death-Simulationen unterscheiden: `am kill <pkg>` = systeminitiierter Tod eines Hintergrundprozesses (State-Restauration beim Relaunch erwartet); `am force-stop` = nutzerinitiierter Kill (Restauration nicht erwartet) — `force-stop` für Restaurationstests ist ein falsch-negatives Ergebnis
 - **KANN [MAY]** einen CLI-Debugger über die JDWP-Kette anhängen (`adb jdwp` → `adb forward tcp:<port> jdwp:<pid>` → `jdb -attach`) — dokumentierter Notausgang, nicht der Default-Workflow
-- Perfetto (`record_android_trace`) ist die Grenze zur Performance-Arbeit: hier benannt, spezifiziert in der künftigen Perceived-Performance-Spec
+- **MUSS [MUST]** Systemtraces mit Perfettos Helfer `record_android_trace` aufzeichnen statt eine Konfiguration von Hand zusammenzubauen: Er zeichnet auf, holt den Trace und öffnet ihn. Das Skript aus dem Perfetto-Repository beziehen, dann mit Ausgabepfad, Dauer, Puffergröße, App-Filter und den für die Fragestellung nötigen Kategorien aufrufen — `sched` und `freq` für die CPU-Tätigkeit, `view` und `input` für UI-Arbeit, `am`/`wm`/`gfx` für Lebenszyklus und Rendering (`record_android_trace -o <datei>.perfetto-trace -t 20s -b 32mb -a <pkg> sched freq view input am wm gfx`); `--no-open` unterdrückt den UI-Start auf einer Maschine ohne Oberfläche [R29]. Diese Spec besitzt die Aufzeichnung; das Lesen des Traces für ein Performance-Urteil gehört zu `spec/android/perceived-performance/` §D/§E
 
 ### E. Skripting- und Agenten-Robustheit
 
@@ -155,3 +155,4 @@ Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche V
 - [R26] Host-lokalen Server vom Gerät erreichen (`adb reverse`, Secure Context) (P): <https://developer.android.com/develop/ui/views/layout/webapps/access-local-server>
 - [R27] AOSP-Issue: `adb shell`-Exit-Codes vor API 24 nicht propagiert (S): <https://issuetracker.google.com/issues/36908392>
 - [R28] KVM-Hardwarebeschleunigung GA auf GitHub-gehosteten Runnern (S): <https://github.blog/changelog/2024-04-02-github-actions-hardware-accelerated-android-virtualization-now-available/>
+- [R29] Perfetto System-Tracing — der Helfer `record_android_trace`, seine Flags und die aufgezeichneten Kategorien: <https://perfetto.dev/docs/getting-started/system-tracing>

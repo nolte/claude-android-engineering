@@ -24,7 +24,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - Nutzung und Konsistenz-Governance auf Komponentenebene — gehört `spec/android/ui-components/`
 - Window Size Classes, kanonische Layouts und Large-Screen-Qualitätsstufen — gehört `spec/android/screen-formats/` (die Navigations-*Wahl* je Kontext liegt hier, die adaptive Maschinerie dort)
 - Konkrete Markenidentität (Palette-Seed-Farben, Fonts, Logo) — Pro-App-Entscheidungen oberhalb des Token-Systems
-- Performance-Messung und Latenzbudgets — künftige Perceived-Performance-Spec; diese Spec fixiert nur die Feedback-Semantik (welcher UI-Zustand bei welcher Warteklasse)
+- Performance-Messung und Latenzbudgets — `spec/android/perceived-performance/`; diese Spec fixiert nur die Feedback-Semantik (welcher UI-Zustand bei welcher Warteklasse)
 - Play-Store-Listing-Assets — Release ist für dieses Repository außerhalb des Scopes
 
 ## Anforderungen
@@ -84,7 +84,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - **DARF NICHT [MUST NOT]** irgendeine Funktion nur über eine Custom-Geste erreichbar machen; Swipe-Aktionen sind Beschleuniger mit sichtbaren Alternativen und Undo bei Destruktivem; keine App-Gesten in System-Edge-Gesten-Zonen (`systemGestureExclusionRects` nur wo unvermeidbar, ≤ 200dp pro Kante)
 - **DARF NICHT [MUST NOT]** erzwungene Tutorial-Karussells ausliefern — die Forschung zeigt keinen Task-Erfolgs-Nutzen und schlechtere wahrgenommene Schwierigkeit; Onboarding ist kontextuell (Erstkontakt mit einem Feature), und der einzige gerechtfertigte Vorab-Schritt ist funktionale Anpassung
 - **MUSS [MUST]** Permissions im Kontext mit vorheriger Begründung anfragen — die NN/g-Forschung berichtet bis zu 28 % höhere Grant-Raten für In-Context-Anfragen, wobei die Messaging-Qualität das Opt-in massiv verschiebt [R28]
-- **SOLLTE [SHOULD]** die Antwortzeit-Feedback-Semantik anwenden: sofortiges Feedback auf jeden Tap; kein Indikator unter ~200 ms; Ladeanzeige für kurze unbestimmte Wartezeiten; Fortschrittsanzeige mit Abbruch ab ~10 s (Messung und Budgets gehören der künftigen Performance-Spec)
+- **SOLLTE [SHOULD]** die Antwortzeit-Feedback-Semantik anwenden: sofortiges Feedback auf jeden Tap; kein Indikator unter ~200 ms; Ladeanzeige für kurze unbestimmte Wartezeiten; Fortschrittsanzeige mit Abbruch ab ~10 s (Messung und Budgets gehören zu `spec/android/perceived-performance/`)
 - **SOLLTE [SHOULD]** Progressive Disclosure anwenden: Kernoptionen zuerst, Fortgeschrittenes hinter einem expliziten Schritt; gleichzeitige Auswahloptionen begrenzen (Choice Overload); Schlüsselinformation zum Scannen vorn platzieren
 
 ## Akzeptanzkriterien

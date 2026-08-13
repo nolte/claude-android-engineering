@@ -112,7 +112,7 @@ Die Kriterien sind eine repräsentative Zusammenfassung von §A–§F, keine 1:1
 
 Jede Frage nennt die Vorgabe, die die Anforderungen oben bereits kodieren.
 
-- Für die app-weite Methodik zu Startzeit (TTID/TTFD) und Jank existiert in diesem Korpus keine Spec; die Fähigkeit zur gefühlten Performance arbeitet ohne eine. Soll sie eine eigene Spec bekommen, oder soll §E quantifizierte Startzeitbudgets erhalten? Vorgabe: §E verlangt einen Regressions-*Bericht*, keine feste Zahl
+- Die app-weite Methodik zu Startzeit (TTID/TTFD) und Jank liegt in `spec/android/perceived-performance/`. Soll §E zusätzlich hart gegen dessen Startbudget schranken oder ein Regressions-*Bericht* bleiben? Vorgabe: ein Bericht, damit ein langsamer, aber nicht regressierter Screen keine Änderung blockiert, die ihn nicht verursacht hat
 - Soll Crash-Reporting für die eigenen Apps des Betreibers ein MUSS statt eines SOLLTE sein, da das Vitals-Budget ohne es nicht prüfbar ist? Vorgabe: SOLLTE, weil der Messweg auch die Play Console sein kann
 - Soll die Schranke zusätzlich zu einer Upgrade-Installation eine Neuinstallation verlangen (Migrationspfade brechen nur bei Ersterer)? Vorgabe: nicht verlangt; der manuelle Schritt aus §E legt den Installationsmodus nicht fest
 - Lohnt sich eine feste Schwelle für die Größendifferenz (etwa: jede Änderung markieren, die mehr als *n* KB hinzufügt), oder genügt der Bericht? Vorgabe: nur der Bericht

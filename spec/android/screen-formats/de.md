@@ -26,7 +26,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - Die Wahl der Navigationskomponente je Size Class — gehört `spec/android/app-design-navigation/` §C (diese Spec liefert die Klassendefinitionen, auf die dort verwiesen wird)
 - Foldable-Posture-spezifische Erlebnisse (Tabletop-/Book-Modi) und Desktop-Tier-1-Differenzierung — als optionale Erweiterungen benannt, kein Pflicht-Scope
 - Wear OS, TV, Auto — außerhalb des Scopes der Apps dieses Portfolios
-- Performance-Eigenschaften großer Screens — künftige Perceived-Performance-Spec
+- Performance-Eigenschaften großer Screens — `spec/android/perceived-performance/`
 
 ## Anforderungen
 

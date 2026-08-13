@@ -1,11 +1,12 @@
 # Budgets and thresholds
 
 The pass/fail budgets that turn a raw measurement into a finding. A number is not a
-finding until it is compared to its budget here. The response-time and wait-indication
-values are grounded in `spec/android/app-design-navigation/` §F and
-`spec/android/ui-components/` §A; the startup and jank targets are documented tooling
-conventions (Android vitals / Macrobenchmark), flagged below where no owning spec fixes
-an exact number — those are candidates for the proposed `spec/android/perceived-performance/`.
+finding until it is compared to its budget here. Every budget below is owned by a spec:
+the response-time and wait-indication values by `spec/android/app-design-navigation/` §F
+and `spec/android/ui-components/` §A, the startup and frame budgets by
+`spec/android/perceived-performance/` §C, and scroll measurement by
+`spec/android/long-list-scrolling/` §G. This file restates them for quick reference; on
+any divergence the spec wins.
 
 ## Table of contents
 
@@ -13,7 +14,7 @@ an exact number — those are candidates for the proposed `spec/android/perceive
 - [Wait-indication matrix](#wait-indication-matrix)
 - [Frame / jank budget](#frame-jank-budget)
 - [Startup targets](#startup-targets)
-- [Spec-gap markers](#spec-gap-markers)
+- [What is still deliberately unfixed](#what-is-still-deliberately-unfixed)
 
 ## Response-time perception thresholds
 
@@ -42,25 +43,26 @@ regardless of the wait class.
 
 - **Frame deadline:** 16.67 ms on a 60 Hz display; 11.11 ms at 90 Hz; 8.33 ms at 120 Hz. Report the deadline for the device's actual refresh rate — a frame that passes at 60 Hz can be jank at 120 Hz.
 - **Janky frame:** a rendered frame whose duration exceeds the deadline (Macrobenchmark `frameOverrunMs` > 0; `gfxinfo` "Janky frames").
-- **Budget (documented convention, not spec-fixed):** target **< 1 %** janky frames on a critical animation path; P99 frame duration within the deadline. Treat a screen above this as a finding. **This convention does not apply to a scrolling list** — see below.
-- **Freeze frames:** any single frame over ~700 ms is a user-visible freeze and is always a finding regardless of the aggregate percentage. This threshold is **spec-fixed** for scroll journeys by `spec/android/long-list-scrolling/` §G and is no longer a working default there.
-- **Scrolling lists are owned by `spec/android/long-list-scrolling/` §G**, which overrides this section for that surface: measure with `FrameTimingMetric` over a scroll journey on a non-debuggable release build, read `frameOverrunMs` at P50/P90/P95/P99, and always state the refresh-rate deadline. That spec **deliberately refuses** to fix a pass/fail percentile for scroll jank — so **do not** classify a scroll measurement against the `< 1 %` convention above. Report the number with its percentile tail and surface the missing budget as a methodology gap instead of inventing a verdict.
+- **Budget (`spec/android/perceived-performance/` §C):** on a non-scroll animation path, **P95 frame duration within the deadline** — a labelled portfolio decision, reported as a corpus decision rather than a platform requirement. Zero frozen frames is the separate, vendor-backed rule below and is **not** labelled that way. **Neither budget applies to a scrolling list** — see below.
+- **Frozen frames:** any single frame over 700 ms is a user-visible freeze and is always a defect regardless of the aggregate percentage — vendor-backed, and spec-fixed by both `spec/android/perceived-performance/` §C and `spec/android/long-list-scrolling/` §G.
+- **Scrolling lists are owned by `spec/android/long-list-scrolling/` §G**, which overrides this section for that surface: measure with `FrameTimingMetric` over a scroll journey on a non-debuggable release build, read `frameOverrunMs` at P50/P90/P95/P99, and always state the refresh-rate deadline. That spec **deliberately refuses** to fix a pass/fail percentile for scroll jank — so **do not** classify a scroll measurement against the P95 budget above. Report the number with its percentile tail and surface the missing budget as a methodology gap instead of inventing a verdict.
 
 ## Startup targets
 
-Documented-convention targets (Android vitals guidance); no owning spec fixes exact
-numbers for this repository yet:
+Owned by `spec/android/perceived-performance/` §C:
 
-- **TTID cold start:** flag as slow above ~500 ms; aim well below. Warm/hot starts should be substantially faster.
-- **TTFD:** measure and report; it is the honest "time to useful," but no fixed budget is spec-fixed. Compare against the app's own prior baseline rather than an absolute number.
+- **Ceiling (Android vitals, vendor-fixed):** cold ≥ 5 s, warm ≥ 2 s, hot ≥ 1.5 s is the point at which the platform considers startup defective. This is the ceiling, never the target.
+- **TTID cold start (portfolio decision, label it as such):** ≤ 500 ms on the device the app's baseline was taken on; above that is a finding. Name that device in the report — the number is a per-app target, never a cross-device constant.
+- **TTFD:** no absolute target — judged against the app's own baseline and against the wait indication its loading states owe the user.
 - Report cold, warm, and hot separately; a regression against the app's own baseline is a finding even when the absolute number is under target.
 
-## Spec-gap markers
+## What is still deliberately unfixed
 
-The following numbers are **documented-tooling conventions, not spec-fixed** for this
-repository. When a run depends on pinning any of them, surface the gap and propose
-`spec/android/perceived-performance/` per the skill's operating principle (REQ-6/REQ-17):
+Two numbers stay open by decision, not by omission — do not invent either:
 
-- The exact janky-frame percentage budget for animation paths (< 1 % is the working default). For **scroll** journeys the gap is explicit and owned: `spec/android/long-list-scrolling/` §Open Questions states that no vendor source fixes a percentile, so no number may be invented for that surface.
-- The exact TTID/TTFD absolute targets (vs. baseline-relative regression).
-- Any benchmark-module layout or golden-trace storage convention.
+- **The scroll pass/fail percentile.** `spec/android/long-list-scrolling/` §Open Questions states that no vendor source fixes one, and `spec/android/perceived-performance/` §C inherits that refusal explicitly. Report the tail; claim no verdict.
+- **A portfolio-wide reference device for cold TTID.** `spec/android/perceived-performance/` §C scopes the target to the app's own baseline device and requires the report to name it, so no run is blocked; cross-app comparison of the absolute number is explicitly not claimed.
+
+Everything else this file lists is spec-owned. Benchmark-module layout and result handling
+are `spec/android/perceived-performance/` §G; when a run needs a decision no spec covers,
+surface the gap and propose a spec extension (REQ-6/REQ-17).
