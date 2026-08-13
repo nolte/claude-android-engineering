@@ -8,7 +8,7 @@ This repository's skills operate CLI-first (REQ-3): they deploy apps to devices 
 
 The content is distilled from a research pass (August 2026) over three source classes: the official ADB/platform-tools documentation (developer.android.com and the AOSP sources — notably current as of platform-tools 37.x: `adb server-status`, mDNS backend `libadbmdns`, Wireless-Debugging 2.0), the official logcat/debugging/bugreport documentation (including the AOSP `logcat --help` text, which is now the authoritative option reference after the web page stopped listing options), and community/production practice (agent runbooks shipped in real repos, the canonical CI emulator action, tool status of scrcpy/pidcat/adb-enhanced, and Google's new agent-oriented `android` CLI).
 
-Boundaries: test *execution* strategy is owned by `spec/android/test-automation/`; Perfetto/system-wide tracing depth belongs to a future perceived-performance spec (only the boundary is drawn here); the rules about `debuggable` in release builds are shared with the future security spec.
+Boundaries: test *execution* strategy is owned by `spec/android/test-automation/`; Perfetto/system-wide tracing depth belongs to `spec/android/perceived-performance/` (only the boundary is drawn here); the rules about `debuggable` in release builds are shared with the future security spec.
 
 Readers: authors of this repo's Android skills (especially the debugging and project-setup skills) and reviewers judging whether a skill's device interaction is conformant.
 
@@ -22,7 +22,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 ## Non-Goals
 
 - Test execution and orchestration — owned by `spec/android/test-automation/` (this spec only provides the device plumbing underneath)
-- Performance tracing and profiling depth (Perfetto, gfxinfo analysis) — future perceived-performance spec; only named here as a boundary
+- Performance tracing and profiling depth (Perfetto, gfxinfo analysis) — `spec/android/perceived-performance/`; only named here as a boundary
 - Play-Store deployment — out of scope for this repository; `bundletool` appears only as the local install path for app bundles
 - Rooted-device and userdebug-build workflows — production builds are the target; `adb root` is documented as unavailable there and not built upon
 - GUI tooling (Android Studio, scrcpy as a product) — scrcpy is referenced as the mirroring standard, but no skill depends on a GUI
@@ -70,7 +70,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 - **MUST** test deep links with the documented command: `adb shell am start -W -a android.intent.action.VIEW -d "<uri>" <pkg>` (escape `&` in URIs)
 - **MUST** distinguish process-death simulations: `am kill <pkg>` = system-initiated death of a backgrounded process (state restoration expected on relaunch); `am force-stop` = user-initiated kill (restoration not expected) — using `force-stop` to test restoration is a false negative
 - **MAY** attach a CLI debugger via the JDWP chain (`adb jdwp` → `adb forward tcp:<port> jdwp:<pid>` → `jdb -attach`) — documented escape hatch, not the default workflow
-- Perfetto (`record_android_trace`) is the boundary to performance work: named here, specified in the future perceived-performance spec
+- **MUST** capture system traces with Perfetto's `record_android_trace` helper rather than by hand-assembling a config: it records, pulls the trace, and opens it. Fetch the script from the Perfetto repository, then invoke it with an output path, a duration, a buffer size, an app filter, and the categories the question needs — `sched` and `freq` for what the CPU was doing, `view` and `input` for UI work, `am`/`wm`/`gfx` for lifecycle and rendering (`record_android_trace -o <file>.perfetto-trace -t 20s -b 32mb -a <pkg> sched freq view input am wm gfx`); `--no-open` suppresses the UI launch on a headless box [R29]. This spec owns the capture; reading the resulting trace for a performance verdict belongs to `spec/android/perceived-performance/` §D/§E
 
 ### E. Scripting and agent robustness
 
@@ -155,3 +155,4 @@ All sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendo
 - [R26] Access a host-local server from the device (`adb reverse`, secure context) (P): <https://developer.android.com/develop/ui/views/layout/webapps/access-local-server>
 - [R27] AOSP issue: `adb shell` exit codes not propagated before API 24 (S): <https://issuetracker.google.com/issues/36908392>
 - [R28] KVM hardware acceleration GA on GitHub-hosted runners (S): <https://github.blog/changelog/2024-04-02-github-actions-hardware-accelerated-android-virtualization-now-available/>
+- [R29] Perfetto system tracing — the `record_android_trace` helper, its flags, and the categories it records: <https://perfetto.dev/docs/getting-started/system-tracing>

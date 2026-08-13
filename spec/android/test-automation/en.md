@@ -8,7 +8,7 @@ This repository's skills generate, extend, audit, and debug Android apps; every 
 
 The content is distilled from a research pass (August 2026) over three source classes: official Google testing guidance (developer.android.com/training/testing, Compose testing, coroutines/Hilt testing, Gradle Managed Devices), the tools' own documentation (Roborazzi, Paparazzi, Compose Preview Screenshot Testing, kotlinx-coroutines-test, Turbine, Kover), and reference projects inspected live (Now in Android as the flagship, DuckDuckGo Android, Signal Android, Tivi, compose-samples). Where Google's guidance and production practice diverge (mocking, Turbine adoption), the spec records the divergence instead of hiding it.
 
-Boundary to the sibling spec: `spec/android/project-structure/` §F owns test *placement* (tests live in the module under test, `src/test/` vs `src/androidTest/`, shared fixtures in `:core:testing`, consistent naming). This spec owns test *strategy, frameworks, and automation* and references placement rules instead of restating them. Performance benchmarks (Macrobenchmark/Microbenchmark) are out of scope except for their boundary to the functional suite; they belong to a future perceived-performance spec.
+Boundary to the sibling spec: `spec/android/project-structure/` §F owns test *placement* (tests live in the module under test, `src/test/` vs `src/androidTest/`, shared fixtures in `:core:testing`, consistent naming). This spec owns test *strategy, frameworks, and automation* and references placement rules instead of restating them. Performance benchmarks (Macrobenchmark/Microbenchmark) are out of scope except for their boundary to the functional suite; they belong to `spec/android/perceived-performance/`.
 
 Readers: authors of this repo's Android skills and reviewers judging whether a generated or audited project's test suite is conformant.
 
@@ -23,7 +23,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 ## Non-Goals
 
 - Test placement, naming schemes, and fixture-module layout — owned by `spec/android/project-structure/` §F and §C
-- Performance benchmarking (Macrobenchmark/Microbenchmark, Baseline Profiles) — only the boundary is drawn here; the practice belongs to a future perceived-performance spec
+- Performance benchmarking (Macrobenchmark/Microbenchmark, Baseline Profiles) — only the boundary is drawn here; the practice belongs to `spec/android/perceived-performance/` §F/§G
 - Play-Store pre-launch reports and release-track device farms — release is out of scope for this repository
 - CI pipeline architecture beyond the test jobs — owned by the portfolio CI/CD specs
 - Prescribing exact tool versions — mechanisms and tool choices are fixed; versions live in the project's version catalog

@@ -8,7 +8,7 @@ Die Skills dieses Repositories generieren, erweitern, auditieren und debuggen An
 
 Der Inhalt ist aus einem Recherche-Durchlauf (August 2026) über drei Quellklassen destilliert: offizielle Google-Test-Guidance (developer.android.com/training/testing, Compose-Testing, Coroutines-/Hilt-Testing, Gradle Managed Devices), die Dokumentation der Werkzeuge selbst (Roborazzi, Paparazzi, Compose Preview Screenshot Testing, kotlinx-coroutines-test, Turbine, Kover) sowie live inspizierte Referenzprojekte (Now in Android als Flaggschiff, DuckDuckGo Android, Signal Android, Tivi, compose-samples). Wo Googles Guidance und Produktionspraxis auseinandergehen (Mocking, Turbine-Adoption), hält die Spec die Divergenz fest, statt sie zu verstecken.
 
-Abgrenzung zur Schwester-Spec: `spec/android/project-structure/` §F besitzt die Test-*Platzierung* (Tests liegen im getesteten Modul, `src/test/` vs. `src/androidTest/`, geteilte Fixtures in `:core:testing`, konsistentes Naming). Diese Spec besitzt Test-*Strategie, Frameworks und Automatisierung* und referenziert Platzierungsregeln, statt sie zu wiederholen. Performance-Benchmarks (Macrobenchmark/Microbenchmark) sind außer ihrer Grenze zur funktionalen Suite außerhalb des Scopes; sie gehören in eine künftige Perceived-Performance-Spec.
+Abgrenzung zur Schwester-Spec: `spec/android/project-structure/` §F besitzt die Test-*Platzierung* (Tests liegen im getesteten Modul, `src/test/` vs. `src/androidTest/`, geteilte Fixtures in `:core:testing`, konsistentes Naming). Diese Spec besitzt Test-*Strategie, Frameworks und Automatisierung* und referenziert Platzierungsregeln, statt sie zu wiederholen. Performance-Benchmarks (Macrobenchmark/Microbenchmark) sind außer ihrer Grenze zur funktionalen Suite außerhalb des Scopes; sie gehören zu `spec/android/perceived-performance/`.
 
 Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, ob die Testsuite eines generierten oder auditierten Projekts konform ist.
 
@@ -23,7 +23,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 ## Nicht-Ziele
 
 - Test-Platzierung, Namensschemata und Fixture-Modul-Layout — gehören `spec/android/project-structure/` §F und §C
-- Performance-Benchmarking (Macrobenchmark/Microbenchmark, Baseline Profiles) — hier wird nur die Grenze gezogen; die Praxis gehört in eine künftige Perceived-Performance-Spec
+- Performance-Benchmarking (Macrobenchmark/Microbenchmark, Baseline Profiles) — hier wird nur die Grenze gezogen; die Praxis gehört zu `spec/android/perceived-performance/` §F/§G
 - Play-Store-Pre-Launch-Reports und Release-Track-Gerätefarmen — Release ist für dieses Repository außerhalb des Scopes
 - CI-Pipeline-Architektur jenseits der Test-Jobs — gehört den Portfolio-CI/CD-Specs
 - Festschreiben exakter Tool-Versionen — Mechanismen und Tool-Entscheidungen sind fixiert; Versionen leben im Version Catalog des Projekts

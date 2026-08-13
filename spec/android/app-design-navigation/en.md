@@ -24,7 +24,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 - Component-level usage and consistency governance — owned by `spec/android/ui-components/`
 - Window size classes, canonical layouts, and large-screen quality tiers — owned by `spec/android/screen-formats/` (navigation *choice* per context lives here; the adaptive machinery there)
 - Concrete brand identity (palette seed colors, fonts, logo) — per-app decisions on top of the token system
-- Performance measurement and latency budgets — future perceived-performance spec; this spec only fixes feedback semantics (which UI state at which wait class)
+- Performance measurement and latency budgets — `spec/android/perceived-performance/`; this spec only fixes feedback semantics (which UI state at which wait class)
 - Play-Store listing assets — release is out of scope for this repository
 
 ## Requirements
@@ -84,7 +84,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 - **MUST NOT** make any function reachable only through a custom gesture; swipe actions are accelerators with visible alternatives and undo for destructive ones; no app gestures in system edge-gesture zones (`systemGestureExclusionRects` only where unavoidable, ≤ 200dp per edge)
 - **MUST NOT** ship forced tutorial carousels — research shows no task-success benefit and worse perceived difficulty; onboarding is contextual (first contact with a feature), and the only justified upfront step is functional customization
 - **MUST** request permissions in context with a prior rationale — NN/g's research reports up to 28 % higher grant rates for in-context requests, with messaging quality shifting opt-in massively [R28]
-- **SHOULD** apply the response-time feedback semantics: instant feedback on every tap; no indicator below ~200 ms; loading indication for short indeterminate waits; progress indication with cancel beyond ~10 s (measurement and budgets belong to the future performance spec)
+- **SHOULD** apply the response-time feedback semantics: instant feedback on every tap; no indicator below ~200 ms; loading indication for short indeterminate waits; progress indication with cancel beyond ~10 s (measurement and budgets belong to `spec/android/perceived-performance/`)
 - **SHOULD** apply progressive disclosure: core options first, advanced behind an explicit step; limit simultaneous choices (choice overload); front-load key information for scanning
 
 ## Acceptance Criteria

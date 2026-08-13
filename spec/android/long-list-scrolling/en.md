@@ -106,7 +106,7 @@ Readers: authors of this repo's Android skills who generate or review a list-bea
 - **MUST** include the scroll journey of the app's main list in the Baseline Profile: profiles cover navigation and scrolling, not only startup, and are verified against the minified release build [R10]
 - **MUST NOT** propose a framework change as a jank remedy: since Compose 1.9 the measured jank rate for scrolling lists and grids matches the View implementation of the same app [R3]. A slow list is a data, item, or image problem
 - **SHOULD** keep these benchmarks in the separate scheduled lane per `spec/android/test-automation/` §F rather than the per-commit suite, and **SHOULD** record the device, build type, and refresh rate alongside every number — a frame budget without them is not comparable across runs
-- **MUST** report the methodology gap rather than invent one: this repo has no `spec/android/perceived-performance/`, so a skill needing a budget number, benchmark-module layout, or golden-trace convention beyond what is stated here **MUST** surface the gap and propose the spec extension (REQ-6, REQ-17)
+- **MUST** take the general methodology from `spec/android/perceived-performance/` — the measurement-validity gate (§B), the benchmark-module layout and result handling (§G), and the remediation order (§H) — and **MUST** surface the gap and propose a spec extension for anything neither spec states (REQ-6, REQ-17)
 
 ## Acceptance Criteria
 
@@ -130,8 +130,8 @@ The criteria below are a deliberate representative rollup of §A–§G, not a 1:
 
 ## Open Questions
 
-- Frame budget as a number: this spec fixes the *deadline* per refresh rate and the vendor thresholds (16 ms slow, 700 ms frozen), but not the pass/fail percentile for a scroll benchmark (`frameOverrunMs` P95 ≤ 0? P99?). No vendor source states one, so inventing it here would violate the corpus rule against silent decisions — it belongs to the missing `spec/android/perceived-performance/`.
-- Missing owner for the general jank/startup methodology: benchmark-module layout, golden traces, and the regression gate are currently orphaned between this spec, `spec/android/test-automation/` §F, and the `android-perceived-performance` skill's documented gap. Working default: this spec owns only list-scroll measurement.
+- Frame budget as a number: this spec fixes the *deadline* per refresh rate and the vendor thresholds (16 ms slow, 700 ms frozen), but not the pass/fail percentile for a scroll benchmark (`frameOverrunMs` P95 ≤ 0? P99?). No vendor source states one, so inventing it would violate the corpus rule against silent decisions; `spec/android/perceived-performance/` §C inherits this refusal explicitly rather than resolving it.
+- General jank and startup methodology now has an owner: `spec/android/perceived-performance/` §B/§G/§H covers the validity gate, benchmark-module layout, result handling, and the remediation order. This spec continues to own list-scroll measurement alone.
 - Experimental prefetch and scroll indicators: adopt `LazyLayoutCacheWindow` and `Modifier.scrollIndicator` now (both available, both experimental in the current stable line) or wait for the stable APIs? Working default: recorded decision per project, never a generation default.
 - Default `PagingConfig` shape: should the skills carry a default `pageSize`/`prefetchDistance`/`initialLoadSize` triple derived from the visible item count, or require a per-project choice? Working default: per-project, recorded at the definition site.
 - Placeholders as the house default: `enablePlaceholders = true` gives a step-free scrollbar and stable extent but demands equal-height rows; off is safer for variable-height content. Working default: explicit per list, both branches constrained by §C.

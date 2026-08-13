@@ -63,7 +63,12 @@ Prefer `androidx.benchmark:benchmark-macro-junit4` for stable, repeatable startu
 - Run against a release build type with `CompilationMode.Partition`/`Full` as appropriate; see the Baseline Profiles section for measuring the profile's effect.
 - Run on a physical device; the run is a scheduled lane, never wired into per-commit CI.
 
-## Jank: dumpsys gfxinfo framestats
+## Jank: dumpsys gfxinfo framestats (coarse local check only)
+
+**Not the source of a reported number.** `spec/android/perceived-performance/` §E scopes this
+instrument to View-toolkit surfaces, following the vendor documentation, and forbids resting a
+Compose jank finding on it alone. Use it to get a quick local signal or on a View-based screen;
+report from `FrameTimingMetric` below.
 
 ```
 adb shell dumpsys gfxinfo <pkg> reset      # reset immediately before the scenario
@@ -79,7 +84,8 @@ adb shell dumpsys gfxinfo <pkg> framestats # per-frame nanosecond timestamps
 
 ## Jank: Macrobenchmark FrameTimingMetric
 
-More repeatable than `gfxinfo` for a defined interaction:
+The reported number for any surface, and the only admissible one for Compose
+(`spec/android/perceived-performance/` §E):
 
 ```kotlin
 rule.measureRepeated(

@@ -12,6 +12,7 @@
 | android | iconography | Iconography | Ikonografie | draft | local | 2026-08-11 |
 | android | localization | Localization | Lokalisierung | draft | local | 2026-08-11 |
 | android | long-list-scrolling | Long Lists and Continuous Scrolling | Lange Listen und stufenloses Scrollen | draft | local | 2026-08-12 |
+| android | perceived-performance | Perceived Performance — Startup and Jank | Gefühlte Performance — Start und Jank | draft | local | 2026-08-13 |
 | android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | 2026-08-10 |
 | android | release-readiness | Release Readiness of the Source | Release-Reife des Quellcodes | draft | local | 2026-08-13 |
 | android | screen-formats | Screen Formats | Bildschirmformate | draft | local | 2026-08-11 |

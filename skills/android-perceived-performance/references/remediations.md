@@ -50,4 +50,4 @@ Compare the composable to the wait-indication matrix in `references/thresholds.m
 - **One change, one gate, one re-measurement.** State the finding, the files to touch, and the expected delta before editing.
 - **Rebuild every iteration.** If `./gradlew build` fails, stop and report the red state (REQ-7) — do not stack further edits.
 - **No outdated mechanisms** (kapt, monolithic buildSrc, Groovy DSL) in any benchmark or profile module you add (REQ-9).
-- **When a remediation needs a decision no spec covers** (a benchmark-module layout, a golden-trace convention, a fixed budget), stop and propose `spec/android/perceived-performance/` rather than inventing it silently (REQ-6/REQ-17).
+- **Take the layout, budgets, and remediation order from `spec/android/perceived-performance/`** (§G benchmark module and result handling, §C budgets, §H order). When a remediation needs a decision neither that spec nor a sibling covers, stop and propose a spec extension rather than inventing it silently (REQ-6/REQ-17).
