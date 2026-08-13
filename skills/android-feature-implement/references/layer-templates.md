@@ -32,7 +32,8 @@ sealed interface CallResult<out T> {
             val problemType: String?,
             val fieldErrors: Map<String, String> = emptyMap(),
         ) : Failure
-        data class ServerFault(val status: Int) : Failure
+        /** `retryAfter` is set when the backend asked for a specific wait (429 / 503). */
+        data class ServerFault(val status: Int, val retryAfter: Duration? = null) : Failure
         /** The response did not match the contract — a defect, not a runtime hiccup. */
         data class ContractMismatch(val endpoint: String, val detail: String) : Failure
     }
@@ -47,25 +48,36 @@ Nothing here logs a body, a header, or a payload.
 ```kotlin
 suspend fun <T> apiCall(endpoint: String, block: suspend () -> T): CallResult<T> = try {
     CallResult.Success(block())
-} catch (e: UnknownHostException) {
-    CallResult.Failure.Offline
-} catch (e: ConnectException) {
-    CallResult.Failure.Offline
-} catch (e: SocketTimeoutException) {
+} catch (e: SocketTimeoutException) {                 // before IOException: it is a subclass
     CallResult.Failure.Timeout
 } catch (e: SerializationException) {
     CallResult.Failure.ContractMismatch(endpoint, e.messageWithoutPayload())
 } catch (e: HttpException) {
-    when (e.code()) {
+    when (val code = e.code()) {
         401 -> CallResult.Failure.Unauthenticated
-        403 -> CallResult.Failure.Unauthorized
+        403 -> e.toForbiddenResult()                  // unauthorized vs. domain rejection, below
+        408 -> CallResult.Failure.Timeout
+        429 -> CallResult.Failure.ServerFault(code, e.retryAfter())
         in 400..499 -> e.toDomainRejection()          // reads `type` + extensions, never `detail`
-        else -> CallResult.Failure.ServerFault(e.code())
+        else -> CallResult.Failure.ServerFault(code, e.retryAfter())
     }
+} catch (e: IOException) {                            // UnknownHost, Connect, SocketException,
+    CallResult.Failure.Offline                        // SSLHandshake, connection reset, …
 }
 ```
 
-- The catches are deliberately **specific**. A bare `catch (e: Exception)` would swallow `CancellationException` and turn a navigated-away screen into a spurious error state; cancellation is not one of the eight cases and is always rethrown.
+- **The trailing `IOException` branch closes the set.** Without it, a mid-response connection
+  reset or a TLS handshake failure escapes the mapper and surfaces as an unhandled exception in
+  `viewModelScope` or a worker — the generic-error hole §B exists to prevent. Order matters:
+  `SocketTimeoutException` is an `IOException`, so it is caught first.
+- **`CancellationException` is deliberately not caught.** It is not an `IOException` and matches
+  no branch above, so it propagates as structured concurrency requires. A bare
+  `catch (e: Exception)` would swallow it and turn a navigated-away screen into a spurious error.
+- `toForbiddenResult()` implements the §B boundary: a `403` whose problem `type` names a business
+  rule is a **domain rejection**; a `403` that means "not you" is **unauthorized**. Where the
+  contract distinguishes neither, that is a §E trigger — the mapper does not guess.
+- `retryAfter()` reads the `Retry-After` header. §B requires honouring it over the client's own
+  backoff, which is why it rides on `ServerFault` instead of being dropped here.
 - `toDomainRejection()` parses `application/problem+json` per RFC 9457: branch on `type` and on
   defined extension members only. `detail` is display text, never control flow.
 - `messageWithoutPayload()` keeps the field path and drops the body — a mismatch is reported
@@ -79,6 +91,12 @@ Reads come from the replica and never wait on the network. Freshness metadata is
 the data so staleness is displayable and revalidation decidable.
 
 ```kotlin
+/** The remote envelope: the page plus the validator that makes the next call conditional. */
+data class ObservationPage(
+    val items: List<NetworkObservation>,
+    val syncToken: String?,
+)
+
 class DefaultObservationRepository @Inject constructor(
     private val local: ObservationLocalDataSource,
     private val remote: ObservationRemoteDataSource,
@@ -102,8 +120,9 @@ class DefaultObservationRepository @Inject constructor(
     override suspend fun refresh(): CallResult<Unit> = withContext(io) {
         when (val result = remote.fetchObservations(since = local.syncToken())) {
             is CallResult.Success -> {
-                local.upsert(result.value.map { it.asEntity(fetchedAt = clock.now()) })
-                local.setSyncToken(result.value.syncToken)
+                val page = result.value                  // ObservationPage, not a bare List
+                local.upsert(page.items.map { it.asEntity(fetchedAt = clock.now()) })
+                local.setSyncToken(page.syncToken)
                 CallResult.Success(Unit)
             }
             is CallResult.Failure -> result               // caller decides what the UI shows
@@ -142,14 +161,28 @@ class ObservationSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = when (val outcome = repository.drainPendingWrites()) {
         is CallResult.Success -> Result.success()
         CallResult.Failure.Offline, CallResult.Failure.Timeout -> Result.retry()
-        is CallResult.Failure.ServerFault -> Result.retry()
-        else -> Result.failure()                  // rejected or unauthorized: surface, don't loop
+        is CallResult.Failure.ServerFault -> Result.retry()   // honours retryAfter inside the drain
+        CallResult.Failure.Unauthenticated -> {
+            // The drain already attempted the single-flight refresh and it did not help.
+            // Retrying without a fresh credential would loop; failing silently would strand
+            // every queued write. Mark them so the UI can raise the sign-in prompt.
+            repository.blockPendingWrites(PendingWriteBlock.NeedsSignIn)
+            Result.failure()
+        }
+        else -> {                                 // rejected or unauthorized: surface, don't loop
+            repository.blockPendingWrites(PendingWriteBlock.Rejected)
+            Result.failure()
+        }
     }
 }
 
 fun enqueueSync(context: Context) = WorkManager.getInstance(context).enqueueUniqueWork(
     SYNC_WORK_NAME,
-    ExistingWorkPolicy.KEEP,
+    // APPEND_OR_REPLACE, never KEEP: with KEEP, a write made while the worker is already
+    // running is a no-op enqueue, and the running drain has already read the queue — that
+    // write then waits for an unrelated later enqueue. A silently stranded write violates
+    // `spec/android/app-architecture/` §D.
+    ExistingWorkPolicy.APPEND_OR_REPLACE,
     OneTimeWorkRequestBuilder<ObservationSyncWorker>()
         .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
@@ -185,8 +218,16 @@ class ObservationsViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
 ) : ViewModel() {
 
+    /** The refresh outcome is state, so it has to be one of the flows uiState is built from. */
+    private val banner = MutableStateFlow<Banner?>(null)
+
     val uiState: StateFlow<ObservationsUiState> =
-        combine(repository.observationsStream(), repository.pendingWritesStream(), ::toUiState)
+        combine(
+            repository.observationsStream(),
+            repository.pendingWritesStream(),
+            banner,
+            ::toUiState,
+        )
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -196,15 +237,19 @@ class ObservationsViewModel @Inject constructor(
     fun onRefresh() {
         viewModelScope.launch {
             when (val result = repository.refresh()) {
-                is CallResult.Success -> Unit                  // the replica emits the new state
-                is CallResult.Failure -> _banner.value = result.toBanner()
+                is CallResult.Success -> banner.value = null   // the replica emits the new state
+                is CallResult.Failure -> banner.value = result.toBanner()
             }
         }
     }
+
+    fun onBannerDismissed() { banner.value = null }
 }
 ```
 
-- One `uiState`, no event channel: `onRefresh()`'s outcome becomes state.
+- One `uiState`, no event channel: `onRefresh()`'s outcome becomes state. The banner flow is
+  part of the `combine` for exactly that reason — a `MutableStateFlow` the state is *not* built
+  from is an event channel with extra steps, and its updates never reach the screen.
 - `Content` carries `isStale`, `lastUpdated`, and `pendingCount` — the three signals a flat
   client owes the user. A screen that can be served from cache and cannot say so is
   non-conformant.
@@ -212,14 +257,16 @@ class ObservationsViewModel @Inject constructor(
   replacing readable cached data with an error screen throws away the point of the replica.
 - The UI composable itself is authored by the `android-compose-ui` skill against this state.
 
-## 6. Fakes for the failure set
+## 6. Fakes for the outcome set
 
 One fake per remote data source, able to produce every case from §1 — this is what makes the
 §7 coverage floor of `references/flat-layer-checklist.md` reachable.
 
 ```kotlin
 class FakeObservationRemoteDataSource : ObservationRemoteDataSource {
-    var nextResult: CallResult<List<NetworkObservation>> = CallResult.Success(emptyList())
+    var nextResult: CallResult<ObservationPage> =
+        CallResult.Success(ObservationPage(items = emptyList(), syncToken = null))
+
     override suspend fun fetchObservations(since: String?) = nextResult
 }
 ```

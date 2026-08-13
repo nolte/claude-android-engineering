@@ -123,7 +123,7 @@ Leser: Autoren der Android-Skills dieses Repos, die ein Feature gegen ein Backen
 
 ### G. Verifikation
 
-- **MUSS [MUST]** alle acht Fehlerfälle aus §B mit Fakes in JVM-Tests abdecken, bevor ein Feature als fertig gilt (`spec/android/test-automation/` §B/§C)
+- **MUSS [MUST]** alle acht Ergebnisfälle aus §B — den Erfolgsfall und die sieben Fehler — mit Fakes in JVM-Tests abdecken, bevor ein Feature als fertig gilt (`spec/android/test-automation/` §B/§C)
 - **MUSS [MUST]** prüfen, dass kein generierter Typ die Repository-Grenze überschreitet — ein Grep nach dem generierten Paket außerhalb der Netzwerkkomponente ist die mechanische Kontrolle
 - **MUSS [MUST]** prüfen, dass wiederholte Schreibvorgänge idempotenzsicher sind (§C) — per Test, wo ein Schlüssel verwendet wird, sonst per Inspektion
 - **MUSS [MUST]** eine erhobene, aber unbeantwortete Backend-Anforderung im Abschlussbericht des Laufs melden, statt die Arbeit still abzuschließen (Repository-REQ-6, REQ-7)

@@ -134,7 +134,7 @@ the interim path, and do **not** implement a silent workaround:
 ## 7. Test coverage floor
 
 - [ ] JVM tests with fakes, no device, no live backend
-- [ ] All eight failure cases the feature can hit
+- [ ] All eight outcome cases the feature can hit (seven of them failures)
 - [ ] The stale state and the pending-write state
 - [ ] The recovery action on each error state
 - [ ] Time and dispatchers injected — no test sleeps

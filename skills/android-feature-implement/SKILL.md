@@ -41,7 +41,7 @@ change rather than deciding silently (REQ-6).
 
 Grounding specs, in the order they bind this skill: `spec/android/app-architecture/` (what the
 device may decide, state model, cache, writes), `spec/android/backend-contract/` (contract
-consumption, the closed failure set, when and how a backend requirement is raised),
+consumption, the closed outcome set, when and how a backend requirement is raised),
 `spec/android/release-readiness/` (what "done" means), plus `spec/android/project-structure/`,
 `spec/android/test-automation/`, and `spec/android/security/` for structure, tests, and
 obligations.
@@ -153,7 +153,7 @@ Write the data layer first, then the state holder, then the UI:
 1. **Data source and mapping** — generated types stay inside the network component; the DTO is
    mapped at the boundary. Local entities and DAOs stay below the repository.
 2. **Repository** — reads as `Flow` from the local replica, writes as `suspend`; freshness
-   metadata stored; the eight failure cases of `spec/android/backend-contract/` §B mapped into
+   metadata stored; the eight outcome cases of `spec/android/backend-contract/` §B mapped into
    the app's own result type; timeouts explicit; retries only where the request is idempotent
    or carries an idempotency key.
 3. **Sync** — queued or local-first drains run in WorkManager unique work with a connectivity
@@ -170,7 +170,7 @@ Gate: confirm before each file that would overwrite existing code (REQ-8).
 ### 6. Test the states that only exist because the client is flat
 
 Add JVM tests per `spec/android/test-automation/` §B/§C with fakes, covering: every one of the
-eight failure cases the feature can hit, the stale state, the pending-write state, and the
+eight outcome cases the feature can hit, the stale state, the pending-write state, and the
 recovery action on each error. Time and dispatchers are injected, never slept on. A feature
 whose offline and rejection paths are untested is not implemented, only demonstrated.
 

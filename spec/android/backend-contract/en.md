@@ -123,7 +123,7 @@ Readers: authors of this repository's Android skills who implement a feature aga
 
 ### G. Verification
 
-- **MUST** cover all eight failure cases of §B with fakes in JVM tests before a feature is called done (`spec/android/test-automation/` §B/§C)
+- **MUST** cover all eight outcome cases of §B — the success case and the seven failures — with fakes in JVM tests before a feature is called done (`spec/android/test-automation/` §B/§C)
 - **MUST** verify that no generated type crosses the repository boundary — a grep for the generated package outside the network component is the mechanical check
 - **MUST** verify that retried writes are idempotent-safe (§C), by test where a key is used and by inspection otherwise
 - **MUST** report a raised-but-unanswered backend requirement in the run's final report rather than closing the work silently (repository REQ-6, REQ-7)
