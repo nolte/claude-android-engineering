@@ -36,7 +36,7 @@ Leser: Autoren der Android-Skills dieses Repos, die Performance messen oder behe
 - Welcher Indikator zu welcher Wartezeit gehört und die Wahrnehmungsschwellen dahinter — `spec/android/ui-components/` §A und `spec/android/app-design-navigation/` §F
 - CI-Verdrahtung und Zusammenstellung der Bahnen — `spec/android/test-automation/` §F/§G
 - Release-Build-Konfiguration, R8 und das Stabilitätsbudget (Absturz/ANR) — `spec/android/release-readiness/` §A/§C
-- Profiling von Speicher, Akku und Netzwerkeffizienz; diese Spec deckt Zeit-bis-nutzbar und Frame-Timing ab
+- Profiling von Speicher, Akku und Netzwerkeffizienz; diese Spec deckt ausschließlich Zeit-bis-nutzbar und Frame-Timing ab
 - Serverseitige Latenz; die Antwort des Clients auf ein langsames Backend ist eine Warteanzeige, kein Benchmark
 
 ## Anforderungen
@@ -57,7 +57,7 @@ Leser: Autoren der Android-Skills dieses Repos, die Performance messen oder behe
 - **MUSS [MUST]** auf einem **physischen Gerät** messen — Macrobenchmark unterstützt keine Emulatoren, und Emulatorzeiten sind nicht übertragbar [R3]. Ein Emulator ist nur für grobe Ladezustands-UI-Prüfungen zulässig, nie für eine berichtete Start- oder Framezahl
 - **MUSS [MUST]** einen **nicht debuggbaren, minifizierten, release-förmigen** Build messen, dessen Ziel-App `profileable` deklariert ist [R3], passend zur Release-Konfiguration aus `spec/android/release-readiness/` §A. Eine Zahl aus einem debuggbaren oder nicht minifizierten Build **DARF NICHT [MUST NOT]** als Befund berichtet werden — dieselbe Regel, die `spec/android/long-list-scrolling/` §G für Scroll festlegt
 - **MUSS [MUST]** den Kompilierungszustand über verglichene Läufe konstant halten und ihn nennen: `CompilationMode.DEFAULT` bildet ab, was Nutzende bekommen, sobald ein Baseline Profile ausgeliefert ist, `None` den schlechtesten Fall, `Full` keinen von beiden [R3]
-- **MUSS [MUST]** genug Iterationen laufen lassen, damit der Tail überhaupt existiert (die Macrobenchmark-Vorgabe von fünf ist die Untergrenze), und **MUSS [MUST]** die Verteilung berichten, nicht einen Einzelwert
+- **MUSS [MUST]** genug Iterationen laufen lassen, damit der Tail überhaupt existiert — `measureRepeated` verlangt einen expliziten `iterations`-Wert, und die fünf aus dem Herstellerbeispiel sind die Untergrenze, keine Plattformvorgabe — und **MUSS [MUST]** die Verteilung berichten, nicht einen Einzelwert [R3]
 - **MUSS [MUST]** die offensichtlichen Störgrößen vor einem Lauf ausschalten: Animationen deaktiviert gemäß `spec/android/adb-workflows/` §E, Gerät nicht thermisch gedrosselt, Bildschirm an, keine unbeteiligte Vordergrundarbeit
 - **MUSS [MUST]** beim Vergleich gegen eine Baseline auf demselben Gerät und derselben Konfiguration neu messen; ein Gerätewechsel ist eine andere Messung, kein Regressionssignal
 

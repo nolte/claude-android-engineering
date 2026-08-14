@@ -25,6 +25,19 @@ suite (`spec/android/test-automation/` §F).
 - Install a release-shaped, R8-minified build (`./gradlew installRelease` for a locally-signable variant, or `bundletool` for a bundle). A debuggable build distorts every timing.
 - Discard the first cold start after install (one-time dexopt/profile install); measure subsequent cold starts.
 
+**Capture the run conditions before the first measurement** — `spec/android/perceived-performance/` §A
+makes a number without them unreportable, and a resumed run cannot reconstruct them:
+
+```
+adb shell getprop ro.product.model            # device model
+adb shell getprop ro.build.version.release    # Android version
+adb shell getprop ro.build.version.sdk        # API level
+adb shell dumpsys display | grep -i 'fps\|refreshRate'   # active refresh rate -> the frame deadline
+```
+
+Record these alongside the build type, minification state, `CompilationMode`, and iteration
+count, and carry them in the resume state so every later table can restate them.
+
 ## Startup: quick ADB signal
 
 Coarse, good for a fast read before the Macrobenchmark run:
@@ -39,7 +52,7 @@ adb shell am start -W -n <pkg>/<launcher-activity>
 - Resolve the launcher activity when unknown: `adb shell cmd package resolve-activity --brief <pkg>`.
 - **TTFD** (time to *full* display) comes from the app's own `reportFullyDrawn()`; `am start -W` cannot see it.
 
-Repeat cold starts ≥5 times, discard the first, report the median.
+Repeat cold starts ≥5 times, discard the first, and report the distribution — median plus the slowest run — never a single value (`spec/android/perceived-performance/` §B).
 
 ## Startup: Macrobenchmark (authoritative)
 
@@ -60,7 +73,7 @@ Prefer `androidx.benchmark:benchmark-macro-junit4` for stable, repeatable startu
 
 - `StartupTimingMetric` reports `timeToInitialDisplayMs` (TTID) and, when the app calls `reportFullyDrawn()`, `timeToFullDisplayMs` (TTFD).
 - Run `COLD`, `WARM`, and `HOT` startup modes; report each separately.
-- Run against a release build type with `CompilationMode.Partition`/`Full` as appropriate; see the Baseline Profiles section for measuring the profile's effect.
+- Run against a release build type and state the `CompilationMode`: `DEFAULT` reflects what users get once a Baseline Profile ships, `None` the worst case, `Full` neither. The spec requires holding it constant across compared runs and stating it (`spec/android/perceived-performance/` §B); it elects no default, so the choice is the operator's — see the Baseline Profiles section for measuring the profile's effect.
 - Run on a physical device; the run is a scheduled lane, never wired into per-commit CI.
 
 ## Jank: dumpsys gfxinfo framestats (coarse local check only)
@@ -98,15 +111,15 @@ rule.measureRepeated(
 }
 ```
 
-- Reports `frameDurationCpuMs` and `frameOverrunMs` percentiles (P50/P90/P99). `frameOverrunMs` > 0 means the frame missed its deadline — the direct jank signal.
+- Reports `frameDurationCpuMs` and `frameOverrunMs` percentiles. Report **P50/P90/P95/P99**: P95 is the percentile the non-scroll animation budget is judged on (`spec/android/perceived-performance/` §C) and P99 is where the worst stutter hides. `frameOverrunMs` > 0 means the frame missed its deadline — the direct jank signal.
 
 ## Perfetto system trace
 
-For any stutter that framestats flags, capture a system trace to locate the offending work:
+For any stutter the frame metric flags, capture a system trace to locate the offending work. Use the invocation shape `spec/android/adb-workflows/` §D owns — output path, duration, buffer size, app filter, categories — with the categories the question needs:
 
 ```
-python3 record_android_trace -o trace.perfetto-trace -t 10s -b 32mb \
-  sched freq gfx view wm am binder_driver
+python3 record_android_trace -o trace.perfetto-trace -t 20s -b 32mb -a <pkg> \
+  sched freq view input am wm gfx        # add binder_driver when IPC stalls are suspected
 ```
 
 - `record_android_trace` is the sanctioned boundary tool (`spec/android/adb-workflows/` §D). Open the trace in the Perfetto UI; look for long `Choreographer#doFrame` slices, main-thread work during scroll, and binder/IO stalls.

@@ -10,7 +10,7 @@ use_when:
   - "you want to find and fix jank or dropped frames"
   - "you want to add or repair Baseline Profiles"
   - "you want to check loading states against the response-time thresholds"
-allowed-tools: [Bash, Read, Grep, Glob]
+allowed-tools: [Bash, Read, Grep, Glob, Edit, Write]
 resumable: true
 ---
 
@@ -24,8 +24,8 @@ CLI-first: terminal, Gradle, and ADB are sufficient — Android Studio is never 
 
 - **Interactivity (decisive):** the FIX phase asks the operator to approve each remediation before editing code (REQ-8 forbids unconfirmed overwrites); a fire-and-forget agent has no stable way to surface that mid-flow gate.
 - **Change scope + lifecycle (decisive):** the run persists across the conversation — measure, edit, rebuild, re-measure, iterate — with edits flowing back into the main context, which is the skill bias.
-- **Orchestrator role:** the measurement sweep MAY be dispatched to a sub-agent for context-window protection; the orchestrator that fans out is always a skill (`spec/claude/skill-vs-agent/` §Hybrid pattern).
-- **Counter-dimension (outweighed):** the MEASURE step performs heavy device reads and trace parsing, which biases toward an isolated agent for context protection — but that isolatable step is delegable, while the interactive FIX loop keeps the whole capability a skill.
+- **Orchestrator role:** the measurement sweep is the kind of step that would be dispatched to a sub-agent for context-window protection, and the orchestrator that fans out is always a skill (`spec/claude/skill-vs-agent/` §Hybrid pattern). No such measurement agent exists in this plugin today, and the declared `allowed-tools` carries no dispatch tool — adding one is a change to both.
+- **Counter-dimension (outweighed):** the MEASURE step performs heavy device reads and trace parsing, which biases toward an isolated agent for context protection — but that step is the isolatable one, while the interactive FIX loop keeps the whole capability a skill.
 
 ## Operating principle: the spec owns the methodology
 
@@ -52,6 +52,7 @@ Read `references/measurement.md` when you enter this phase — it holds the exac
 
 - Confirm exactly one `platform-tools` adb (`which -a adb`) and target the device explicitly (`-s <serial>` or `ANDROID_SERIAL`) per `spec/android/adb-workflows/` §A.
 - Build and install a **non-debuggable release-shaped** variant for measurement (a debuggable build distorts startup and frame timings). Disable animations for deterministic runs (`settings put global window_animation_scale 0.0` and the two siblings) per `spec/android/adb-workflows/` §E.
+- **Capture the run conditions now**, before any measurement: device model, Android version, build type, minification state, `CompilationMode`, refresh rate, iteration count (`references/measurement.md` §"Device preconditions" has the `getprop`/`dumpsys display` calls). `spec/android/perceived-performance/` §A makes a number without them unreportable, and they go into the resume state so a resumed run does not have to re-measure to restate them.
 
 ### 2. Measure startup (TTID/TTFD)
 
@@ -74,7 +75,7 @@ Read `references/measurement.md` when you enter this phase — it holds the exac
 
 ## Phase 2 — FIX
 
-Read `references/remediations.md` when a finding needs a fix — it maps each finding class to its concrete remediation. Apply remediations strongest-signal-first.
+Read `references/remediations.md` when a finding needs a fix — it maps each finding class to its concrete remediation. Apply them in the user-impact order `spec/android/perceived-performance/` §H fixes, not by signal strength.
 
 ### 1. Propose one remediation
 
@@ -98,13 +99,15 @@ Read `references/remediations.md` when a finding needs a fix — it maps each fi
 
 Conclude with: the baseline table (number, budget, verdict), the remediations applied with their before/after deltas, the final `./gradlew build` status, any red state left behind, and any `spec/android/perceived-performance/` gap surfaced during the run.
 
+Every number in that table carries the conditions `spec/android/perceived-performance/` §A requires — device model, Android version, build type, minification state, `CompilationMode`, refresh rate, iteration count — and every verdict drawn against a §C **portfolio decision** says so, so the operator can tell a corpus target from a platform requirement. A number without its conditions is not reportable.
+
 ## Resume
 
 This skill is `resumable: true` (multi-phase with per-remediation approval gates), per `spec/claude/resumable-work/`.
 
 - Write checkpoints to `.resume/android-perceived-performance/<run-id>.yml` (never elsewhere). Checkpoint after the baseline is captured and after every approval gate, appending each approval to `decisions:` (never rewriting earlier entries).
 - **Resume detection on re-invocation:** scan `.resume/android-perceived-performance/*.yml` for `status: in_progress` matching the current inputs (target package + variant). When one matches, prompt the operator with `resume` / `start-new` / `discard`; never resume from a checkpoint without that confirmation.
-- Model the payload under `state:` with the baseline numbers, the applied remediations, and the last completed phase (`measured`, `awaiting-approval-<n>`, `fixed`, `re-measured`).
+- Model the payload under `state:` with the run conditions from MEASURE step 1, the baseline numbers, the applied remediations, and the last completed phase (`measured`, `awaiting-approval-<n>`, `fixed`, `re-measured`). Conditions are part of the checkpoint, not re-derived on resume.
 
 ## German trigger phrases
 

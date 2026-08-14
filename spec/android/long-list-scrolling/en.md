@@ -110,7 +110,7 @@ Readers: authors of this repo's Android skills who generate or review a list-bea
 
 ## Acceptance Criteria
 
-The criteria below are a deliberate representative rollup of §A–§G, not a 1:1 mapping; every requirement bullet above is normative on its own. Two normative bullets are deliberately left to reviewer judgement rather than a mechanical criterion, because both are judgements about a skill's *reasoning* and not properties of an artifact: the prohibition on proposing a framework change as a jank remedy, and the obligation to report the missing methodology spec instead of inventing a budget number (both §G).
+The criteria below are a deliberate representative rollup of §A–§G, not a 1:1 mapping; every requirement bullet above is normative on its own. Two normative bullets are deliberately left to reviewer judgement rather than a mechanical criterion, because both are judgements about a skill's *reasoning* and not properties of an artifact: the prohibition on proposing a framework change as a jank remedy, and the obligation to take the general methodology from `spec/android/perceived-performance/` rather than inventing a budget number (both §G).
 
 - [ ] Every data-driven or unbounded collection uses a lazy container; no scroll container of the same direction is nested inside another; no `item {}` emits more than one logical entry
 - [ ] No item can measure to zero in the scroll direction: every asynchronously filled item declares a size before its content arrives, and that size is unchanged after it arrives

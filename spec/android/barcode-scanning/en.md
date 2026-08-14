@@ -154,7 +154,7 @@ Readers: authors of this repo's Android skills who add or review a scanning or c
 
 ## Acceptance Criteria
 
-The criteria below are a deliberate representative rollup of §A–§J, not a 1:1 mapping; every requirement bullet above is normative on its own. Two normative bullets are left to reviewer judgement rather than a mechanical criterion, because both are judgements about a skill's reasoning: the obligation to report the missing camera/performance spec instead of inventing a budget (§J), and the refusal to promote unsourced sizing folklore into a requirement (§B).
+The criteria below are a deliberate representative rollup of §A–§J, not a 1:1 mapping; every requirement bullet above is normative on its own. Two normative bullets are left to reviewer judgement rather than a mechanical criterion, because both are judgements about a skill's reasoning: the obligation to report the missing camera spec instead of inventing a detection budget (§J), and the refusal to promote unsourced sizing folklore into a requirement (§B).
 
 - [ ] The access path is recorded with its reason; a bounded one-shot scan uses the Google code scanner, and any in-app scanner names the capability the code scanner could not serve
 - [ ] No app on the code-scanner path declares or requests the `CAMERA` permission; every in-app path requests it in context with a rationale and degrades gracefully on denial and permanent denial

@@ -154,7 +154,7 @@ Leser: Autoren der Android-Skills dieses Repos, die eine Scan- oder Code-erzeuge
 
 ## Akzeptanzkriterien
 
-Die folgenden Kriterien sind eine bewusst repräsentative Zusammenfassung von §A–§J, keine 1:1-Abbildung; jede Anforderung oben ist für sich normativ. Zwei normative Punkte bleiben der Beurteilung durch Reviewer überlassen statt einem mechanischen Kriterium, weil beide Urteile über das *Denken* eines Skills sind: die Pflicht, die fehlende Kamera- beziehungsweise Performance-Spec zu melden statt ein Budget zu erfinden (§J), und die Weigerung, unbelegte Größen-Folklore zur Anforderung zu erheben (§B).
+Die folgenden Kriterien sind eine bewusst repräsentative Zusammenfassung von §A–§J, keine 1:1-Abbildung; jede Anforderung oben ist für sich normativ. Zwei normative Punkte bleiben der Beurteilung durch Reviewer überlassen statt einem mechanischen Kriterium, weil beide Urteile über das *Denken* eines Skills sind: die Pflicht, die fehlende Kamera-Spec zu melden statt ein Erkennungsbudget zu erfinden (§J), und die Weigerung, unbelegte Größen-Folklore zur Anforderung zu erheben (§B).
 
 - [ ] Der Zugangsweg ist mit Begründung festgehalten; ein abgegrenzter Einmal-Scan nutzt den Google Code Scanner, und jeder In-App-Scanner benennt die Fähigkeit, die der Code Scanner nicht bedienen konnte
 - [ ] Keine App auf dem Code-Scanner-Weg deklariert oder fordert die `CAMERA`-Berechtigung an; jeder In-App-Weg fordert sie im Kontext mit Begründung an und fällt bei Verweigerung und dauerhafter Verweigerung würdig zurück

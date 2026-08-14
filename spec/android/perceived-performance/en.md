@@ -57,7 +57,7 @@ Readers: authors of this repository's Android skills that measure or remediate p
 - **MUST** measure on a **physical device** — Macrobenchmark does not support emulators, and emulator timings do not transfer [R3]. An emulator is acceptable only for coarse loading-state UI checks, never for a reported startup or frame number
 - **MUST** measure a **non-debuggable, minified, release-shaped** build with the target declared `profileable` [R3], matching the release configuration of `spec/android/release-readiness/` §A. A number from a debuggable or un-minified build **MUST NOT** be reported as a finding — the rule is the same one `spec/android/long-list-scrolling/` §G states for scroll
 - **MUST** hold the compilation state constant across compared runs and state it: `CompilationMode.DEFAULT` reflects what users get once a Baseline Profile ships, `None` reflects the worst case, `Full` reflects neither [R3]
-- **MUST** run enough iterations for the tail to exist (Macrobenchmark's default of five is the floor) and **MUST** report the distribution, not a single value
+- **MUST** run enough iterations for the tail to exist — `measureRepeated` requires an explicit `iterations` value, and the five of the vendor sample is the floor, not a platform default — and **MUST** report the distribution, not a single value [R3]
 - **MUST** neutralize the obvious confounders before a run: animations disabled per `spec/android/adb-workflows/` §E, device not thermally throttled, screen on, and no unrelated foreground work
 - **MUST** re-measure on the same device and configuration when comparing against a baseline; a cross-device comparison is a different measurement, not a regression signal
 
