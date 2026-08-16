@@ -162,13 +162,21 @@ app that asks. The component-hardening side belongs to `spec/android/security/` 
   `project/notification-ledger.md`. Take that
   row as the input to the §B derivation: the named event it carries *is* the user-visible feature
   the permission traces back to. Deriving one of these without it is the backward derivation §B
-  forbids — there is no feature to name, only a manifest entry someone wanted.
+  forbids — there is no feature to name, only a manifest entry someone wanted. **In an `audit` of an
+existing app** the ledger row will often be missing entirely: that is a finding, not a dead end.
+Record the permission as unjustified-pending-derivation, name the missing row as the reason, and
+report the channel derivation as the follow-up the app owes — never admit the permission on the
+strength of the manifest that already contains it.
 - The channel also decides *which* of them applies, so the gate chain's outcome is worth reading
-  before the derivation: an in-app or badge outcome needs no permission at all; an ordinary
+  before the derivation: an in-app outcome needs no permission at all, and neither does a badge the
+  app draws in its own navigation — a *launcher* badge is a consequence of a posted notification
+  and therefore carries that notification's permission; an ordinary
   notification needs only `POST_NOTIFICATIONS`; an ongoing activity adds the foreground-service
   type and its permission pair (`spec/android/notifications-alerting/` §D); a promoted Live
   Update adds `POST_PROMOTED_NOTIFICATIONS`; and a full-screen intent is admissible only for
-  calling and alarm surfaces, where §F above already applies.
+  calling and alarm surfaces, whose rule lives in `spec/android/notifications-alerting/` §C
+  (gate 4 for calls, gate 5 for alarms) with the runtime `canUseFullScreenIntent()` check in its
+  §F — `spec/android/permissions/` does not cover `USE_FULL_SCREEN_INTENT`.
 
 ### Bluetooth and nearby devices
 

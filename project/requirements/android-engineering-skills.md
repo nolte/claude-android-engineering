@@ -18,7 +18,7 @@ probability. A requirement is `confirmed` only after an explicit teach-back.
 
 ## Understanding KPI
 
-- Thresholds: `τ_low = 0.4`, `τ_high = 0.8`, self-consistency `k = 2`, question budget = `12` (spec defaults, unchanged)
+- Thresholds: `τ_low = 0.4`, `τ_high = 0.8`, self-consistency `k = 2`, question budget = `12` (spec defaults; the 2026-08-16 `revisit` raised `k` to 3 for its two forced clarifications, recorded in the audit note below)
 - `U_gate = min_d c_d` over required dimensions = **0.8**
 - Termination: `saturation` — every required dimension reached `c_d ≥ τ_high` with teach-back where §D requires it, and no remaining candidate question had positive net EVPI. 8 of 12 budgeted questions used.
 - Audit notes: the clarification on the ambiguous phrase "UX-Optimierungen" was **forced** (`functional` was below `τ_low`; `k = 2` self-consistency check produced divergent readings — audit-skill vs authoring-guidance vs performance). Follow-up questions on tool choices (screenshot-testing framework, detekt adoption) were **withheld** in the discretionary zone: their EVPI did not justify operator fatigue, and they are already tracked as Open Questions in `spec/android/project-structure/`.
@@ -28,14 +28,14 @@ probability. A requirement is `confirmed` only after an explicit teach-back.
 
 | Dimension | Applicable | `c_d` | Uncertainty source | Evidence event |
 |---|---|---|---|---|
-| `functional` | yes | 0.85 | resolved (was: interpretation) | UX-reading multi-select + final teach-back of the five-area picture, confirmed 2026-08-10 |
+| `functional` | yes | 0.85 | resolved (was: interpretation) | UX-reading multi-select + final teach-back of the five-area picture, confirmed 2026-08-10; re-opened and re-resolved for REQ-21 on 2026-08-16 (`k = 3` self-consistency produced three divergent capability shapes; answered as a full derive/audit/apply skill, teach-back confirmed) |
 | `non_functional` | yes | 0.8 | resolved (was: specification) | explicit answers: full nolte-shared baseline, CLI-first, ADB/emulator allowed, runtime research allowed |
 | `constraints` | yes | 0.8 | resolved (was: interpretation) | spec-first workflow demonstrated by operator pivot; portfolio-convention baseline explicitly confirmed |
 | `domain_objects` | yes | 0.8 | resolved (was: interpretation) | targets answer (new + existing own apps) + toolchain objects (Gradle, ADB, logcat, Compose) enumerated and confirmed in final teach-back |
 | `actors` | yes | 0.8 | resolved (was: specification) | explicit answer: operator + deliberate public consumers |
 | `acceptance_criteria` | yes | 0.85 | resolved (was: interpretation) | teach-back confirmed: spec conformance + green `./gradlew build`, jointly |
-| `edge_cases` | yes | 0.8 | resolved (was: specification) | all four offered hard prohibitions explicitly confirmed |
-| `scope_boundaries` | yes | 0.8 | resolved (was: interpretation) | in/out list from opening answer + "Play-Store-Release ist raus" reconfirmed in final teach-back |
+| `edge_cases` | yes | 0.8 | resolved (was: specification) | all four offered hard prohibitions explicitly confirmed; REQ-21's own four prohibitions elicited as an explicit multi-select on 2026-08-16 |
+| `scope_boundaries` | yes | 0.8 | resolved (was: interpretation) | in/out list from opening answer + "Play-Store-Release ist raus" reconfirmed in final teach-back; re-opened and re-resolved for REQ-21 on 2026-08-16 (sole ownership of the channel decision, `apply` bounded to device-side code) |
 
 ## Requirements
 

@@ -95,7 +95,7 @@ Go/no-go: <one line — e.g. "No-go for mobile-UX conformance: N Critical open">
 - …
 
 ## Health
-- Spec sections checked: <list of §sections across the six specs the audit covered>
+- Spec sections checked: <list of §sections across the seven specs the audit covered>
 - Surfaces with zero hits: <dimensions that were scanned clean>
 - Deferred scope: <e.g. "runtime state-preservation on rotation → needs a device, spec/android/test-automation/ §D", "./gradlew lint HardcodedText verification → android-compose-ui (needs Bash)">
 
@@ -125,14 +125,14 @@ Verify, using `Read` and `Glob` only:
 
 ## Investigation surface
 
-Seven dimensions, each grounded in one spec. Every finding cites the concrete §section and a `file:line`. Use `Grep` for the machine-detectable signals below; read the surrounding composable to confirm intent before flagging.
+Eight dimensions, each grounded in one spec. Every finding cites the concrete §section and a `file:line`. Use `Grep` for the machine-detectable signals below; read the surrounding composable to confirm intent before flagging.
 
 ### Dimension 1 — Design & navigation (`spec/android/app-design-navigation/`)
 - **§A M3 roles:** hard-coded colors, text sizes, or corner radii instead of `MaterialTheme` roles/tokens — grep for `Color(0x`, hex literals, `.sp` on literal sizes outside the type scale, `RoundedCornerShape(` with literal `dp`. Missing `on-*` pairing on a container role. `force-dark` reliance; missing dark `ColorScheme`.
 - **§B navigation:** a `NavController`/`NavHostController` passed into a screen composable, Navigation 2 (`rememberNavController`, `NavHost`, `composable(route=…)`) in new code without recorded rationale, navigation performed during composition rather than in a callback/effect, `@Serializable` payload objects carried as navigation arguments instead of IDs.
 - **§C navigation UI:** more than five top-level destinations, navigation items without both icon and label or without a visible selected state, a primary action placed in a top-app-bar corner instead of the thumb zone, more than one FAB.
 - **§D back & state:** `onBackPressed()`/`KEYCODE_BACK` interception, missing `enableOnBackInvokedCallback`, a permanently-enabled `BackHandler`.
-- **§F usability:** error states that blame or show codes as primary text or discard user input, empty states that dead-end without a call-to-action, forms validating per keystroke instead of on field exit or missing keyboard types/autofill hints, gesture-only functions, forced tutorial carousels.
+- **§F usability:** error states that blame or show codes as primary text or discard user input, empty states that dead-end without a call-to-action, gesture-only functions, forced tutorial carousels. Form and input defects (validation timing, keyboard types, autofill hints) belong to Dimension 7, which is more specific and takes precedence — report them there once, never in both.
 
 ### Dimension 2 — Component usage (`spec/android/ui-components/`)
 - **§A/§B emphasis:** more than one primary emphasis (filled button or FAB) competing on one screen; wrong component for the need (chip advancing/finishing a task, single-chip set, switch in a multi-select list, radio group without a pre-selection, dialog with >2 actions or a disabled dismissive, snackbar carrying critical content/an icon/>1 action, toast in the foreground).
@@ -148,7 +148,7 @@ Seven dimensions, each grounded in one spec. Every finding cites the concrete §
 
 ### Dimension 4 — Iconography (`spec/android/iconography/`)
 - **§A/§B system:** more than one Material Symbols style family/weight mixed in the UI; selected state not carried by the fill axis (or semibold fallback). A dependency on `androidx.compose.material:material-icons-core`/`-extended` in new code. Icons referenced directly instead of through a central registry object. Directional icons not auto-mirrored (`Icons.AutoMirrored.*` / `android:autoMirrored`).
-- **§E accessibility overlap:** icon tint hard-coded instead of resolving through `LocalContentColor`/theme roles (report the accessibility facet under Dimension 7).
+- **§E accessibility overlap:** icon tint hard-coded instead of resolving through `LocalContentColor`/theme roles (report the accessibility facet under Dimension 8).
 
 ### Dimension 5 — Localizability (`spec/android/localization/`)
 - **§A/§F strings:** user-visible text inlined in composables instead of `stringResource`/`pluralStringResource` (the `HardcodedText` class); sentences built by concatenating translated fragments; non-positional placeholders (`%s`/`%d` instead of `%1$s`/`%2$d`); counts rendered without `<plurals>`; translatable content in index-matched `<string-array>` items.

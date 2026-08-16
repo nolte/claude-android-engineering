@@ -160,8 +160,9 @@ Decide and record, per `references/flat-layer-checklist.md`:
   ledger row is non-conformant, and any permission the chosen channel implies goes to
   `android-permissions-derive` before any manifest edit
 
-Gate: confirm the design before generating code. These four decisions are recorded with the
-feature per `spec/android/app-architecture/` §H.
+Gate: confirm the design before generating code. Every decision in this list is recorded with
+the feature per `spec/android/app-architecture/` §H — including the input-stage split and the
+alerting-channel outcome, whose records are the ledger rows their owning specs require.
 
 ### 4. Capture backend requirements
 
@@ -256,9 +257,11 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** lose what the user entered on a rejection, a failed submission, or process death,
   and never let a client-side check present itself as the acceptance decision
   (`spec/android/user-input-validation/` §A/§B).
-- **Never** post a notification for an event that has no ledger row, that the user is currently
-  looking at, or that the gate chain routed to the in-app path — and never choose a channel by
-  analogy when the chain reaches its gap gate (`spec/android/notifications-alerting/` §B/§C).
+- **Never** post a notification for an event that has no ledger row, for a **point event** on a
+  surface the user is currently looking at, or for an event the gate chain routed to the in-app
+  path — and never demote an ongoing activity to that path because it started on the affected
+  surface, nor choose a channel by analogy when the chain reaches its gap gate
+  (`spec/android/notifications-alerting/` §B/§C).
 - **Never** send a one-off event from the ViewModel to the UI, hold a `Context` in a ViewModel,
   or run IO on the main thread.
 - **Never** declare the work done from a debug build, and never add a lint baseline entry,

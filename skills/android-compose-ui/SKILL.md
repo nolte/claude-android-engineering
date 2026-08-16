@@ -133,7 +133,11 @@ Read `references/compose-test-template.md` when writing the test. Generate a Rob
 Compose test in `src/test/` that drives the stateless content composable with fake `uiState`
 and no-op lambdas, matches nodes via semantics (resource-looked-up text, content descriptions,
 roles) not `testTag`, and asserts each state renders. Add a `StateRestorationTester` check
-where the screen holds `rememberSaveable` state (`spec/android/test-automation/` §D).
+where the screen holds `rememberSaveable` state (`spec/android/test-automation/` §D). Where the
+screen takes input, add the assertions `spec/android/user-input-validation/` §H requires at this
+level: the timing contract (no error before the field is first left, the error gone on the
+keystroke that fixes it) and the error semantics plus the form-level live region — without them a
+generated form can violate §D/§E and still build green.
 
 ### 6. Build green and report
 
