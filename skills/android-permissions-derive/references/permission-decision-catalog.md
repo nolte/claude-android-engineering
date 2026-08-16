@@ -235,5 +235,8 @@ skill's:
 - Health and fitness data
 - `AccessibilityService`
 - Every foreground service type, for apps targeting Android 14+
+- `USE_FULL_SCREEN_INTENT`, for apps targeting Android 14+ — Play removes the default grant from
+  any app it does not judge to be a calling or alarm app, so declaring it is a category claim the
+  store reviews (`spec/android/permissions/` §F/§G)
 
 No skill edits store metadata, listings, or the Data Safety questionnaire.
