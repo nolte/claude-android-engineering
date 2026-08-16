@@ -22,6 +22,7 @@ dont_use_when:
     alternative: android-ux-reviewer
 see_also:
   - android-compose-ui
+  - android-permissions-derive
   - android-project-scaffold
   - android-debugging
 resumable: true
@@ -70,6 +71,10 @@ obligations.
 - `android-project-scaffold` creates the project (REQ-12); this skill requires one to exist.
 - `android-debugging` diagnoses build failures and runtime defects (REQ-16); route a red state
   there instead of guessing.
+- `android-permissions-derive` owns every permission decision (REQ-20). When step 2 classifies
+  something as **device capability** and that capability may need a permission, hand the
+  decision there instead of declaring one here — it derives the set, records the ledger row, and
+  writes the declaration and the denial path.
 - `android-barcode-scanner-scaffold` and `android-perceived-performance` own their capabilities;
   when a feature needs scanning or a performance remediation, hand that part to them.
 
@@ -115,8 +120,10 @@ For every rule the feature seems to need, decide where it lives, using
 navigation state are the only four classes the device may own. Anything else is the backend's.
 Produce an explicit list: *device-owned* items with their class, and *backend-owned* items with
 what the contract already supplies for each. Every backend-owned item the contract does **not**
-supply goes into step 4 — do not silently plan a client-side derivation. Gate: confirm the
-split.
+supply goes into step 4 — do not silently plan a client-side derivation. Every *device
+capability* item that may need a permission goes to `android-permissions-derive` before any
+manifest edit; a permission declared here without that derivation is a REQ-20 violation. Gate:
+confirm the split.
 
 ### 3. Design the state and data model
 

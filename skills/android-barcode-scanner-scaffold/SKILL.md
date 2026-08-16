@@ -10,6 +10,9 @@ use_when:
   - "you want a scanner screen that works on small or distant codes"
   - "you want scanned payloads validated before the app acts on them"
   - "you want to render a QR code the app's own scanners can read"
+see_also:
+  - android-permissions-derive
+  - android-compose-ui
 resumable: true
 ---
 
@@ -99,7 +102,10 @@ requests fail until that download completes**. Pre-request the module (install-t
 `ModuleInstallClient`) and handle the not-yet-available case as a real state.
 
 Declare the camera permission **only** on the in-app path. On the code-scanner path, declaring
-it forfeits the entire benefit that justified the choice.
+it forfeits the entire benefit that justified the choice. Where the in-app path is taken, hand
+the declaration and its record to `android-permissions-derive` (REQ-20) — the access-path
+decision stays here, the ledger row, the `<uses-feature>` pairing, and the denial path belong
+there.
 
 Gate: confirm the dependency set and the manifest diff.
 

@@ -16,6 +16,7 @@ dont_use_when:
     alternative: android-project-scaffold
 see_also:
   - android-compose-ui
+  - android-permissions-derive
 examples:
   - prompt: "Erstelle ein neues Android-App-Projekt namens Notensammler, package de.nolte.notensammler."
     outcome: "Single-module :app scaffold, bilingual en+de, builds green with ./gradlew build."
@@ -100,6 +101,7 @@ Per `spec/claude/resumable-work/`, this skill is `resumable: true`. State persis
 - **Never** track a secret-bearing file. `local.properties`, release keystores, and `google-services.json` stay out of VCS; base `.gitignore` on GitHub's canonical `Android.gitignore` and add `/.resume/`.
 - **Always** default to a single `:app` module. Only modularize when the operator names a concrete trigger at creation time (per project-structure §C), and record the trigger when taken.
 - **Always** ship the security L1 baseline from the first manifest: explicit `android:exported` on every component, `debuggable=false` in release, no `usesCleartextTraffic`, minimal permissions.
+- **Always** scaffold with an empty permission set — a fresh project declares no permission it has not yet earned. Every later addition goes through `android-permissions-derive` (REQ-20), which derives it from a feature and records the ledger row.
 - When a `spec/android/` file disagrees with this skill, the **spec wins**; propose updating the skill rather than diverging silently.
 
 ## Gotchas
