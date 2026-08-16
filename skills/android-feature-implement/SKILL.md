@@ -43,9 +43,12 @@ change rather than deciding silently (REQ-6).
 Grounding specs, in the order they bind this skill: `spec/android/app-architecture/` (what the
 device may decide, state model, cache, writes), `spec/android/backend-contract/` (contract
 consumption, the closed outcome set, when and how a backend requirement is raised),
-`spec/android/release-readiness/` (what "done" means), plus `spec/android/project-structure/`,
-`spec/android/test-automation/`, and `spec/android/security/` for structure, tests, and
-obligations.
+`spec/android/release-readiness/` (what "done" means),
+`spec/android/user-input-validation/` (how a value is taken from the user, judged, and answered
+— the four-stage chain whose fourth stage is the backend decision above), and
+`spec/android/notifications-alerting/` (which channel, if any, an event the feature produces
+gets), plus `spec/android/project-structure/`, `spec/android/test-automation/`, and
+`spec/android/security/` for structure, tests, and obligations.
 
 ## Why this is a skill, not an agent
 
@@ -75,6 +78,10 @@ obligations.
   something as **device capability** and that capability may need a permission, hand the
   decision there instead of declaring one here — it derives the set, records the ledger row, and
   writes the declaration and the denial path.
+- `android-notification-derive` owns every alerting-channel decision (REQ-21) and the notification
+  ledger, the same way `android-permissions-derive` owns permissions. It does not exist yet; until
+  it does, step 3 runs its derivation here as a marked interim and hands the resulting permissions
+  on as above.
 - `android-barcode-scanner-scaffold` and `android-perceived-performance` own their capabilities;
   when a feature needs scanning or a performance remediation, hand that part to them.
 
@@ -138,9 +145,24 @@ Decide and record, per `references/flat-layer-checklist.md`:
 - the write strategy per write — online-only, queued, or local-first — defaulting to
   online-only wherever the backend decides acceptance, with the pending/rollback/conflict
   answers spelled out for anything else
+- for every value the feature takes from the user, which of the four stages of
+  `spec/android/user-input-validation/` §A owns each check — and specifically which checks are
+  *not* client-side, because the backend owns them. Field-check parameters (required, length,
+  range, allowed values) come from the contract; a limit the contract does not state is a
+  backend requirement in step 4, not an invented constant
+- for every event the feature produces that a user might need to know about, the channel and its
+  row in `project/notification-ledger.md` — obtained by handing the event to
+  `android-notification-derive` (REQ-21), which owns the gate chain of
+  `spec/android/notifications-alerting/` §C exactly as `android-permissions-derive` owns every
+  permission decision. **Interim while that skill does not exist:** run its §B classification and
+  §C chain here and record the row, but keep the outcome in the ledger rather than growing a
+  second implementation of the chain in this skill. Either way a notification posted without a
+  ledger row is non-conformant, and any permission the chosen channel implies goes to
+  `android-permissions-derive` before any manifest edit
 
-Gate: confirm the design before generating code. These four decisions are recorded with the
-feature per `spec/android/app-architecture/` §H.
+Gate: confirm the design before generating code. Every decision in this list is recorded with
+the feature per `spec/android/app-architecture/` §H — including the input-stage split and the
+alerting-channel outcome, whose records are the ledger rows their owning specs require.
 
 ### 4. Capture backend requirements
 
@@ -178,7 +200,9 @@ Gate: confirm before each file that would overwrite existing code (REQ-8).
 
 Add JVM tests per `spec/android/test-automation/` §B/§C with fakes, covering: every one of the
 eight outcome cases the feature can hit, the stale state, the pending-write state, and the
-recovery action on each error. Time and dispatchers are injected, never slept on. A feature
+recovery action on each error. Where the feature takes input, add the paths of
+`spec/android/user-input-validation/` §H: a field-identified domain rejection lands on its field
+with the entered values preserved, and the restoration path is asserted rather than assumed. Time and dispatchers are injected, never slept on. A feature
 whose offline and rejection paths are untested is not implemented, only demonstrated.
 
 ### 7. Run the release-readiness gate and report
@@ -230,6 +254,14 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** auto-retry a `POST` or `PATCH` without an idempotency key the backend honours.
 - **Never** drop a failed write silently, and never show cached content without the screen
   being able to say it is cached.
+- **Never** lose what the user entered on a rejection, a failed submission, or process death,
+  and never let a client-side check present itself as the acceptance decision
+  (`spec/android/user-input-validation/` §A/§B).
+- **Never** post a notification for an event that has no ledger row, for a **point event** on a
+  surface the user is currently looking at, or for an event the gate chain routed to the in-app
+  path — and never demote an ongoing activity to that path because it started on the affected
+  surface, nor choose a channel by analogy when the chain reaches its gap gate
+  (`spec/android/notifications-alerting/` §B/§C).
 - **Never** send a one-off event from the ViewModel to the UI, hold a `Context` in a ViewModel,
   or run IO on the main thread.
 - **Never** declare the work done from a debug build, and never add a lint baseline entry,

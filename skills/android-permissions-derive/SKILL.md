@@ -47,7 +47,8 @@ Grounding specs, in the order they bind this skill: `spec/android/permissions/` 
 derivation, the declaration, the runtime flow, the families, verification, testing),
 `spec/android/security/` §E/§D (permission minimalism as a security obligation, Data Safety
 accuracy, component hardening), `spec/android/app-design-navigation/` §F (in-context request
-timing and rationale), `spec/android/adb-workflows/` (the device commands used for verification
+timing and rationale), `spec/android/notifications-alerting/` §C/§G (the channel
+that implies the permission), `spec/android/adb-workflows/` (the device commands used for verification
 and test-state setup), `spec/android/test-automation/` (where the permission-path tests live),
 and `spec/android/release-readiness/` (what "done" means for the touched build).
 
@@ -81,6 +82,9 @@ and `spec/android/release-readiness/` (what "done" means for the touched build).
 - `android-project-scaffold` creates the project (REQ-12); a scaffolded app starts with an empty
   permission set, and every later addition comes through this skill.
 - `android-ux-reviewer` reviews UI read-only (REQ-14) and never writes a manifest.
+- Notification permissions follow from an alerting channel owned by `android-notification-derive`
+  (REQ-21; `spec/android/notifications-alerting/` §C); its ledger row is the input here — see
+  `references/permission-decision-catalog.md` §Notifications.
 - `android-debugging` diagnoses build failures and crashes (REQ-16). A `SecurityException`
   belongs here only as evidence of a missed derivation path; a crash that needs diagnosing first
   goes there.

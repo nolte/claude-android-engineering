@@ -1,6 +1,6 @@
 ---
 name: android-compose-ui
-description: "Authors new Jetpack Compose screens and components with mobile-UX patterns applied at authoring time — Material 3 theming through color/typography/shape roles, window-size-class adaptivity (list-detail, supporting-pane, feed), Material Symbols icons, externalized strings with per-locale previews, and 48dp/200%-font-scale accessibility — generated as a stateful route plus stateless content composable split, with @PreviewScreenSizes, @PreviewFontScales, per-locale previews, and a Robolectric Compose test alongside. Invoke when the user asks to build, add, or scaffold an Android screen, a Compose UI, or a component. For reviewing existing UI, use the read-only ux-audit agent instead. Also handles equivalent German-language requests. Supports resume on re-invocation across per-screen approval gates."
+description: "Authors new Jetpack Compose screens and components with mobile-UX patterns applied at authoring time — Material 3 theming through color/typography/shape roles, window-size-class adaptivity (list-detail, supporting-pane, feed), Material Symbols icons, externalized strings with per-locale previews, 48dp/200%-font-scale accessibility, and input handling with staged validation, error timing, and error semantics — generated as a stateful route plus stateless content composable split, with @PreviewScreenSizes, @PreviewFontScales, per-locale previews, and a Robolectric Compose test alongside. Invoke when the user asks to build, add, or scaffold an Android screen, a Compose UI, or a component. For reviewing existing UI, use the read-only ux-audit agent instead. Also handles equivalent German-language requests. Supports resume on re-invocation across per-screen approval gates."
 tags: [ui, scaffolding]
 phase: build
 summary: "Authors Compose screens with M3 theming, adaptivity, localization, and accessibility baked in at authoring time — route/content split, previews, and a Robolectric Compose test."
@@ -67,7 +67,7 @@ Before writing anything:
   `spec/android/project-structure/`; if no `:app` module or `designsystem` package exists,
   stop and route the user to project setup first.
 - Read `references/ux-checklist.md` in full before proposing any screen — it is the
-  authoring-time rule set distilled from all seven grounding specs, and every generated screen
+  authoring-time rule set distilled from all eight grounding specs, and every generated screen
   is checked against it.
 - Check for uncommitted changes in the paths to be touched (feature package, `strings.xml`,
   `src/test/`). If dirty, report and ask whether to stash, commit, or abort — never overwrite
@@ -97,6 +97,16 @@ Apply, at authoring time: Material 3 roles/tokens only (no literals), window-siz
 adaptivity, Material Symbols via the central icon registry, `stringResource` for every string,
 and the 48dp/`sp`/edge-to-edge accessibility baseline. Gate: confirm before writing.
 
+Where the screen takes a value from the user, apply `spec/android/user-input-validation/` in the
+same pass — input held in a state-based text field with a per-field touched flag and error
+(§B), keyboard type, capitalization, autocorrect, and IME action declared per field (§C), no
+error raised before the field is first left and every shown error cleared on the keystroke that
+fixes it (§D), and each error stated in text next to its field with `Modifier.semantics
+{ error(...) }` plus a live region for form-level status (§E). Client-side checks are shaping
+and well-formedness only; the acceptance decision stays with the backend (§A). Like the list
+rules below, these are authoring-time properties — retrofitting the touched flag and the error
+semantics later means rewriting the form.
+
 Where the screen shows a collection, apply `spec/android/long-list-scrolling/` in the same
 pass — the container choice (§A), a stable domain `key` plus `contentType` on every item and
 no derivation inside an item body (§B), and a declared item size so nothing measures to zero
@@ -123,7 +133,11 @@ Read `references/compose-test-template.md` when writing the test. Generate a Rob
 Compose test in `src/test/` that drives the stateless content composable with fake `uiState`
 and no-op lambdas, matches nodes via semantics (resource-looked-up text, content descriptions,
 roles) not `testTag`, and asserts each state renders. Add a `StateRestorationTester` check
-where the screen holds `rememberSaveable` state (`spec/android/test-automation/` §D).
+where the screen holds `rememberSaveable` state (`spec/android/test-automation/` §D). Where the
+screen takes input, add the assertions `spec/android/user-input-validation/` §H requires at this
+level: the timing contract (no error before the field is first left, the error gone on the
+keystroke that fixes it) and the error semantics plus the form-level live region — without them a
+generated form can violate §D/§E and still build green.
 
 ### 6. Build green and report
 
@@ -169,6 +183,12 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** key a lazy list by index, emit several logical entries from one `item {}`, nest a
   same-direction scroll container with an unbounded inner size, or let an asynchronously filled
   item measure to zero in the scroll direction (`spec/android/long-list-scrolling/` §A/§B).
+- **Never** raise a field error while the user is typing into a field for the first time, leave a
+  shown error standing after the value became valid, or signal an error by colour or icon without
+  text (`spec/android/user-input-validation/` §D/§E).
+- **Never** let a screen lose what the user typed — through a failed submission, a rejection, a
+  rotation, or process death — and never block pasting into a credential field
+  (`spec/android/user-input-validation/` §B/§F).
 - **Never** overwrite an existing file without explicit per-item confirmation (REQ-8).
 - **Always** generate the stateless content composable, its previews, and the Compose test in
   the same pass — a screen is not "done" without them.

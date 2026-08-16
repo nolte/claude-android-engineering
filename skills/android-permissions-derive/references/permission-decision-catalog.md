@@ -154,6 +154,32 @@ app that asks. The component-hardening side belongs to `spec/android/security/` 
   notifications serve, never at first launch. Targeting 32 or lower, the system shows the dialog
   itself when a channel is created and an activity starts; that is a reason to target 33+, not a
   behaviour to rely on.
+- **The channel decision comes first.** `POST_NOTIFICATIONS`, a `FOREGROUND_SERVICE_*` pair,
+  `USE_FULL_SCREEN_INTENT`, and `POST_PROMOTED_NOTIFICATIONS` are each a *consequence* of an
+  alerting channel already derived through the gate chain of
+  `spec/android/notifications-alerting/` §C, owned by `android-notification-derive` (REQ-21) and
+  running inside `android-feature-implement` until that skill exists. It produces a row in
+  `project/notification-ledger.md`. Take that
+  row as the input to the §B derivation: the named event it carries *is* the user-visible feature
+  the permission traces back to. Deriving one of these without it is the backward derivation §B
+  forbids — there is no feature to name, only a manifest entry someone wanted. **In an `audit` of an
+existing app** the ledger row will often be missing entirely: that is a finding, not a dead end.
+Write the ordinary ledger row with the feature column naming the notification the manifest
+implies and the alternative column naming the missing channel derivation as the reason the row
+cannot yet be closed — no new row shape — and report that derivation as the follow-up the app owes — never admit the permission on the
+strength of the manifest that already contains it.
+- The channel also decides *which* of them applies, so the gate chain's outcome is worth reading
+  before the derivation: an in-app outcome needs no permission at all, and neither does a badge the
+  app draws in its own navigation — a *launcher* badge is a consequence of a posted notification
+  and therefore carries that notification's permission; an ordinary
+  notification needs only `POST_NOTIFICATIONS`; an ongoing activity adds the foreground-service
+  type and its permission pair (`spec/android/notifications-alerting/` §D); a promoted Live
+  Update adds `POST_PROMOTED_NOTIFICATIONS`; and a full-screen intent is admissible only for
+  calling and alarm surfaces, whose rule lives in `spec/android/notifications-alerting/` §C
+  (gate 4 for calls, gate 5 for alarms), with the runtime `canUseFullScreenIntent()` check stated
+  in that spec's §D catalogue entry — `spec/android/permissions/` covers neither
+  `USE_FULL_SCREEN_INTENT` nor `POST_PROMOTED_NOTIFICATIONS`, which is a gap in this spec worth
+  closing rather than working around.
 
 ### Bluetooth and nearby devices
 
