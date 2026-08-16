@@ -75,10 +75,12 @@ a pipeline to maintain — in exchange for full control of the surface.
   `com.google.android.gms:play-services-mlkit-barcode-scanning` (Play-services model). See §5.
 - Camera artifacts: `androidx.camera:camera-core`, `-camera2`, `-lifecycle`, plus `-view` or
   `-compose` for the viewfinder, and `-mlkit-vision` when using `MlKitAnalyzer`.
-- Manifest: declare `CAMERA`, and request it **in context** at the moment the user asks to
-  scan, with a rationale gated on `shouldShowRequestPermissionRationale`. Handle denial and
-  permanent denial as distinct states — a permanently denied permission must be explained, not
-  re-requested into a dialog the system will no longer show.
+- Manifest and permission handling: this path needs `CAMERA`. The declaration, the ledger row,
+  the `<uses-feature>` pairing, and the denial and permanent-denial paths belong to
+  `android-permissions-derive` per `spec/android/permissions/` — hand them over rather than
+  deciding them here. What stays here is the trigger point: the request happens **in context**,
+  at the moment the user asks to scan, and the manual-entry fallback is what the degraded path
+  degrades to.
 - The pipeline itself is in `scanner-pipeline.md`. The single most important line in it is the
   explicit `ResolutionSelector`.
 

@@ -30,7 +30,7 @@ recorded in the ledger.
 | Spam calls are filtered | `CallScreeningService` | `READ_PHONE_STATE` |
 | Playback pauses on an interruption | `onAudioFocusChange()` handler | `READ_PHONE_STATE` |
 | The user places a call | `ACTION_DIAL` (user confirms) | `CALL_PHONE` |
-| A payment card is captured | Card recognition library | `CAMERA` |
+| A payment card is captured | The Google payment-card recognition path (`getPaymentCardRecognitionIntent`), which returns the result without the app opening a camera — **not** card-scan SDKs in general, most of which do require `CAMERA` | `CAMERA`, on that path only |
 
 **Two traps to apply, not rediscover:**
 
@@ -49,7 +49,7 @@ recorded in the ledger.
 | Situation | Declaration |
 | --- | --- |
 | Permission needed only up to an API level | `android:maxSdkVersion="<level>"` on the `<uses-permission>` |
-| Bluetooth scanning that never derives location | `android:usesPermissionFlags="neverForLocation"` on `BLUETOOTH_SCAN`, plus `ACCESS_FINE_LOCATION` bounded at `maxSdkVersion="30"` |
+| Bluetooth scanning that never derives location | `android:usesPermissionFlags="neverForLocation"` on `BLUETOOTH_SCAN`; add `ACCESS_FINE_LOCATION` bounded at `maxSdkVersion="30"` **only** when the app still supports API ≤ 30 — at `minSdk` 31+ it is omitted entirely |
 | Legacy Bluetooth on old devices | `BLUETOOTH` and `BLUETOOTH_ADMIN` at `maxSdkVersion="30"` |
 | Legacy external storage write | `WRITE_EXTERNAL_STORAGE` at `maxSdkVersion="29"` |
 | Hardware the app can live without | `<uses-feature android:name="…" android:required="false" />` plus a `PackageManager.hasSystemFeature()` check at the call site |
@@ -138,6 +138,9 @@ app that asks. The component-hardening side belongs to `spec/android/security/` 
 - Other apps' media: `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` / `READ_MEDIA_AUDIO` (Android
   13+), with `READ_MEDIA_VISUAL_USER_SELECTED` for the partial-access grant (Android 14+). On
   Android 16+ with partial access, the app's own photos are pre-selected in the picker.
+- **Below API 33 the granular permissions do not exist.** An app whose `minSdk` is lower must
+  additionally declare `READ_EXTERNAL_STORAGE` at `maxSdkVersion="32"` for those devices;
+  declaring only the granular set fails with a `SecurityException` on every device below 33.
 - `ACCESS_MEDIA_LOCATION` only for unredacted EXIF location metadata.
 - `MANAGE_EXTERNAL_STORAGE` is a special permission restricted by Play to core file-management
   functionality — never a convenience.

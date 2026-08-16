@@ -94,15 +94,21 @@ externalized to `strings.xml` per `spec/android/localization/` §A.
 
 ## Operations
 
-Pick one at the start and say which is running. All three share the gates below.
+Pick one at the start and say which is running. All three share the gates below. The split is
+deliberate: `derive` and `audit` **decide and record**, `apply` **writes**. Nothing is written
+into the app before a complete ledger row exists for it.
 
 - **`derive`** — a capability exists or is planned and its permission consequence is unknown.
-  Runs steps 1–6.
+  Runs steps 1–4, then step 7's ledger write. Touches no manifest and no code.
 - **`audit`** — an app already declares permissions and the set needs justifying, reducing, or
-  proving. Runs steps 2–4 and 6 against the existing set, treating every declared permission as
-  a candidate that must earn its row.
-- **`apply`** — a derivation or audit result exists and is being written into the app. Runs
-  steps 5–7.
+  proving. Runs steps 2–4 against the existing set — treating every declared permission as a
+  candidate that must earn its row — then step 7 in full (ledger, verification, report).
+- **`apply`** — a `derive` or `audit` result exists and is being written into the app. Runs
+  steps 5–7. Refuses to start when the ledger has no complete row for the permission at hand.
+
+An end-to-end request ("add this capability") is `derive` followed by `apply`; run them
+back-to-back in one invocation and say when the handover happens, so the operator sees the
+ledger before anything is written.
 
 ## Preconditions
 
@@ -174,6 +180,11 @@ Gate: confirm the classification of every difference before any removal.
 
 ### 5. Write the declaration
 
+Precondition, not a formality: the permission's ledger row is **complete before this step
+writes anything** — including its trigger point and its behaviour on denial. Step 6 implements
+those two decisions; it does not discover them. A permission whose denial behaviour is still
+unknown is not ready to be declared, and the run returns to step 2.
+
 Apply, per `references/permission-decision-catalog.md` §Declaration:
 
 1. `<uses-permission>` for every admitted permission, with `android:maxSdkVersion` wherever the
@@ -241,6 +252,8 @@ Where this run touched a build, close on the release-readiness gate of
 - Read `references/permission-decision-catalog.md` before step 2 — the alternatives gate, the
   declaration details, and the per-family rules (location, media, notifications, Bluetooth,
   exact alarms, health, package visibility, local network, policy-restricted).
+- Read `references/gotchas.md` before step 2 as well — the non-obvious platform facts that
+  silently produce a wrong permission set.
 - Read `references/ledger-and-verification.md` in steps 4, 6, and 7 — the ledger format, the
   merged-manifest and artifact commands, and the ADB state-setup commands for the test states.
 
@@ -282,41 +295,24 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
   confirmation (REQ-8).
 - **Never** file, edit, or simulate a Play Console declaration; record the obligation and hand
   it to the operator (`spec/android/permissions/` §G).
-- **Always** produce a complete ledger row per permission before it is declared.
+- **Always** complete a permission's ledger row — trigger point and denial behaviour included —
+  before that permission is written into the manifest; step 6 implements those decisions rather
+  than discovering them.
 - **Always** report a capability whose permission requirement no spec and no primary source
   settles, with a proposed spec extension, instead of deciding silently (REQ-6).
 - When `spec/android/permissions/` disagrees with this skill, the spec wins.
 
 ## Gotchas
 
-Concrete corrections to non-obvious facts the executing agent would otherwise get wrong:
+Read `references/gotchas.md` before step 2 — it carries the full set. The three that most often
+produce a wrong result:
 
 - **Declaring a permission can break the permission-free path.** With `CAMERA` declared but not
   granted, `ACTION_IMAGE_CAPTURE` raises a `SecurityException` instead of handing off to the
   system camera. The defensive declaration is the defect.
-- **`shouldShowRequestPermissionRationale()` returning `false` is ambiguous by position, not by
-  value.** Before the first request it means "no rationale needed"; on a not-granted permission
-  after requests it means "permanently denied". The check is only meaningful together with the
-  grant state.
-- **A granted permission is not a stable property.** One-time grants expire, users revoke in
-  settings, and app hibernation resets the set after months of non-use — which also clears the
-  cache and stops jobs and notifications from Android 12. Re-check before each access.
-- **Permission groups bundle dialogs, not semantics.** Group membership changes without notice,
-  so a second permission in the same group must still be checked and requested by name.
-- **A foreground service needs three declarations, not one.** Type on the `<service>`, the base
-  permission, and the type-specific permission — and the runtime permission the type
-  presupposes. Targeting Android 14+, a missing type raises
-  `MissingForegroundServiceTypeException` and a missing type permission raises a
-  `SecurityException`, both at `startForeground()`.
-- **`neverForLocation` has a functional cost.** It filters some BLE beacons out of scan results.
-  It is the right default for non-location Bluetooth use, but it is a behaviour change, not a
-  free annotation.
-- **`USE_EXACT_ALARM` is granted automatically — which is exactly why it is restricted.** It is
-  not the easy way around `SCHEDULE_EXACT_ALARM`; Play limits it to alarm-clock and
-  calendar-style cases, and most scheduling needs neither permission.
+- **`shouldShowRequestPermissionRationale()` returning `false` is ambiguous by position.**
+  Before the first request it means "ask"; after a completed request on a not-granted
+  permission it means "permanently denied". Only grant state plus request history separate them.
 - **The merged manifest is where permissions actually come from.** A dependency bump can add a
-  permission with no source-manifest edit, which is why the check is re-run after every
+  permission with no source-manifest edit — which is why the check is re-run after every
   dependency change.
-- **`GrantPermissionRule` cannot revoke.** A permission granted through it applies to every test
-  in the instrumentation run and attempting to revoke crashes the process — denial coverage is
-  established through ADB, not through the rule.

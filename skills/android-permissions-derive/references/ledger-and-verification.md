@@ -69,7 +69,10 @@ Read the permission set out of the merged result, never out of `app/src/main/And
 ### The built artifact — the strongest check
 
 ```bash
-apkanalyzer manifest permissions app/build/outputs/apk/release/app-release.apk
+# Locate the artifact rather than assuming its name — without a release signing config the
+# file is app-release-unsigned.apk, which is the normal case for a scaffolded project.
+APK=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+apkanalyzer manifest permissions "$APK"
 ```
 
 This prints exactly what the package declares, after every merge. Diff it against the ledger:
