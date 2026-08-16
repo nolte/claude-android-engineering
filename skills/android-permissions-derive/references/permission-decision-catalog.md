@@ -154,6 +154,20 @@ app that asks. The component-hardening side belongs to `spec/android/security/` 
   notifications serve, never at first launch. Targeting 32 or lower, the system shows the dialog
   itself when a channel is created and an activity starts; that is a reason to target 33+, not a
   behaviour to rely on.
+- **The channel decision comes first.** `POST_NOTIFICATIONS`, a `FOREGROUND_SERVICE_*` pair,
+  `USE_FULL_SCREEN_INTENT`, and `POST_PROMOTED_NOTIFICATIONS` are each a *consequence* of an
+  alerting channel already derived through the gate chain of
+  `spec/android/notifications-alerting/` §C, which currently runs inside
+  `android-feature-implement` and produces a row in `project/notification-ledger.md`. Take that
+  row as the input to the §B derivation: the named event it carries *is* the user-visible feature
+  the permission traces back to. Deriving one of these without it is the backward derivation §B
+  forbids — there is no feature to name, only a manifest entry someone wanted.
+- The channel also decides *which* of them applies, so the gate chain's outcome is worth reading
+  before the derivation: an in-app or badge outcome needs no permission at all; an ordinary
+  notification needs only `POST_NOTIFICATIONS`; an ongoing activity adds the foreground-service
+  type and its permission pair (`spec/android/notifications-alerting/` §D); a promoted Live
+  Update adds `POST_PROMOTED_NOTIFICATIONS`; and a full-screen intent is admissible only for
+  calling and alarm surfaces, where §F above already applies.
 
 ### Bluetooth and nearby devices
 

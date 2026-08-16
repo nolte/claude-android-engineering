@@ -1,6 +1,6 @@
 # Authoring-time UX checklist
 
-The rule set every generated screen is checked against, distilled from the seven grounding specs
+The rule set every generated screen is checked against, distilled from the eight grounding specs
 under `spec/android/`. This is a working digest, not a source of truth: on any conflict the
 named spec wins. Apply these while writing the screen, not after.
 
@@ -15,6 +15,7 @@ named spec wins. Apply these while writing the screen, not after.
 - [7. Accessibility baseline](#7-accessibility-baseline) — cross-cutting
 - [8. Research-backed usability](#8-research-backed-usability) — `app-design-navigation` §F
 - [9. Lists and continuous scrolling](#9-lists-and-continuous-scrolling) — `long-list-scrolling`
+- [10. User input and validation](#10-user-input-and-validation) — `user-input-validation`
 
 ## 1. Material 3 foundations
 
@@ -124,7 +125,8 @@ named spec wins. Apply these while writing the screen, not after.
   primary text, user input preserved for correction.
 - Empty states are onboarding moments with a direct call-to-action — never a dead end.
 - Forms: correct keyboard type per field, autofill hints, validation on field exit (not per
-  keystroke), input preserved on error, minimize typing.
+  keystroke), input preserved on error, minimize typing — the mechanism behind these four is
+  section 10, which is normative wherever it is more specific.
 - No function reachable only by a custom gesture; swipe actions have visible alternatives and
   undo for destructive ones. No forced tutorial carousels.
 - Permissions requested in context with a prior rationale, never up front cold.
@@ -163,3 +165,37 @@ named spec wins. Apply these while writing the screen, not after.
   exists to anything scroll-driven loading would otherwise gate.
 - Item images load through a cache-backed loader at a declared target size with a placeholder of
   that size — never a full-resolution decode per row.
+
+## 10. User input and validation
+
+- Every check belongs to one of four stages, and none answers a later stage's question: shaping
+  (what the field accepts while typing, no error message), field check (is this one value
+  well-formed), form check (are these values consistent with each other), server decision
+  (everything the business owns — uniqueness, eligibility, quota, price). A client check is
+  assistance; the server's answer wins even when the client thought the input was fine.
+- Input lives in a state-based text field (`TextFieldState` / `rememberTextFieldState`) held in
+  the screen's state holder, with a per-field **touched** flag, error, and submission state. The
+  touched flag is what makes the timing rules below implementable — without it they cannot hold.
+- Raw text, normalised value, and transmitted value stay distinguishable; the field the user
+  edits never shows the transmitted form. `InputTransformation` enforces limits the user can
+  perceive; `OutputTransformation` formats the display without entering the stored value.
+- Every field declares `KeyboardType`, `KeyboardCapitalization`, autocorrect (off for
+  identifiers and codes), and an `ImeAction` that actually moves focus or submits.
+- Numbers, dates, and times parse locale-aware (`NumberFormat`, `java.time`) — never `toInt()` /
+  `toDouble()` on user text. A comma decimal separator is a formatting question, not a rejection.
+- No error appears before the field is first left; a field of known fixed length may act on
+  completion (advance focus, submit an OTP) but still shows no early error. Every shown error
+  clears on the keystroke that makes the value valid.
+- Submission validates the whole form and moves focus to the first field in error. A disabled
+  submit control is never the only statement of what is wrong.
+- Every error is text next to its field, carries a correction suggestion where one is known, and
+  is exposed via `Modifier.semantics { error(...) }`; form-level status goes through
+  `liveRegion`, never through the deprecated `announceForAccessibility()`.
+- Server rejections land on the field the contract identifies; the raw server string is never the
+  primary message.
+- Nothing the user typed is lost by a failed submission, a rejection, a rotation, or process
+  death (`rememberSaveable` / `SavedStateHandle`), and nothing oversized goes into saved
+  instance state.
+- Credentials go through Credential Manager, autofill content types are set on fillable fields,
+  secrets use `SecureTextField` without autocorrect or suggestions, and pasting into a credential
+  field is never blocked.
