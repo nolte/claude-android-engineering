@@ -12,6 +12,7 @@
 | android | iconography | Iconography | Ikonografie | draft | local | 2026-08-11 |
 | android | localization | Localization | Lokalisierung | draft | local | 2026-08-11 |
 | android | long-list-scrolling | Long Lists and Continuous Scrolling | Lange Listen und stufenloses Scrollen | draft | local | 2026-08-14 |
+| android | notifications-alerting | Notifications and Alerting | Benachrichtigungen und Alerting | draft | local | 2026-08-16 |
 | android | perceived-performance | Perceived Performance — Startup and Jank | Gefühlte Performance — Start und Jank | draft | local | 2026-08-14 |
 | android | permissions | App Permissions | App-Berechtigungen | draft | local | 2026-08-16 |
 | android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | 2026-08-10 |
@@ -20,6 +21,7 @@
 | android | security | App Security | App-Sicherheit | draft | local | 2026-08-11 |
 | android | test-automation | Android Test Automation | Android-Testautomatisierung | draft | local | 2026-08-14 |
 | android | ui-components | UI Components | UI-Komponenten | draft | local | 2026-08-11 |
+| android | user-input-validation | User Input and Validation | Nutzereingaben und Validierung | draft | local | 2026-08-16 |
 | android | uvc-microscope | USB-C (UVC) Microscope Cameras | USB-C-(UVC-)Mikroskopkameras | draft | local | 2026-08-11 |
 
 Inherited portfolio specs: this repository inherits the portfolio-scope spec layer from `nolte-shared` (see `.spec-config.yml`, pinned at `v0.1.11`).
