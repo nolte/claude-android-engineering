@@ -9,6 +9,12 @@ Path: `project/notification-ledger.md`, alongside `project/permissions-ledger.md
 `project/backend-requirements/`. One row per business event. **A row with an empty column is
 not admitted, and no code is written for an event that lacks a row.**
 
+A row whose outcome is **no channel** carries `none` in every column that presupposes one
+(channel, category, delivery, grouping, dismissal, degradation) and is still complete: a
+silence, presence, or ambient row on its classification, gate, in-app path, and test hook; a
+refusal or gap row on its classification and gate alone, because nothing is implemented and
+there is nothing to hook a test to.
+
 ### Column contract
 
 | Column | Content |
@@ -16,7 +22,7 @@ not admitted, and no code is written for an event that lacks a row.**
 | `Event` | the business event in one sentence, stated as something that happens to or for the user |
 | `Classification` | all six axes from `references/gate-chain.md`, comma-separated |
 | `Gate` | the gate that matched |
-| `Rejected` | the cheaper gate that was rejected **and the reason** — `n/a` only when gate 1 matched |
+| `Rejected` | the cheaper gate *above* the matched one that was rejected **and the reason** — `n/a` for gates 1, 3, 8, and 9, which either are the cheap outcome (silence, presence) or produce nothing by policy (refusal, gap) |
 | `Channel` | channel ID, user-visible name, and importance (or `none` for a no-channel outcome) |
 | `Category` | the `setCategory()` constant |
 | `Delivery` | `local`, `scheduled`, or `pushed` |
@@ -63,7 +69,7 @@ Record the retirement in the same file so a later reader does not resurrect it:
 
 Run all of these for every row before reporting the operation complete.
 
-### Required states (all rows)
+### Required states (rows that carry a channel)
 
 | State | How to establish | Expected |
 |---|---|---|

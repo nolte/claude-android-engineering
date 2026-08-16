@@ -44,12 +44,12 @@ gate *and* the cheaper gate that was rejected, with the reason.
 | # | Gate | Matches when | Outcome |
 |---|---|---|---|
 | 1 | **Silence** | nothing the user would do differently changes | no channel; app state only |
-| 2 | **Ongoing activity** | user-initiated activity with a start and end, tracked while it runs | foreground-service notification, `ProgressStyle` / Live Update, or media notification |
+| 2 | **Ongoing activity** | user-initiated activity with a start and end, tracked while it runs — navigation, a ride, a delivery, a workout, playback; **not** a call, which is third-party-initiated and belongs to gate 4 | foreground-service notification, `ProgressStyle` / Live Update, or media notification |
 | 3 | **Presence** | a **point event** *and* the user is on the affected surface | in-app surface only (`android-compose-ui`) |
-| 4 | **Conversation** | real-time interpersonal communication | `MessagingStyle` + long-lived shortcut, or `CallStyle` |
-| 5 | **Interrupt** | missing it within minutes costs safety, money, or data **and** the user can act | high-importance channel (heads-up) |
+| 4 | **Conversation** | real-time interpersonal communication | `MessagingStyle` + long-lived shortcut, or `CallStyle` — this gate also owns the call's full-screen intent, checked with `canUseFullScreenIntent()` before use |
+| 5 | **Interrupt** | missing it within minutes costs safety, money, or data **and** the user can act | high-importance channel (heads-up); a full-screen intent here only for an **alarm**, the calling half belonging to gate 4 |
 | 6 | **Await** | relevant today, no interruption warranted | default- or low-importance channel, silent where the user did not initiate it |
-| 7 | **Ambient** | a state to glance at repeatedly, not an occurrence to be told about | widget and/or badge; no notification |
+| 7 | **Ambient** | a state to glance at repeatedly, not an occurrence to be told about | a widget, plus a badge only where the app's own navigation carries it — a launcher badge is a consequence of a posted notification and is never the outcome for an out-of-app event; where no widget is placed, the outcome is gate 1's |
 | 8 | **Refusal** | promotional, re-engagement-driven, or celebratory | no channel; reported as out of policy |
 | 9 | **Gap** | nothing above matched and it is not a policy violation | no channel; reported as a spec gap (REQ-6) |
 
