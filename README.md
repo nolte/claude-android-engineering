@@ -33,6 +33,12 @@ task setup   # install dev tooling and git hooks
 task check   # aggregate quality gate (lint + test), identical to CI
 ```
 
+The Taskfile pulls shared targets from
+[`nolte/taskfiles`](https://github.com/nolte/taskfiles) over the network, so the
+first `task` invocation in a fresh clone needs `task --yes` once to accept the
+include checksum. The optional `task docs:serve` preview additionally expects a
+`~/.venvs/docs` environment; it tells you how to create one if it is missing.
+
 ## Structure
 
 ```text

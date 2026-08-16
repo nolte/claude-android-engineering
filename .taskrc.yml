@@ -1,0 +1,7 @@
+# Task experiments this repository relies on, checked in so every clone and
+# every CI runner gets them without a machine-specific environment variable.
+# REMOTE_TASKFILES backs the nolte/taskfiles includes in Taskfile.yml; Task
+# resolves includes while parsing, so without it *every* target fails, not just
+# the ones that consume the collection.
+experiments:
+  REMOTE_TASKFILES: 1

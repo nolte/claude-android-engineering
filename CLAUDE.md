@@ -55,10 +55,16 @@ All automation runs through the Taskfile (`task --list`):
   `http://localhost:8001/` (preview only, not part of any gate)
 - CI runs `task check` **and** `task docs` (strict MkDocs build) as separate
   steps (`.github/workflows/ci.yml`) — a green local gate means both pass
-- The Taskfile includes the shared `nolte/taskfiles` collection (`mkdocs:*`,
-  `pre-commit:*`). Resolution needs `TASK_X_REMOTE_TASKFILES=1` and `task --yes`
-  on first use. Gate targets (`lint`, `docs`) stay on their local commands: the
-  collection's targets source `~/.venvs/{development,docs}`, which CI lacks
+- The Taskfile includes the shared `nolte/taskfiles` collection (`mkdocs:*`).
+  Task resolves includes while parsing, so the remote-taskfiles experiment gates
+  *every* target, not just the ones consuming the collection; the checked-in
+  `.taskrc.yml` enables it, so no environment variable is needed. `task --yes`
+  is still required wherever no include cache exists (every CI runner) to accept
+  the checksum prompt unattended
+- Gate targets (`lint`, `docs`) and `setup` stay on their local commands: the
+  collection's targets source `~/.venvs/{development,docs}`, which CI lacks, and
+  `pre-commit:install` never installs pre-commit itself. Only `docs:serve`
+  (preview, never a gate) consumes a collection target
 
 ## Branching
 

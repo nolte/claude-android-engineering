@@ -3,10 +3,12 @@
 # also asks repositories to consume portfolio-common automation from the shared
 # nolte/taskfiles collection instead of re-implementing it.
 #
-# Remote include resolution is a Task experiment: it needs
-# TASK_X_REMOTE_TASKFILES=1 in the environment (set in the workstation profile
-# and in .github/workflows/ci.yml) and `task --yes` for the unattended checksum
-# prompt on first resolution.
+# Remote include resolution is a Task experiment enabled repo-wide by the
+# checked-in .taskrc.yml. Task resolves includes while *parsing*, so the
+# experiment gates every target, not only the ones consuming the collection —
+# hence a committed .taskrc.yml rather than an environment variable somebody
+# has to know about. `task --yes` stays required wherever no include cache
+# exists yet (every CI runner), to accept the checksum prompt unattended.
 version: "3"
 
 vars:
@@ -14,13 +16,18 @@ vars:
 
 includes:
   mkdocs: "{{.TASK_COLLECTION_BASE}}/taskfile-include-mkdocs.yaml"
-  pre-commit: "{{.TASK_COLLECTION_BASE}}/taskfile-include-pre-commit.yaml"
 
 tasks:
   setup:
     desc: One-command onboarding — install dev tooling and git hooks
+    # Deliberately not the collection's `pre-commit:install`: that target only
+    # runs `pre-commit install` inside the workstation-local ~/.venvs/development
+    # and never installs pre-commit itself. `setup` has to bootstrap a fresh
+    # clone on its own per spec/project/taskfile/, so it stays self-contained —
+    # and the hook it writes then points at the same PATH binary `lint` uses.
     cmds:
-      - task: pre-commit:install
+      - pip install pre-commit
+      - pre-commit install
 
   lint:
     desc: Run all configured linters over the repository
@@ -53,6 +60,12 @@ tasks:
     preconditions:
       - sh: test -f mkdocs.yml
         msg: "mkdocs.yml not present yet (docs skeleton pending)"
+      - sh: test -d ~/.venvs/docs
+        msg: >-
+          ~/.venvs/docs missing — `mkdocs:start` serves out of that shared
+          workstation venv. Create it (python3 -m venv ~/.venvs/docs &&
+          ~/.venvs/docs/bin/pip install -r docs/requirements.txt), or preview
+          with `mkdocs serve -a localhost:8001` against a global install.
     cmds:
       - task: mkdocs:start
 
