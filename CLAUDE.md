@@ -36,7 +36,8 @@ production-grade release-build quality of the source is in scope
 - `skills/` — `android-project-scaffold` (REQ-12), `android-compose-ui`
   (REQ-13), `android-perceived-performance` (REQ-15), `android-debugging`
   (REQ-16), `android-barcode-scanner-scaffold` (REQ-18),
-  `android-feature-implement` (REQ-19), `android-permissions-derive` (REQ-20);
+  `android-feature-implement` (REQ-19), `android-permissions-derive` (REQ-20),
+  `android-notification-derive` (REQ-21);
   each grounded in the matching `spec/android/` spec
 - `agents/android-ux-reviewer` — read-only UI audit (REQ-14)
 - `scripts/validate_skills.py` — frontmatter contract check wired as `task test`;
