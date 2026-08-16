@@ -60,9 +60,12 @@ tasks:
     preconditions:
       - sh: test -f mkdocs.yml
         msg: "mkdocs.yml not present yet (docs skeleton pending)"
-      - sh: test -d ~/.venvs/docs
+      # Check the binary, not the directory: an empty or half-built venv would
+      # pass a -d test and then fail inside the upstream target with a bare
+      # `mkdocs: command not found`, which is the message this replaces.
+      - sh: test -x ~/.venvs/docs/bin/mkdocs
         msg: >-
-          ~/.venvs/docs missing — `mkdocs:start` serves out of that shared
+          No mkdocs in ~/.venvs/docs — `mkdocs:start` serves out of that shared
           workstation venv. Create it (python3 -m venv ~/.venvs/docs &&
           ~/.venvs/docs/bin/pip install -r docs/requirements.txt), or preview
           with `mkdocs serve -a localhost:8001` against a global install.

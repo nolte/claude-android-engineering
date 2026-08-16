@@ -29,15 +29,21 @@ distribution channel (marketplace vs git reference) is decided. -->
 ### Local development
 
 ```shell
-task setup   # install dev tooling and git hooks
-task check   # aggregate quality gate (lint + test), identical to CI
+task --yes setup   # install dev tooling and git hooks
+task --yes check   # aggregate quality gate (lint + test), identical to CI
 ```
 
 The Taskfile pulls shared targets from
-[`nolte/taskfiles`](https://github.com/nolte/taskfiles) over the network, so the
-first `task` invocation in a fresh clone needs `task --yes` once to accept the
-include checksum. The optional `task docs:serve` preview additionally expects a
-`~/.venvs/docs` environment; it tells you how to create one if it is missing.
+[`nolte/taskfiles`](https://github.com/nolte/taskfiles) over the network. Task
+resolves that include while parsing, so **every** target needs network access
+and needs to trust the include's checksum — `--yes` grants that trust
+non-interactively. You need it whenever no local `.task/` cache covers the
+current upstream content: in a fresh clone, on every CI runner, and again after
+the upstream file changes. Without a TTY it is not optional, because the
+interactive trust prompt has nobody to answer it.
+
+The optional `task docs:serve` preview additionally expects a `~/.venvs/docs`
+environment; it tells you how to create one if it is missing.
 
 ## Structure
 
