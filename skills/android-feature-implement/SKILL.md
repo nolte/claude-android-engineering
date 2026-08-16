@@ -21,6 +21,7 @@ dont_use_when:
   - situation: "You want existing UI reviewed rather than changed"
     alternative: android-ux-reviewer
 see_also:
+  - android-notification-derive
   - android-compose-ui
   - android-permissions-derive
   - android-project-scaffold
@@ -78,10 +79,10 @@ gets), plus `spec/android/project-structure/`, `spec/android/test-automation/`, 
   something as **device capability** and that capability may need a permission, hand the
   decision there instead of declaring one here — it derives the set, records the ledger row, and
   writes the declaration and the denial path.
-- `android-notification-derive` owns every alerting-channel decision (REQ-21) and the notification
-  ledger, the same way `android-permissions-derive` owns permissions. It does not exist yet; until
-  it does, step 3 runs its derivation here as a marked interim and hands the resulting permissions
-  on as above.
+- `android-notification-derive` owns every alerting-channel decision (REQ-21) and the
+  notification ledger, the same way `android-permissions-derive` owns permissions. When the
+  feature produces an event a user might need to know about, hand the decision there instead of
+  choosing a channel here.
 - `android-barcode-scanner-scaffold` and `android-perceived-performance` own their capabilities;
   when a feature needs scanning or a performance remediation, hand that part to them.
 
@@ -154,10 +155,9 @@ Decide and record, per `references/flat-layer-checklist.md`:
   row in `project/notification-ledger.md` — obtained by handing the event to
   `android-notification-derive` (REQ-21), which owns the gate chain of
   `spec/android/notifications-alerting/` §C exactly as `android-permissions-derive` owns every
-  permission decision. **Interim while that skill does not exist:** run its §B classification and
-  §C chain here and record the row, but keep the outcome in the ledger rather than growing a
-  second implementation of the chain in this skill. Either way a notification posted without a
-  ledger row is non-conformant, and any permission the chosen channel implies goes to
+  permission decision. Do not run the chain here: hand the event over and take the channel and
+  its ledger row back as input to the state model. A notification posted without a ledger row is
+  non-conformant, and any permission the chosen channel implies goes to
   `android-permissions-derive` before any manifest edit
 
 Gate: confirm the design before generating code. Every decision in this list is recorded with

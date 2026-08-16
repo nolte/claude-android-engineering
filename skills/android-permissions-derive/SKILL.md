@@ -21,6 +21,7 @@ dont_use_when:
   - situation: "A build failure or crash needs diagnosing rather than a permission decision"
     alternative: android-debugging
 see_also:
+  - android-notification-derive
   - android-feature-implement
   - android-barcode-scanner-scaffold
   - android-project-scaffold
