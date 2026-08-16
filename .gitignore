@@ -6,3 +6,6 @@
 
 # MkDocs build output
 /site/
+
+# Task's cache for the remote taskfiles included from nolte/taskfiles
+/.task/

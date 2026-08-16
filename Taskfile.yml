@@ -1,18 +1,40 @@
 # Repository automation entry points. Local and CI runs share these targets.
-# Canonical target vocabulary per spec/project/taskfile/ (nolte-shared).
-# No remote includes from nolte/taskfiles yet: the collection (v0.1.4) ships no
-# target this prompt-only repo can run in a project-local environment.
+# Canonical target vocabulary per spec/project/taskfile/ (nolte-shared), which
+# also asks repositories to consume portfolio-common automation from the shared
+# nolte/taskfiles collection instead of re-implementing it.
+#
+# Remote include resolution is a Task experiment enabled repo-wide by the
+# checked-in .taskrc.yml. Task resolves includes while *parsing*, so the
+# experiment gates every target, not only the ones consuming the collection —
+# hence a committed .taskrc.yml rather than an environment variable somebody
+# has to know about. `task --yes` stays required wherever no include cache
+# exists yet (every CI runner), to accept the checksum prompt unattended.
 version: "3"
+
+vars:
+  TASK_COLLECTION_BASE: https://raw.githubusercontent.com/nolte/taskfiles/develop/src
+
+includes:
+  mkdocs: "{{.TASK_COLLECTION_BASE}}/taskfile-include-mkdocs.yaml"
 
 tasks:
   setup:
     desc: One-command onboarding — install dev tooling and git hooks
+    # Deliberately not the collection's `pre-commit:install`: that target only
+    # runs `pre-commit install` inside the workstation-local ~/.venvs/development
+    # and never installs pre-commit itself. `setup` has to bootstrap a fresh
+    # clone on its own per spec/project/taskfile/, so it stays self-contained —
+    # and the hook it writes then points at the same PATH binary `lint` uses.
     cmds:
       - pip install pre-commit
       - pre-commit install
 
   lint:
     desc: Run all configured linters over the repository
+    # Deliberately not `pre-commit:start`: the collection's targets activate the
+    # workstation-local ~/.venvs/development environment, which a CI runner
+    # doesn't have. Lint is a gate CI runs, so it stays on the PATH binary and
+    # local↔CI parity holds without a machine-specific venv layout.
     cmds:
       - pre-commit run --all-files
 
@@ -23,11 +45,32 @@ tasks:
 
   docs:
     desc: Build the MkDocs site strictly
+    # Same reasoning as `lint`: `mkdocs:build` sources ~/.venvs/docs, absent on
+    # the CI runner that installs docs/requirements.txt globally.
     preconditions:
       - sh: test -f mkdocs.yml
         msg: "mkdocs.yml not present yet (docs skeleton pending)"
     cmds:
       - mkdocs build --strict
+
+  docs:serve:
+    desc: Serve the MkDocs site locally with live reload (preview, not a gate)
+    # Preview only, never run in CI — so this one does consume the collection's
+    # target, which serves on localhost:8001 out of the shared ~/.venvs/docs.
+    preconditions:
+      - sh: test -f mkdocs.yml
+        msg: "mkdocs.yml not present yet (docs skeleton pending)"
+      # Check the binary, not the directory: an empty or half-built venv would
+      # pass a -d test and then fail inside the upstream target with a bare
+      # `mkdocs: command not found`, which is the message this replaces.
+      - sh: test -x ~/.venvs/docs/bin/mkdocs
+        msg: >-
+          No mkdocs in ~/.venvs/docs — `mkdocs:start` serves out of that shared
+          workstation venv. Create it (python3 -m venv ~/.venvs/docs &&
+          ~/.venvs/docs/bin/pip install -r docs/requirements.txt), or preview
+          with `mkdocs serve -a localhost:8001` against a global install.
+    cmds:
+      - task: mkdocs:start
 
   check:
     desc: Aggregate quality gate (identical locally and in CI)

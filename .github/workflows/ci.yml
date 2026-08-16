@@ -26,7 +26,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install tooling
         run: pip install pre-commit -r docs/requirements.txt
+      # The remote-include experiment itself is enabled by the checked-in
+      # .taskrc.yml; `--yes` accepts the checksum prompt Task raises whenever it
+      # resolves an include with no local cache — which is every runner.
       - name: Quality gate
-        run: task check
+        run: task --yes check
       - name: Docs build (strict)
-        run: task docs
+        run: task --yes docs
