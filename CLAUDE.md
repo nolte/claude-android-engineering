@@ -51,8 +51,14 @@ All automation runs through the Taskfile (`task --list`):
 - `task setup` — install dev tooling (pre-commit hooks)
 - `task check` — aggregate quality gate (lint + test)
 - `task lint` / `task test` / `task docs` — individual targets
+- `task docs:serve` — local MkDocs preview with live reload on
+  `http://localhost:8001/` (preview only, not part of any gate)
 - CI runs `task check` **and** `task docs` (strict MkDocs build) as separate
   steps (`.github/workflows/ci.yml`) — a green local gate means both pass
+- The Taskfile includes the shared `nolte/taskfiles` collection (`mkdocs:*`,
+  `pre-commit:*`). Resolution needs `TASK_X_REMOTE_TASKFILES=1` and `task --yes`
+  on first use. Gate targets (`lint`, `docs`) stay on their local commands: the
+  collection's targets source `~/.venvs/{development,docs}`, which CI lacks
 
 ## Branching
 

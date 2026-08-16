@@ -12,6 +12,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Taskfile.yml includes remote taskfiles from nolte/taskfiles;
+  # Task gates that experimental feature behind this flag.
+  TASK_X_REMOTE_TASKFILES: "1"
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -26,7 +31,9 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Install tooling
         run: pip install pre-commit -r docs/requirements.txt
+      # `--yes` accepts the checksum prompt Task raises the first time it
+      # resolves (or re-resolves a changed) remote include.
       - name: Quality gate
-        run: task check
+        run: task --yes check
       - name: Docs build (strict)
-        run: task docs
+        run: task --yes docs

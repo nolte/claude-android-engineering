@@ -1,18 +1,33 @@
 # Repository automation entry points. Local and CI runs share these targets.
-# Canonical target vocabulary per spec/project/taskfile/ (nolte-shared).
-# No remote includes from nolte/taskfiles yet: the collection (v0.1.4) ships no
-# target this prompt-only repo can run in a project-local environment.
+# Canonical target vocabulary per spec/project/taskfile/ (nolte-shared), which
+# also asks repositories to consume portfolio-common automation from the shared
+# nolte/taskfiles collection instead of re-implementing it.
+#
+# Remote include resolution is a Task experiment: it needs
+# TASK_X_REMOTE_TASKFILES=1 in the environment (set in the workstation profile
+# and in .github/workflows/ci.yml) and `task --yes` for the unattended checksum
+# prompt on first resolution.
 version: "3"
+
+vars:
+  TASK_COLLECTION_BASE: https://raw.githubusercontent.com/nolte/taskfiles/develop/src
+
+includes:
+  mkdocs: "{{.TASK_COLLECTION_BASE}}/taskfile-include-mkdocs.yaml"
+  pre-commit: "{{.TASK_COLLECTION_BASE}}/taskfile-include-pre-commit.yaml"
 
 tasks:
   setup:
     desc: One-command onboarding — install dev tooling and git hooks
     cmds:
-      - pip install pre-commit
-      - pre-commit install
+      - task: pre-commit:install
 
   lint:
     desc: Run all configured linters over the repository
+    # Deliberately not `pre-commit:start`: the collection's targets activate the
+    # workstation-local ~/.venvs/development environment, which a CI runner
+    # doesn't have. Lint is a gate CI runs, so it stays on the PATH binary and
+    # local↔CI parity holds without a machine-specific venv layout.
     cmds:
       - pre-commit run --all-files
 
@@ -23,11 +38,23 @@ tasks:
 
   docs:
     desc: Build the MkDocs site strictly
+    # Same reasoning as `lint`: `mkdocs:build` sources ~/.venvs/docs, absent on
+    # the CI runner that installs docs/requirements.txt globally.
     preconditions:
       - sh: test -f mkdocs.yml
         msg: "mkdocs.yml not present yet (docs skeleton pending)"
     cmds:
       - mkdocs build --strict
+
+  docs:serve:
+    desc: Serve the MkDocs site locally with live reload (preview, not a gate)
+    # Preview only, never run in CI — so this one does consume the collection's
+    # target, which serves on localhost:8001 out of the shared ~/.venvs/docs.
+    preconditions:
+      - sh: test -f mkdocs.yml
+        msg: "mkdocs.yml not present yet (docs skeleton pending)"
+    cmds:
+      - task: mkdocs:start
 
   check:
     desc: Aggregate quality gate (identical locally and in CI)
