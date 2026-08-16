@@ -176,9 +176,10 @@ strength of the manifest that already contains it.
   Update adds `POST_PROMOTED_NOTIFICATIONS`; and a full-screen intent is admissible only for
   calling and alarm surfaces, whose rule lives in `spec/android/notifications-alerting/` §C
   (gate 4 for calls, gate 5 for alarms), with the runtime `canUseFullScreenIntent()` check stated
-  in that spec's §D catalogue entry — `spec/android/permissions/` covers neither
-  `USE_FULL_SCREEN_INTENT` nor `POST_PROMOTED_NOTIFICATIONS`, which is a gap in this spec worth
-  closing rather than working around.
+  in that spec's §D catalogue entry. The permission side of both `USE_FULL_SCREEN_INTENT` and
+  `POST_PROMOTED_NOTIFICATIONS` — their non-runtime declaration, their runtime checks, the
+  degradation each needs, and the Play category claim the first one makes — lives in
+  `spec/android/permissions/` §F under Notifications.
 
 ### Bluetooth and nearby devices
 
