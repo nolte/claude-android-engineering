@@ -101,8 +101,8 @@ builder call.
 ## Operations
 
 Pick one at the start and say which is running. All three share the gates below. The split is
-deliberate: `derive` and `audit` **decide and record**, `apply` **writes**. Nothing is written
-into the app before a complete ledger row exists for it.
+deliberate: `derive` **decides and records**, `audit` **only reports**, `apply` **writes code**.
+Nothing is written into the app before a complete ledger row exists for it.
 
 - **`derive`** — an event exists or is planned and its channel is undecided. Runs steps 1–4
   and the ledger write of step 5. Touches no code.
@@ -210,7 +210,8 @@ Read-only throughout. Nothing is written — not the ledger, not the code, not t
 4. **Check the construction rules** of `references/channel-templates.md` per site: channel
    importance against the row, category set, lock-screen visibility, grouping where more than
    one of a kind can be posted, cancellation of stale notifications, no trampoline, no custom
-   layout.
+   layout — and, where the app bubbles a conversation, that the notification still works as an
+   ordinary one when bubbles are disabled.
 5. **Report** on the canonical severity scale: `Critical` for a posting site with no row or a
    channel the chain forbids, `Warning` for a construction rule broken, `Suggestion` for a
    cheaper gate the event would now match, `Info` for a surface scanned clean. Each finding
@@ -250,9 +251,9 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** declare a notification-related permission here. `POST_NOTIFICATIONS`, the
   `FOREGROUND_SERVICE_*` pair, `USE_FULL_SCREEN_INTENT`, and `POST_PROMOTED_NOTIFICATIONS` go
   to `android-permissions-derive` with the ledger row as their justification (REQ-21).
-- **Never** post a notification for a surface the user is currently looking at, and never
-  demote an ongoing activity to the in-app path because it happened to start on that surface —
-  the ongoing gate is evaluated before the presence gate for exactly that reason.
+- **Never** post a **point event** as a notification for a surface the user is currently looking
+  at, and never demote an ongoing activity to the in-app path because it happened to start on
+  that surface — the ongoing gate is evaluated before the presence gate for exactly that reason.
 - **Never** route a notification tap through a service or broadcast receiver that then starts
   an activity; the content intent targets the activity directly.
 - **Never** ship a custom notification layout, and never let an event exist only as a

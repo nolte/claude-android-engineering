@@ -47,8 +47,11 @@ importance argument on an existing ID does **nothing** — that is why a reclass
 a new ID plus a retirement row.
 
 Channel *groups* exist for parallel account or profile scopes, not for organizing an app's own
-feature areas: `NotificationChannelGroup(groupId, groupName)` and `setGroup(groupId)` before
-registration.
+feature areas. Register the group **before** the channel that joins it —
+`manager.createNotificationChannelGroup(NotificationChannelGroup(groupId, groupName))`, then
+`channel.setGroup(groupId)` before `createNotificationChannel`. Calling `setGroup()` with an
+unregistered group ID raises no error; the channel simply appears ungrouped, and nobody notices
+until a user opens notification settings.
 
 ## The notification build
 
@@ -103,7 +106,10 @@ stay two separate promoted notifications.
 
 ```kotlin
 private const val GROUP_ORDERS = "com.example.app.ORDERS"
-private const val SUMMARY_ID = 1  // constant, so the summary is updated rather than stacked
+// Constant, so the summary is updated rather than stacked — and **reserved**: per-item IDs
+// must never collide with it, or the child overwrites the summary and one of the two is lost.
+// Derive item IDs from a range that excludes the summary IDs (or from a stable hash offset).
+private const val SUMMARY_ID = 1
 
 val child = NotificationCompat.Builder(context, channelId)
     .setGroup(GROUP_ORDERS)

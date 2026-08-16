@@ -21,6 +21,7 @@ dont_use_when:
   - situation: "You want existing UI reviewed rather than changed"
     alternative: android-ux-reviewer
 see_also:
+  - android-notification-derive
   - android-compose-ui
   - android-permissions-derive
   - android-project-scaffold

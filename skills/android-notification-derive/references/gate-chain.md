@@ -88,6 +88,10 @@ catalogue; read that section when an entry's trade-off is what the decision turn
   which the promotion contract forbids grouping, so concurrent ones stay separate.
 - **Conversation (`MessagingStyle` + shortcut)** — the conversation section, direct reply,
   bubbles, correct ranking; requires publishing and maintaining long-lived sharing shortcuts.
+- **Bubble** — a floating, resumable conversation surface the user can keep above other apps;
+  needs a resizable, embeddable activity plus conversation conformance, and is entirely at the
+  user's discretion. **The notification must still work as an ordinary notification when bubbles
+  are disabled** — an opt-in enhancement of gate 4, never a dependency.
 - **`CallStyle`** — call-shaped layout with system-managed actions and top-of-shade ranking;
   legitimate only for actual calls, and needs a foreground service to rank correctly on older
   versions.

@@ -42,7 +42,7 @@ there is nothing to hook a test to.
 | Event | Order shipped |
 | Classification | third-party origination; out-of-app presence; soon; acknowledgement; mild inconvenience; point event |
 | Gate | 6 — Await |
-| Rejected | 3 — Presence: the user is not in the app when the courier scans the parcel; 5 — Interrupt was not reached because a shipping update has no minutes-scale consequence, so the chain fell through to 6 |
+| Rejected | 3 — Presence: the event's relevance outlives the session in which it arrives, so it is not decided by where the user happens to be looking; 5 — Interrupt: a shipping update has no minutes-scale consequence, so the chain fell through to 6 |
 | Channel | `orders_shipping` / "Shipping updates" / `IMPORTANCE_DEFAULT` |
 | Category | `CATEGORY_STATUS` |
 | Delivery | pushed (data message; a missed message is recovered by the order sync on next foreground) |
