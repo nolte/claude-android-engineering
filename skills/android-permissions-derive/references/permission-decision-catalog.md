@@ -157,8 +157,9 @@ app that asks. The component-hardening side belongs to `spec/android/security/` 
 - **The channel decision comes first.** `POST_NOTIFICATIONS`, a `FOREGROUND_SERVICE_*` pair,
   `USE_FULL_SCREEN_INTENT`, and `POST_PROMOTED_NOTIFICATIONS` are each a *consequence* of an
   alerting channel already derived through the gate chain of
-  `spec/android/notifications-alerting/` §C, which currently runs inside
-  `android-feature-implement` and produces a row in `project/notification-ledger.md`. Take that
+  `spec/android/notifications-alerting/` §C, owned by `android-notification-derive` (REQ-21) and
+  running inside `android-feature-implement` until that skill exists. It produces a row in
+  `project/notification-ledger.md`. Take that
   row as the input to the §B derivation: the named event it carries *is* the user-visible feature
   the permission traces back to. Deriving one of these without it is the backward derivation §B
   forbids — there is no feature to name, only a manifest entry someone wanted.

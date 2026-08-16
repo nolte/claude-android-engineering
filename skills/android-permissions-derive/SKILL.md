@@ -82,9 +82,9 @@ and `spec/android/release-readiness/` (what "done" means for the touched build).
 - `android-project-scaffold` creates the project (REQ-12); a scaffolded app starts with an empty
   permission set, and every later addition comes through this skill.
 - `android-ux-reviewer` reviews UI read-only (REQ-14) and never writes a manifest.
-- Notification permissions follow from an alerting channel derived in
-  `android-feature-implement` (`spec/android/notifications-alerting/` §C); its ledger row is the
-  input here — see `references/permission-decision-catalog.md` §Notifications.
+- Notification permissions follow from an alerting channel owned by `android-notification-derive`
+  (REQ-21; `spec/android/notifications-alerting/` §C); its ledger row is the input here — see
+  `references/permission-decision-catalog.md` §Notifications.
 - `android-debugging` diagnoses build failures and crashes (REQ-16). A `SecurityException`
   belongs here only as evidence of a missed derivation path; a crash that needs diagnosing first
   goes there.

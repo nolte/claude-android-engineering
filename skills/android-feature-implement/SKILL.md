@@ -78,6 +78,10 @@ gets), plus `spec/android/project-structure/`, `spec/android/test-automation/`, 
   something as **device capability** and that capability may need a permission, hand the
   decision there instead of declaring one here — it derives the set, records the ledger row, and
   writes the declaration and the denial path.
+- `android-notification-derive` owns every alerting-channel decision (REQ-21) and the notification
+  ledger, the same way `android-permissions-derive` owns permissions. It does not exist yet; until
+  it does, step 3 runs its derivation here as a marked interim and hands the resulting permissions
+  on as above.
 - `android-barcode-scanner-scaffold` and `android-perceived-performance` own their capabilities;
   when a feature needs scanning or a performance remediation, hand that part to them.
 
@@ -146,13 +150,15 @@ Decide and record, per `references/flat-layer-checklist.md`:
   *not* client-side, because the backend owns them. Field-check parameters (required, length,
   range, allowed values) come from the contract; a limit the contract does not state is a
   backend requirement in step 4, not an invented constant
-- for every event the feature produces that a user might need to know about, the channel derived
-  from the gate chain of `spec/android/notifications-alerting/` §C, plus the cheaper gate that
-  was rejected and why. The result becomes a row in `project/notification-ledger.md` per its §C.
-  Until a dedicated derivation skill exists, that derivation runs here — a notification posted
-  without a ledger row is non-conformant, and `POST_NOTIFICATIONS`, a foreground-service type, or
-  a full-screen intent implied by the chosen channel goes to `android-permissions-derive` before
-  any manifest edit
+- for every event the feature produces that a user might need to know about, the channel and its
+  row in `project/notification-ledger.md` — obtained by handing the event to
+  `android-notification-derive` (REQ-21), which owns the gate chain of
+  `spec/android/notifications-alerting/` §C exactly as `android-permissions-derive` owns every
+  permission decision. **Interim while that skill does not exist:** run its §B classification and
+  §C chain here and record the row, but keep the outcome in the ledger rather than growing a
+  second implementation of the chain in this skill. Either way a notification posted without a
+  ledger row is non-conformant, and any permission the chosen channel implies goes to
+  `android-permissions-derive` before any manifest edit
 
 Gate: confirm the design before generating code. These four decisions are recorded with the
 feature per `spec/android/app-architecture/` §H.
