@@ -1,8 +1,9 @@
 # Flat-layer implementation checklist
 
 The implementation-time rule set for a feature in a flat, server-authoritative Android client.
-Distilled from `spec/android/app-architecture/`, `spec/android/backend-contract/`, and
-`spec/android/release-readiness/`; the specs remain authoritative on every point.
+Distilled from `spec/android/app-architecture/`, `spec/android/backend-contract/`,
+`spec/android/release-readiness/`, `spec/android/user-input-validation/`, and
+`spec/android/notifications-alerting/`; the specs remain authoritative on every point.
 
 ## Contents
 
@@ -14,6 +15,7 @@ Distilled from `spec/android/app-architecture/`, `spec/android/backend-contract/
 6. [Backend-requirement triggers](#6-backend-requirement-triggers)
 7. [Test coverage floor](#7-test-coverage-floor)
 8. [Done gate](#8-done-gate)
+9. [Input and alerting decisions](#9-input-and-alerting-decisions)
 
 ## 1. The placement test — who decides
 
@@ -139,6 +141,9 @@ the interim path, and do **not** implement a silent workaround:
 - [ ] The recovery action on each error state
 - [ ] Time and dispatchers injected — no test sleeps
 - [ ] A fake per remote data source that can produce each failure case
+- [ ] Where the feature takes input: a field-identified rejection lands on its field with the
+      entered values preserved, and the restoration path is asserted at both levels
+      (`spec/android/user-input-validation/` §H)
 
 ## 8. Done gate
 
@@ -152,3 +157,29 @@ Six elements, per `spec/android/release-readiness/` §E. Report every red or unr
 - [ ] The touched flow exercised manually on a device from the **release** variant
 - [ ] No debug library, verbose log, non-production endpoint, bypass switch, or hidden developer
       screen reachable in that variant; StrictMode clean in debug for the touched flow
+
+## 9. Input and alerting decisions
+
+Recorded with the feature alongside the write strategy and staleness policy, per
+`spec/android/app-architecture/` §H. Both are decisions, not implementation details: they are
+made at the step-3 gate and reviewed there.
+
+### Input, where the feature takes a value from the user
+
+- [ ] Every check is assigned to one of the four stages of `spec/android/user-input-validation/`
+      §A — shaping, field check, form check, server decision — and none answers a later stage's
+      question
+- [ ] Field-check parameters (required, length, range, allowed values) come from the backend
+      contract; a limit the contract does not state is a backend requirement, not a constant
+- [ ] Each field's state carries a **touched** flag alongside its value, error, and submission
+      state — without it the timing rules of §D cannot hold
+- [ ] Raw, normalised, and transmitted representations of each value stay distinguishable
+
+### Alerting, where the feature produces an event a user might need to know about
+
+- [ ] The channel comes from `android-notification-derive` (REQ-21), which owns the gate chain —
+      this skill hands the event over rather than choosing a channel
+- [ ] The resulting row exists in `project/notification-ledger.md` before any notification code
+      is written, and names the matched gate plus the rejected cheaper gate
+- [ ] Every permission the chosen channel implies went to `android-permissions-derive` before
+      any manifest edit

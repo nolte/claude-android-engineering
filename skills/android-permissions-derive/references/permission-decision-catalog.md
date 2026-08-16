@@ -164,8 +164,9 @@ app that asks. The component-hardening side belongs to `spec/android/security/` 
   the permission traces back to. Deriving one of these without it is the backward derivation §B
   forbids — there is no feature to name, only a manifest entry someone wanted. **In an `audit` of an
 existing app** the ledger row will often be missing entirely: that is a finding, not a dead end.
-Record the permission as unjustified-pending-derivation, name the missing row as the reason, and
-report the channel derivation as the follow-up the app owes — never admit the permission on the
+Write the ordinary ledger row with the feature column naming the notification the manifest
+implies and the alternative column naming the missing channel derivation as the reason the row
+cannot yet be closed — no new row shape — and report that derivation as the follow-up the app owes — never admit the permission on the
 strength of the manifest that already contains it.
 - The channel also decides *which* of them applies, so the gate chain's outcome is worth reading
   before the derivation: an in-app outcome needs no permission at all, and neither does a badge the
@@ -175,8 +176,10 @@ strength of the manifest that already contains it.
   type and its permission pair (`spec/android/notifications-alerting/` §D); a promoted Live
   Update adds `POST_PROMOTED_NOTIFICATIONS`; and a full-screen intent is admissible only for
   calling and alarm surfaces, whose rule lives in `spec/android/notifications-alerting/` §C
-  (gate 4 for calls, gate 5 for alarms) with the runtime `canUseFullScreenIntent()` check in its
-  §F — `spec/android/permissions/` does not cover `USE_FULL_SCREEN_INTENT`.
+  (gate 4 for calls, gate 5 for alarms), with the runtime `canUseFullScreenIntent()` check stated
+  in that spec's §D catalogue entry — `spec/android/permissions/` covers neither
+  `USE_FULL_SCREEN_INTENT` nor `POST_PROMOTED_NOTIFICATIONS`, which is a gap in this spec worth
+  closing rather than working around.
 
 ### Bluetooth and nearby devices
 
