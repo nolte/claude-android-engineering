@@ -14,6 +14,7 @@ dont_use_when:
     alternative: android-feature-implement
 see_also:
   - android-feature-implement
+  - android-permissions-derive
 resumable: true
 ---
 

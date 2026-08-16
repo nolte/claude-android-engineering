@@ -37,9 +37,10 @@ task check   # aggregate quality gate (lint + test), identical to CI
 
 ```text
 .claude-plugin/  # plugin manifest (plugin.json)
-skills/          # six skills: android-project-scaffold, android-compose-ui,
-                 #   android-feature-implement, android-perceived-performance,
-                 #   android-debugging, android-barcode-scanner-scaffold
+skills/          # seven skills: android-project-scaffold, android-compose-ui,
+                 #   android-feature-implement, android-permissions-derive,
+                 #   android-perceived-performance, android-debugging,
+                 #   android-barcode-scanner-scaffold
 agents/          # android-ux-reviewer (read-only UI audit)
 spec/            # bilingual spec corpus (en canonical + de); android/ holds the Android specs
 project/         # planning artifacts (requirements; mission/roadmap pending)
