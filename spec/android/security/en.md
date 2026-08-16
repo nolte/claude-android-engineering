@@ -58,7 +58,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 
 ### E. Permissions and privacy (MASVS-PRIVACY)
 
-- **MUST** request only the minimum permissions, in context, with a rationale, and handle denial gracefully (UX rules per `spec/android/app-design-navigation/` §F); **MUST NOT** request a permission where an intent to another app suffices, and **MUST NOT** use persistent hardware identifiers (IMEI, phone number) as IDs
+- **MUST** request only the minimum permissions, in context, with a rationale, and handle denial gracefully (UX rules per `spec/android/app-design-navigation/` §F); **MUST NOT** request a permission where an intent to another app suffices, and **MUST NOT** use persistent hardware identifiers (IMEI, phone number) as IDs. *How* that minimum is derived, declared, requested, verified, and recorded — the derivation method, the permission-free alternatives, the manifest rules, the runtime flow, and the permission ledger — is owned by `spec/android/permissions/`; this bullet states the obligation, that spec states the method
 - **MUST** keep the Play Data Safety declaration accurate to actual behavior, including third-party SDK data flows
 - **SHOULD** gate third-party SDK data collection on user consent and audit each SDK's permissions; **MUST**, for any AccessibilityService use, meet the Play policy (declaration + approval, `isAccessibilityTool` only for genuine tools) — autonomous action via the Accessibility API is prohibited
 

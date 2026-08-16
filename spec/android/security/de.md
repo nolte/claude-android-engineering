@@ -58,7 +58,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 ### E. Permissions und Privacy (MASVS-PRIVACY)
 
-- **MUSS [MUST]** nur die minimalen Permissions anfragen, im Kontext, mit Begründung, und Ablehnung graceful behandeln (UX-Regeln gemäß `spec/android/app-design-navigation/` §F); **DARF NICHT [MUST NOT]** eine Permission anfragen, wo ein Intent an eine andere App genügt, und **DARF NICHT [MUST NOT]** persistente Hardware-Identifier (IMEI, Telefonnummer) als IDs nutzen
+- **MUSS [MUST]** nur die minimalen Permissions anfragen, im Kontext, mit Begründung, und Ablehnung graceful behandeln (UX-Regeln gemäß `spec/android/app-design-navigation/` §F); **DARF NICHT [MUST NOT]** eine Permission anfragen, wo ein Intent an eine andere App genügt, und **DARF NICHT [MUST NOT]** persistente Hardware-Identifier (IMEI, Telefonnummer) als IDs nutzen. *Wie* dieses Minimum ermittelt, deklariert, angefordert, verifiziert und festgehalten wird — Ermittlungsmethodik, berechtigungsfreie Alternativen, Manifest-Regeln, Laufzeitablauf und Berechtigungsregister — liegt in `spec/android/permissions/`; dieser Punkt formuliert die Pflicht, jene Spec die Methode
 - **MUSS [MUST]** die Play-Data-Safety-Deklaration wahrheitsgemäß zum tatsächlichen Verhalten halten, inklusive Third-Party-SDK-Datenflüssen
 - **SOLLTE [SHOULD]** Third-Party-SDK-Datenerfassung an Nutzer-Consent gaten und die Permissions jedes SDK auditieren; **MUSS [MUST]** für jede AccessibilityService-Nutzung die Play-Policy erfüllen (Deklaration + Approval, `isAccessibilityTool` nur für echte Tools) — autonomes Handeln über die Accessibility-API ist verboten
 
