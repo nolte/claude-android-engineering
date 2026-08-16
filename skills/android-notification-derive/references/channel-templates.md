@@ -10,6 +10,7 @@ placeholders for resource lookups, not a licence to inline text.
 - [Channel creation](#channel-creation)
 - [The notification build](#the-notification-build)
 - [Grouping and summary](#grouping-and-summary)
+- [Conversation and call (gate 4)](#conversation-and-call-gate-4)
 - [Update, cancel, and staleness](#update-cancel-and-staleness)
 - [Foreground-service notification](#foreground-service-notification)
 - [Live Update / ProgressStyle](#live-update--progressstyle)
@@ -52,15 +53,18 @@ registration.
 ## The notification build
 
 ```kotlin
-val contentIntent = PendingIntent.getActivity(
-    context,
-    requestCode,
-    Intent(context, MainActivity::class.java).apply {
-        // deep link straight to the content the notification is about
-        data = orderDeepLink(orderId)
-    },
-    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-)
+// The tap lands on the content AND leaves a plausible back stack behind it — back from a
+// notification must not drop the user out of the app (spec §E, app-design-navigation §E).
+val contentIntent = TaskStackBuilder.create(context)
+    .addNextIntentWithParentStack(
+        Intent(context, MainActivity::class.java).apply {
+            data = orderDeepLink(orderId)  // deep link to the content the notification is about
+        },
+    )
+    .getPendingIntent(
+        requestCode,
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 
 val notification = NotificationCompat.Builder(context, NotificationChannels.ORDERS_SHIPPING)
     .setSmallIcon(R.drawable.ic_notification_order)      // alpha-only, iconography §D
@@ -79,6 +83,9 @@ Rules the template encodes:
 
 - The content intent targets the **activity directly**. Routing through a service or receiver
   that then calls `startActivity()` is blocked from Android 12 (notification trampoline).
+- The destination carries a synthetic back stack (`TaskStackBuilder`, or the navigation
+  library's equivalent) so Back from the notification walks up the hierarchy instead of leaving
+  the app — the deep-link rules of `spec/android/app-design-navigation/` §E apply unchanged.
 - `PendingIntent` is immutable unless a direct reply genuinely needs otherwise
   (`spec/android/security/` §D).
 - At most three actions, none duplicating the tap action.
@@ -89,6 +96,10 @@ Rules the template encodes:
 
 Mandatory as soon as the app can produce more than one notification of a kind concurrently.
 Do not rely on the platform's automatic grouping — its behaviour varies by version and device.
+
+**Promoted Live Updates are the exception and are never grouped** — not even with `setGroup()`
+alone. The promotion contract forbids a group summary, so two concurrent Live Updates of a kind
+stay two separate promoted notifications.
 
 ```kotlin
 private const val GROUP_ORDERS = "com.example.app.ORDERS"
@@ -139,6 +150,57 @@ irrelevant notifications is what precedes an app-wide block.
 
 Rapid updates are throttled by the system. Update on meaningful change, not per frame or per
 percent.
+
+## Conversation and call (gate 4)
+
+A gate-4 row is **not** served by the standard build above. Without a long-lived shortcut the
+notification is not a conversation notification at all on Android 11 and higher, whatever style
+it carries.
+
+```kotlin
+// 1. Publish the long-lived sharing shortcut the notification will bind to.
+val shortcut = ShortcutInfoCompat.Builder(context, conversationId)
+    .setLongLived(true)
+    .setShortLabel(partner.displayName)
+    .setPerson(partner.toPerson())
+    .setCategories(setOf("com.example.category.SHARE_TARGET"))
+    .setIntent(conversationIntent(conversationId))
+    .build()
+ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
+
+// 2. Bind it, and use MessagingStyle for messages …
+val notification = NotificationCompat.Builder(context, NotificationChannels.MESSAGES)
+    .setSmallIcon(R.drawable.ic_notification_message)
+    .setShortcutId(conversationId)          // required — this is what makes it a conversation
+    .addPerson(partner.toPerson())
+    .setStyle(
+        NotificationCompat.MessagingStyle(self.toPerson())
+            .addMessage(message.text, message.timestamp, partner.toPerson()),
+    )
+    .addAction(replyAction)                 // RemoteInput: expected, not optional
+    .build()
+
+// … or CallStyle for calls, which the ongoing gate hands here.
+val incoming = NotificationCompat.Builder(context, NotificationChannels.CALLS)
+    .setSmallIcon(R.drawable.ic_notification_call)
+    .setStyle(NotificationCompat.CallStyle.forIncomingCall(caller, declineIntent, answerIntent))
+    .addPerson(caller)
+    .setOngoing(true)
+    .build()
+```
+
+A call additionally runs a foreground service so it ranks correctly on older versions, and its
+full-screen intent — the one surface the platform still grants to calling apps — is guarded:
+
+```kotlin
+if (notificationManager.canUseFullScreenIntent()) {
+    builder.setFullScreenIntent(fullScreenPendingIntent, true)
+} else {
+    // No grant: the CallStyle notification alone must remain answerable.
+    // Route the user to Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT only on an
+    // explicit user step, never as a startup interruption.
+}
+```
 
 ## Foreground-service notification
 
@@ -192,10 +254,13 @@ additional criteria. A Live Update the user dismissed is **never** re-posted.
 ```kotlin
 val manager = NotificationManagerCompat.from(context)
 val enabled = manager.areNotificationsEnabled()
-val importance = manager.getNotificationChannel(channelId)?.importance
-    ?: NotificationManager.IMPORTANCE_NONE
+// Channels exist only from API 26. Below it, getNotificationChannel() always returns null,
+// so treating null as IMPORTANCE_NONE would report "notifications are off" on every
+// pre-O device that is in fact working.
+val channelBlocked = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+    manager.getNotificationChannel(channelId)?.importance == NotificationManager.IMPORTANCE_NONE
 
-if (!enabled || importance == NotificationManager.IMPORTANCE_NONE) {
+if (!enabled || channelBlocked) {
     // degrade per the ledger row: the in-app path carries the information,
     // the app says what is unavailable, and offers a settings route
 }

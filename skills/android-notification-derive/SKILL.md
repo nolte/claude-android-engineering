@@ -106,11 +106,16 @@ into the app before a complete ledger row exists for it.
 
 - **`derive`** — an event exists or is planned and its channel is undecided. Runs steps 1–4
   and the ledger write of step 5. Touches no code.
-- **`audit`** — an app already posts notifications and the set needs justifying. Runs step 6
-  against the existing call sites, then produces findings plus the ledger rows that are
-  missing. Writes only the ledger, never code.
+- **`audit`** — an app already posts notifications and the set needs justifying. Runs the audit
+  procedure below and **writes nothing at all** (REQ-21): it produces a severity-classified
+  findings report on the canonical `Critical` / `Warning` / `Suggestion` / `Info` scale of
+  `spec/claude/review-plan/`, naming the ledger rows the app owes. Turning a finding into a row
+  is a `derive` run the operator starts afterwards.
 - **`apply`** — a ledger row exists and its device-side code is to be written or corrected.
   Runs steps 5–7.
+
+The numbered procedure below is the `derive`/`apply` path; `audit` runs the separate audit
+procedure that follows it.
 
 ## Preconditions
 
@@ -173,8 +178,10 @@ written for an event that lacks one. Hand every permission the chosen channel im
 
 Read `references/channel-templates.md` and write: the channel creation (guarded by API level,
 importance set at creation), the notification build through `NotificationCompat`, the group
-and summary where the app can produce more than one of a kind, the cancel and update paths,
-and the ongoing contract where it applies. The content intent targets its activity directly —
+and summary where the app can produce more than one of a kind — promoted Live Updates excepted,
+which are never grouped — the cancel and update paths, the conversation or call shape where the
+row's gate was 4 (`MessagingStyle` bound to a long-lived shortcut, or `CallStyle`), and the
+ongoing contract where it applies. The content intent targets its activity directly —
 never a trampoline. User-visible text goes through `strings.xml`. Gate: confirm before each
 file that would overwrite existing code (REQ-8).
 
@@ -187,6 +194,27 @@ build` green (REQ-1). Report, in the operator's language: the events derived and
 matched and rejected gates, the ledger rows written, the permissions handed over, each
 verification element that was green, red, or unrunnable and why, and any spec gap found.
 Never leave a red or skipped element unreported (REQ-7).
+
+## Audit procedure (operation `audit`)
+
+Read-only throughout. Nothing is written — not the ledger, not the code, not the manifest.
+
+1. **Enumerate the surface.** Every `notify()` call site, every channel and channel-group
+   creation, every foreground-service `startForeground()`, and the notification-related
+   permissions in the merged manifest.
+2. **Reconcile against the ledger.** Read `project/notification-ledger.md` where it exists. A
+   posted notification with no row, and a row with no code, are both findings.
+3. **Re-derive each posting site.** Classify its event per step 2 and walk the gates per step 3,
+   then compare the outcome with what the code actually does. A channel more intrusive than the
+   chain admits is the finding this operation exists for.
+4. **Check the construction rules** of `references/channel-templates.md` per site: channel
+   importance against the row, category set, lock-screen visibility, grouping where more than
+   one of a kind can be posted, cancellation of stale notifications, no trampoline, no custom
+   layout.
+5. **Report** on the canonical severity scale: `Critical` for a posting site with no row or a
+   channel the chain forbids, `Warning` for a construction rule broken, `Suggestion` for a
+   cheaper gate the event would now match, `Info` for a surface scanned clean. Each finding
+   carries the file and line, the spec section, and the operation that would fix it.
 
 ## Reference files
 
@@ -232,8 +260,10 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** resolve a gap-gate outcome by analogy to a neighbouring event; report it (REQ-6).
 - **Always** record the matched gate *and* the rejected cheaper gate; a row without the
   rejection is not a derivation, only a preference.
-- **Always** end with the verification of step 7 and an explicit report of every red or
-  unrunnable element (REQ-7).
+- **Always** end with the verification the operation calls for and an explicit report of every
+  red or unrunnable element (REQ-7): step 7 in full for `apply`, the ledger row and its recorded
+  gates for `derive` (which touches no code and therefore has nothing to build), the
+  severity-classified report for `audit`.
 - When a spec under `spec/android/` disagrees with this skill, the spec wins — report the gap
   and propose a spec change (REQ-6).
 

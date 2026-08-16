@@ -84,7 +84,8 @@ catalogue; read that section when an entry's trade-off is what the decision turn
   risk in the catalogue. The interrupt gate only, and rarely.
 - **Group + summary** — keeps a multi-event stream legible and confines alerting to the
   summary; needs a constant summary ID and update discipline. Mandatory as soon as the app can
-  produce more than one notification of a kind at once.
+  produce more than one notification of a kind at once — **except for promoted Live Updates**,
+  which the promotion contract forbids grouping, so concurrent ones stay separate.
 - **Conversation (`MessagingStyle` + shortcut)** — the conversation section, direct reply,
   bubbles, correct ranking; requires publishing and maintaining long-lived sharing shortcuts.
 - **`CallStyle`** — call-shaped layout with system-managed actions and top-of-shade ranking;

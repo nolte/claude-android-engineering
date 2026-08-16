@@ -37,10 +37,12 @@ there is nothing to hook a test to.
 ### Row template
 
 ```markdown
+| Column | Value |
+|---|---|
 | Event | Order shipped |
 | Classification | third-party origination; out-of-app presence; soon; acknowledgement; mild inconvenience; point event |
 | Gate | 6 — Await |
-| Rejected | 3 — Presence: the user is not in the app when the courier scans the parcel; 7 — Ambient: the user asked to be told once, not to check repeatedly |
+| Rejected | 3 — Presence: the user is not in the app when the courier scans the parcel; 5 — Interrupt was not reached because a shipping update has no minutes-scale consequence, so the chain fell through to 6 |
 | Channel | `orders_shipping` / "Shipping updates" / `IMPORTANCE_DEFAULT` |
 | Category | `CATEGORY_STATUS` |
 | Delivery | pushed (data message; a missed message is recovered by the order sync on next foreground) |
@@ -59,6 +61,8 @@ Importance is immutable after channel creation, so a reclassification is a **new
 Record the retirement in the same file so a later reader does not resurrect it:
 
 ```markdown
+| Column | Value |
+|---|---|
 | Event | Order shipped (retired 2026-08-16) |
 | Retired channel | `orders_shipping_v1` / `IMPORTANCE_HIGH` |
 | Reason | reclassified from interrupt to await: missing a shipping update within minutes has no safety, money, or data consequence |
