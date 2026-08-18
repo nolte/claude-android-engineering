@@ -84,7 +84,7 @@ Respond to these (and equivalents) exactly as to their English counterparts; the
 Detect the user's language and respond in it (German for this operator). All generated
 artifacts stay in their canonical form: Kotlin, resource keys, and code comments in English;
 user-visible copy is externalized to `strings.xml` (English source in `values/`, German in
-`values-de/`) per `spec/android/localization/` §A — never inlined in composables.
+`values-b+de/`) per `spec/android/localization/` §A — never inlined in composables.
 
 ## Operations
 
@@ -168,7 +168,7 @@ authoring-time properties: retrofitting them later means rewriting the list.
 
 Add every user-visible string to `values/strings.xml` (positional placeholders, `<plurals>`
 for counts, `translatable="false"` for brand/technical tokens, no translatable text in
-`<string-array>`) and its `values-de/` translation; register any new icon as a checked-in
+`<string-array>`) and its `values-b+de/` translation; register any new icon as a checked-in
 vector drawable behind the design-system registry, with `android:autoMirrored="true"` on
 directional glyphs (`spec/android/iconography/` §A/§B). Never add `material-icons-core` or
 `material-icons-extended`. Gate: confirm the string keys and translations.

@@ -142,9 +142,14 @@ val summary = NotificationCompat.Builder(context, channelId)
     .setGroupSummary(true)
     .build()
 
-NotificationManagerCompat.from(context).apply {
-    notify(orderNotificationId, child)
-    notify(SUMMARY_ID, summary)
+// POST_NOTIFICATIONS is a runtime permission on API 33+; NotificationManagerCompat.notify is
+// @RequiresPermission — guard every call (lint MissingPermission is error-level per the permission skill).
+if (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
+        context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+    NotificationManagerCompat.from(context).apply {
+        notify(orderNotificationId, child)
+        notify(SUMMARY_ID, summary)
+    }
 }
 ```
 

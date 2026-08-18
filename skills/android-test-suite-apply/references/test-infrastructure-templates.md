@@ -198,8 +198,8 @@ rule:
 @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
 @Before fun enableChecks() { composeTestRule.enableAccessibilityChecks() }
-// checks run on every action; call composeTestRule.tryPerformAccessibilityChecks() where a
-// pure-assertion test performs no action
+// checks run on every action; call composeTestRule.onRoot().tryPerformAccessibilityChecks() where a
+// pure-assertion test performs no action (the extension lives on SemanticsNodeInteraction)
 ```
 
 Suppressions: `AccessibilityValidator.setSuppressingResultMatcher(...)` with a comment naming

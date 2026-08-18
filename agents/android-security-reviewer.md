@@ -97,7 +97,7 @@ Twelve dimensions. Every finding cites the concrete § and a `file:line`. Use `G
 
 ### Dimension 5 — §E Permission minimalism (MASVS-PRIVACY)
 - Read the merged manifest's `<uses-permission>` set. Obviously excess or identifier permissions (`READ_PHONE_STATE`, `READ_PRIVILEGED_PHONE_STATE`, `MANAGE_EXTERNAL_STORAGE`, `QUERY_ALL_PACKAGES`, `SYSTEM_ALERT_WINDOW`, `BIND_ACCESSIBILITY_SERVICE` without `isAccessibilityTool` and policy declaration) → Critical. Persistent hardware identifiers in code (`getImei`, `getDeviceId`, `getLine1Number`, `Build.SERIAL`, `Settings.Secure.ANDROID_ID` used as a stable user key) → Critical.
-- Missing `project/permission-ledger.md` (or the ledger location `spec/android/permissions/` names) → Warning; every derivation-depth question (alternatives, rationale UX, denial paths, `MissingPermission` at error) is **delegated**: emit one `Info` "route to `android-permissions-derive` audit" rather than re-deriving here.
+- Missing `project/permissions-ledger.md` (or the ledger location `spec/android/permissions/` names) → Warning; every derivation-depth question (alternatives, rationale UX, denial paths, `MissingPermission` at error) is **delegated**: emit one `Info` "route to `android-permissions-derive` audit" rather than re-deriving here.
 - Third-party SDKs with data collection and no consent gate (`Firebase Analytics`, ad SDKs, crash reporters with `setUserId`) → Warning; Data Safety declaration accuracy is unverifiable statically → record under "Deferred scope".
 
 ### Dimension 6 — §D WebView hardening

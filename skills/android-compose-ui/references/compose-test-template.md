@@ -165,7 +165,7 @@ fun rendersAtLargeFontScale() {
 fun rendersInGermanLocale() {
     composeTestRule.setContent {
         DeviceConfigurationOverride(
-            DeviceConfigurationOverride.Locales(LocaleList.forLanguageTags("de")),
+            DeviceConfigurationOverride.Locales(LocaleList("de")) // androidx.compose.ui.text.intl.LocaleList,
         ) {
             AppTheme { ExampleContent(ExampleUiState.Success(fakeItems), {}, {}, {}) }
         }

@@ -268,7 +268,7 @@ The surrounding screen follows `android-compose-ui` conventions. Scanner-specifi
   - result → **polite** live region: `Modifier.semantics { liveRegion = LiveRegionMode.Polite }`
     (View: `setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE)`); never assertive;
   - surface switch (viewfinder → confirmation / manual entry) → pane title:
-    `Modifier.semantics { paneTitle = stringResource(...) }` (View: `accessibilityPaneTitle`);
+    `val title = stringResource(...)` outside the lambda, then `Modifier.semantics { paneTitle = title }` (`stringResource` is @Composable and cannot be called inside the semantics block) (View: `accessibilityPaneTitle`);
   - failed or rejected scan → `Modifier.semantics { error(message) }`, which emits
     `CONTENT_CHANGE_TYPE_ERROR` (View: `setError`/`setStateDescription` plus the error event).
 - Every control (torch, cancel, manual entry, gallery) meets 48dp × 48dp.
