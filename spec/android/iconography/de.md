@@ -40,7 +40,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 - **DARF NICHT [MUST NOT]** die Artefakte `androidx.compose.material:material-icons-core/-extended` in neuen Code aufnehmen — offiziell „no longer maintained or recommended", mit erheblichen Build-Zeit-Kosten; Bestandsnutzung ist Migrationsschuld, kein Präzedenzfall
 - **MUSS [MUST]** Icons als einzelne Vector-Drawable-XMLs beziehen, aus dem Material-Symbols-Katalog (fonts.google.com/icons, Android-Tab) in der gewählten Stil-/Gewichtsvariante der App heruntergeladen und im Design-System-Modul/-Paket unter `res/drawable/ic_<name>.xml` eingecheckt; `Icon` mit `ImageVector`/`painterResource` rendert sie, getönt über `LocalContentColor`/Theme-Rollen — nie hartkodierte Farben
-- **MUSS [MUST]** auto-gespiegelte Formen für direktionale Icons nutzen (`Icons.AutoMirrored.*` / `android:autoMirrored="true"`): Navigationspfeile spiegeln in RTL, Medien-Playback- und Uhr-Icons nicht (Regeln gemäß `spec/android/localization/` §D)
+- **MUSS [MUST]** direktionale Icons für die RTL-Spiegelung am eingecheckten Vektor selbst markieren: `android:autoMirrored="true"` am `<vector>`-Root (API 19+, systemseitige Spiegelung für Drawables, deren RTL-Form eine reine grafische Spiegelung ist) [R21] — Navigationspfeile, Back/Forward, Undo/Redo und Listen-Einrückungs-Glyphen spiegeln; Medien-Playback-, Uhr- und Häkchen-Icons nicht (diese Liste ist maßgeblich; `spec/android/localization/` §D verweist für das RTL-Verhalten von Icons hierher zurück). `Icons.AutoMirrored.*` ist dieselbe Idee innerhalb der deprecateten Artefakte `material-icons-core`/`-extended` [R6] und wird hier deshalb nur für Legacy-Code erwähnt, der sie noch trägt: eine Migrationsnotiz, nie ein Grund, diese Artefakte im Widerspruch zum ersten Punkt einem Modul hinzuzufügen
 - **MUSS [MUST]** den Icon-Zugriff in einem Registry-Objekt im Design-System zentralisieren (das `NiaIcons`-Muster): Features referenzieren das Register, nie direkt eine Icon-Bibliothek — das Register ist der eine Ort, an dem die Stilfamilien-Entscheidung durchgesetzt wird
 - **MUSS [MUST]** UI-Icons als Vektor halten (`VectorDrawable`); Raster ist fotografischem Inhalt vorbehalten; animierte Icon-Zustände **KÖNNEN [MAY]** `AnimatedImageVector` (experimentell) oder Compose-Animations-APIs nutzen
 - **SOLLTE [SHOULD]** der `ic_<name>`-Ressourcen-Namenskonvention folgen (etablierte Tooling-Konvention)
@@ -72,7 +72,7 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§E, 
 - [ ] Die App nutzt genau eine Material-Symbols-Stilfamilie; kein Screen mischt Familien oder Gewichte
 - [ ] Aktive/ausgewählte Navigationszustände rendern die gefüllte Variante (oder den Semibold-Fallback); inaktive rendern outlined
 - [ ] Kein Modul hängt von `material-icons-core` oder `material-icons-extended` ab; alle Icons sind eingecheckte Vector Drawables hinter dem zentralen Register
-- [ ] Jedes direktionale Icon ist auto-gespiegelt; Medien-/Uhr-Icons nicht
+- [ ] Jedes direktionale Icon trägt `android:autoMirrored="true"` an seinem eingecheckten Vektor; Medien-/Uhr-Icons nicht; außerhalb protokollierten Legacy-Codes existiert keine `Icons.AutoMirrored.*`-Referenz
 - [ ] Das Launcher-Icon ist adaptiv mit Foreground-, Background- und Monochrome-Layer, Inhalt innerhalb der 66dp-Safe-Zone und ohne eingebackene Maske oder Schatten
 - [ ] Das Notification-Small-Icon ist weiß-auf-transparent und rendert auf API 31+ mit gesetzter Akzentfarbe korrekt (kein Klumpen)
 - [ ] Jedes funktionale Icon hat eine aktionsformulierte Content Description; jedes dekorative übergibt `null`; Icon-Touch-Targets messen ≥ 48dp
@@ -81,6 +81,7 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§E, 
 - [ ] Der Icon-zu-Container-Kontrast beträgt mindestens 3:1, und kein Icon kodiert Bedeutung allein über Farbe
 - [ ] Kein Launcher-/Produktlogo-Artwork erscheint in einem In-App-UI-Icon-Slot
 - [ ] Eigene Icons entsprechen den Material-Raster-Metriken (Trim-/Live-Area, Strich, Ecken) der gewählten Familie
+- [ ] Icon-Drawables folgen der Namenskonvention `ic_<name>`, oder die Abweichung vom SHOULD in §B ist protokolliert
 
 ## Offene Fragen
 
@@ -92,14 +93,14 @@ Alle Fragen sind Parking-Lot-Klasse: Die Anforderungen oben nennen für jede ein
 
 ## Referenzen
 
-Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär (Referenzprojekt-Code, Ökosystem-Dokumentation). m3.material.io-Seiten sind clientseitig gerendert; die Inhalte wurden über gerenderte Abrufe der kanonischen URLs erfasst.
+Alle Quellen abgerufen am 11.08.2026; R6 und R21 erneut verifiziert am 19.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär (Referenzprojekt-Code, Ökosystem-Dokumentation). m3.material.io-Seiten sind clientseitig gerendert; die Inhalte wurden über gerenderte Abrufe der kanonischen URLs erfasst.
 
 - [R1] Material-Symbols-Guide (Stile, variable Achsen) (P): <https://developers.google.com/fonts/docs/material_symbols>
 - [R2] M3 — Applying Icons (Fill/Weight/Grade, Zielgrößen, Labels) (P): <https://m3.material.io/styles/icons/applying-icons>
 - [R3] M3 — Designing Icons (Raster, Keylines, Strich, eigene Icons) (P): <https://m3.material.io/styles/icons/designing-icons>
 - [R4] M3 — Navigation-Bar-Guidelines (Filled-=-aktiv-Konvention, Kontrast) (P): <https://m3.material.io/components/navigation-bar/guidelines>
 - [R5] Compose-Material-Icons-Deprecation und Symbols-Workflow (P): <https://developer.android.com/develop/ui/compose/graphics/images/material>
-- [R6] Compose-Material-Releases (AutoMirrored-Deprecations) (P): <https://developer.android.com/jetpack/androidx/releases/compose-material>
+- [R6] Compose-Material-Releases (`Icons.AutoMirrored` eingeführt in `material-icons-core`/`-extended` 1.6.0-alpha05, einfache direktionale Icons dort deprecatet) (P): <https://developer.android.com/jetpack/androidx/releases/compose-material>
 - [R7] Adaptive Launcher-Icons (Layer, Safe Zone, Monochrome; Android-16-QPR2-Auto-Theming) (P): <https://developer.android.com/develop/ui/views/launch/icon_design_adaptive>
 - [R8] App-Icons erstellen (Image Asset Studio, Dichten, Notification-Generierung) (P): <https://developer.android.com/studio/write/create-app-icons>
 - [R9] Play-Icon-Design-Spezifikation (512px, dynamische Maskierung) (P): <https://developer.android.com/google-play/resources/icon-design-specifications>
@@ -114,3 +115,4 @@ Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche V
 - [R18] Compose-Accessibility-Semantics (contentDescription-Regeln) (P): <https://developer.android.com/develop/ui/compose/accessibility/semantics>
 - [R19] Icon-Button-Accessibility (zustandsbehaftete Beschreibungen) (P): <https://developer.android.com/develop/ui/compose/components/icon-button>
 - [R20] Now-in-Android-Zentral-Icon-Register (S): <https://github.com/android/nowinandroid> (core/designsystem/icon/NiaIcons.kt)
+- [R21] Language-Support-Grundlagen — `android:autoMirrored="true"` für RTL-Drawable-Spiegelung (API 19+), Grenzen bei Mehr-Element-Drawables (P): <https://developer.android.com/training/basics/supporting-devices/languages>

@@ -1,6 +1,6 @@
 ---
 name: android-notification-derive
-description: "Decides which alerting channel a business event gets in an Android app and implements it device-side, per spec/android/notifications-alerting/. Classifies the event on six axes, runs the ordered gate chain so the cheaper channel wins where it suffices, and records a justified row per event in project/notification-ledger.md including the rejected cheaper gate. Then applies the device-side code: channel creation with its permanent importance, the notification build, category and lock-screen visibility, grouping with summary, the cancel and update rule, and the foreground-service or Live-Update contract. Operations: derive, audit, apply. Invoke when the user asks whether or how an app should notify about something, wants existing notifications audited or justified, or reports notifications that are missed, ignored, or switched off. Also handles equivalent German-language requests. Supports resume on re-invocation."
+description: "Decides which alerting channel a business event gets in an Android app and implements it on the device, per spec/android/notifications-alerting/. Classifies the event on six axes, runs the ordered gate chain so the cheaper channel wins, and records a justified row per event in project/notification-ledger.md incl. the rejected gate. Then applies the device-side code: channel creation with permanent importance, the notification build, category, visibility, grouping, update and cancel rule, foreground-service or Live-Update contract. Operations: derive, audit (read-only report), apply. Invoke when the user asks whether or how an app should notify about something, wants notifications audited, or reports them missed, ignored, or switched off. Also handles equivalent German-language requests. Don't use for the permission declaration (android-permissions-derive) or the FCM/WorkManager delivery path (android-feature-implement). Supports resume on re-invocation."
 tags: [ui, audit, implementation]
 phase: build
 summary: "Derives the alerting channel for a business event from its classification, records a justified ledger row, and writes the device-side notification code."
@@ -24,6 +24,7 @@ see_also:
   - android-feature-implement
   - android-permissions-derive
   - android-compose-ui
+  - android-code-reviewer
 resumable: true
 ---
 
@@ -53,6 +54,18 @@ permission family, whose derivation belongs to its own skill),
 (the in-app surface the presence gate selects), and `spec/android/test-automation/` (where
 the notification tests live).
 
+## German trigger phrases
+
+Respond to these (and equivalents) exactly as to their English counterparts; the frontmatter
+`description` stays English-only per `skill-management` §Structure:
+
+- "Soll die App darüber benachrichtigen?", "Welchen Benachrichtigungskanal bekommt dieses
+  Ereignis?", "Leite die Notification für X ab"
+- "Auditiere/prüfe die bestehenden Benachrichtigungen", "Begründe diese Notification"
+- "Nutzer schalten unsere Benachrichtigungen ab", "Wichtige Benachrichtigungen werden
+  übersehen", "Die Channel-Wichtigkeit ist falsch", "Live Update / Foreground-Service-Notification
+  für eine laufende Aktivität"
+
 ## Why this is a skill, not an agent
 
 - **Mid-flow approval is the contract.** Admitting a channel more intrusive than the one
@@ -60,16 +73,13 @@ the notification tests live).
   operator decisions with consequences that outlive the run (REQ-8); an agent's
   fire-and-forget shape cannot carry those gates.
 - **The persistent artifact is the deliverable.** The notification ledger and the channel
-  code land in the working tree and are reviewed in context, not behind a structured-report
-  boundary.
-- **It composes with sibling capabilities.** Every permission the chosen channel implies goes
-  to `android-permissions-derive`, the in-app surface to `android-compose-ui`, a
-  non-appearing notification to `android-debugging`; per `spec/claude/skill-vs-agent/`
-  §Primary decision rule the orchestrator is always a skill.
-- Counter-dimension considered: the `audit` operation alone — reading every `notify()` call
-  site, every channel creation, and the manifest — would suit an agent's context isolation,
-  but its findings feed directly into the admit/refuse gates that follow, so splitting it out
-  would break the interaction it exists to serve.
+  code land in the working tree and are reviewed in context, not behind a report boundary.
+- **It composes with sibling capabilities.** Permissions → `android-permissions-derive`,
+  in-app surface → `android-compose-ui`, non-appearing notification → `android-debugging`; per
+  `spec/claude/skill-vs-agent/` §Primary decision rule the orchestrator is always a skill.
+- Counter-dimension considered: the read-only `audit` would suit a dedicated auditor agent
+  (a candidate spec extension); it stays here because its findings are phrased as the `derive`
+  rows the operator starts next, so one gate vocabulary serves both.
 
 ## Boundary vs the sibling capabilities
 
@@ -77,12 +87,22 @@ the notification tests live).
   the `FOREGROUND_SERVICE_*` pair, `USE_FULL_SCREEN_INTENT`, and
   `POST_PROMOTED_NOTIFICATIONS` are *consequences* of a channel derived here: hand the ledger
   row over and take the declaration back, never write one into the manifest here.
+  **Guard-code ownership:** the SDK-version guards around `canUseFullScreenIntent()` (API 34+)
+  and `canPostPromotedNotifications()` (API 36+), their degradation branch, and the
+  settings-intent launch (`ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`,
+  `ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS` + `EXTRA_APP_PACKAGE`) are written **here**, by
+  the `apply` templates; the permission skill records the obligation in its ledger row and
+  verifies the guard exists.
 - `android-compose-ui` owns every in-app surface (REQ-13). When the silence or presence gate
   matches, this skill decides *that* the in-app path carries the event and hands the authoring
   there; it does not build screens.
 - `android-feature-implement` owns the feature across layers (REQ-19) and **calls this skill**
-  for the channel step. The delivery path — FCM reception, WorkManager and AlarmManager
-  scheduling — stays with it as part of the data layer; this skill ends at the device-side
+  for the channel step. The delivery path of `spec/android/notifications-alerting/` §E — FCM
+  data messages, the `priority: high` reserve, `onMessageReceived()` handing off to WorkManager,
+  missed-message recovery by state sync, WorkManager versus `AlarmManager` — is implemented by
+  its step 3 (delivery-path decision) and step 5.3 "Sync and delivery path" (see that skill's
+  flat-layer-checklist §10 and layer-templates §5); this skill records `local` /
+  `scheduled` / `pushed` in the ledger's `Delivery` column and ends at the device-side
   notification code.
 - `android-ux-reviewer` reviews UI read-only (REQ-14); notification-channel conformance is
   outside its Compose surface and is audited by the `audit` operation here.
@@ -100,16 +120,16 @@ builder call.
 
 ## Operations
 
-Pick one at the start and say which is running. All three share the gates below. The split is
-deliberate: `derive` **decides and records**, `audit` **only reports**, `apply` **writes code**.
-Nothing is written into the app before a complete ledger row exists for it.
+Pick one at the start and say which is running. The split is deliberate: `derive` **decides
+and records**, `audit` **only reports**, `apply` **writes code**. Nothing is written into the
+app before a complete ledger row exists for it.
 
 - **`derive`** — an event exists or is planned and its channel is undecided. Runs steps 1–4
   and the ledger write of step 5. Touches no code.
 - **`audit`** — an app already posts notifications and the set needs justifying. Runs the audit
   procedure below and **writes nothing at all** (REQ-21): it produces a severity-classified
-  findings report on the canonical `Critical` / `Warning` / `Suggestion` / `Info` scale of
-  `spec/claude/review-plan/`, naming the ledger rows the app owes. Turning a finding into a row
+  findings report (`Critical` / `Warning` / `Suggestion` / `Info` per
+  `spec/claude/review-plan/`) naming the ledger rows the app owes; turning a finding into a row
   is a `derive` run the operator starts afterwards.
 - **`apply`** — a ledger row exists and its device-side code is to be written or corrected.
   Runs steps 5–7.
@@ -155,17 +175,21 @@ Walk the gates **in order** and take the first that matches. The ordering is the
 which the cheaper channel wins, so a later gate is only reached by failing every earlier one.
 Record the matched gate **and** the cheaper gate that was rejected, with the reason. Two
 outcomes end the run without a channel: the refusal gate (promotional, re-engagement-driven,
-or celebratory — reported as out of policy) and the gap gate (a case the spec does not cover
-— reported as a spec gap per REQ-6, never resolved by analogy). Gate: confirm the outcome.
+celebratory, a greeting, or a rating request — reported as out of policy) and the gap gate (a
+case the spec does not cover — reported as a spec gap per REQ-6, never resolved by analogy).
+Gate: confirm the outcome.
 
 ### 4. Derive the channel's properties
 
 For a channel-bearing outcome, decide and record: the channel ID and user-visible name, its
-**permanent** importance, the `setCategory()` value, lock-screen visibility (with a public
-version wherever the content is sensitive), the grouping key and summary behaviour, the update
-and cancellation rule, and the degradation behaviour when notifications are off. Where the
-outcome is the ongoing family, add its contract — foreground-service type, or the promotion
-requirements of a Live Update. Gate: confirm before anything is written.
+**permanent** importance — one channel per type of event the user would want to control
+separately — the `setCategory()` value, lock-screen visibility (with a public version wherever
+the content is sensitive, and the sensitivity classification it applied), the delivery path,
+the group key with the summary behaviour, the update key (recorded as its own ledger column),
+the dismissal and cancellation rule,
+and the degradation behaviour when notifications are off. Where the outcome is the ongoing
+family, add its contract — foreground-service type, or the promotion requirements of a Live
+Update. Gate: confirm before anything is written.
 
 ### 5. Write the ledger row
 
@@ -181,9 +205,11 @@ importance set at creation), the notification build through `NotificationCompat`
 and summary where the app can produce more than one of a kind — promoted Live Updates excepted,
 which are never grouped — the cancel and update paths, the conversation or call shape where the
 row's gate was 4 (`MessagingStyle` bound to a long-lived shortcut, or `CallStyle`), and the
-ongoing contract where it applies. The content intent targets its activity directly —
-never a trampoline. User-visible text goes through `strings.xml`. Gate: confirm before each
-file that would overwrite existing code (REQ-8).
+ongoing contract where it applies — including the SDK-guarded `canUseFullScreenIntent()` /
+`canPostPromotedNotifications()` checks, their fallbacks, and settings routes, which this skill
+owns. The content intent targets its activity directly — never a trampoline. User-visible
+text goes through `strings.xml`. Gate: confirm before each file that would overwrite existing
+code (REQ-8).
 
 ### 7. Verify and report
 
@@ -208,10 +234,12 @@ Read-only throughout. Nothing is written — not the ledger, not the code, not t
    then compare the outcome with what the code actually does. A channel more intrusive than the
    chain admits is the finding this operation exists for.
 4. **Check the construction rules** of `references/channel-templates.md` per site: channel
-   importance against the row, category set, lock-screen visibility, grouping where more than
-   one of a kind can be posted, cancellation of stale notifications, no trampoline, no custom
-   layout — and, where the app bubbles a conversation, that the notification still works as an
-   ordinary one when bubbles are disabled.
+   importance against the row, category set, lock-screen visibility against the row's
+   `Visibility` column, grouping with an update key where more than one of a kind can be
+   posted, cancellation of stale notifications, no trampoline, no custom layout, the SDK guards
+   around `canUseFullScreenIntent()` / `canPostPromotedNotifications()` — and, where the app
+   bubbles a conversation, that the notification still works as an ordinary one when bubbles
+   are disabled.
 5. **Report** on the canonical severity scale: `Critical` for a posting site with no row or a
    channel the chain forbids, `Warning` for a construction rule broken, `Suggestion` for a
    cheaper gate the event would now match, `Info` for a surface scanned clean. Each finding
@@ -242,8 +270,8 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 
 - **Never** create a channel or write a notification before a complete ledger row exists for
   its event (REQ-21).
-- **Never** implement a promotional, re-engagement-driven, or celebratory notification. The
-  refusal gate reports it as out of policy — including when the operator asks for it directly,
+- **Never** implement a promotional, re-engagement-driven, celebratory, greeting, or
+  rating-request notification. The refusal gate reports it as out of policy — including when the operator asks for it directly,
   in which case the report names the policy rather than complying (REQ-21).
 - **Never** change the importance of an existing channel in place; it is immutable after
   creation. A reclassification is a **new** channel, with the old one's retirement recorded in
@@ -274,18 +302,14 @@ Concrete corrections to non-obvious facts the executing agent would otherwise ge
 
 - **A channel's behaviour is frozen at creation, not at first use.** Importance, sound,
   vibration, and group membership can never be changed by the app afterwards — only name and
-  description can. Getting the importance wrong is not a tuning mistake; it costs a channel.
-- **Deleted channels stay visible.** The system settings show a count of deleted channels as a
-  spam signal, so churning through channel IDs to fix a wrong importance is itself a cost the
-  user sees. On a development device, reinstalling or clearing app data is the way to reset
-  test channels.
-- **A notification posted to a blocked channel succeeds silently.** `notify()` does not throw
-  and returns nothing useful; the notification simply never appears. Only
-  `areNotificationsEnabled()` plus the channel's own `getImportance()` distinguish "delivered"
+  description can. A wrong importance is not a tuning mistake; it costs a channel.
+- **Deleted channels stay visible.** System settings count deleted channels as a spam signal,
+  so churning channel IDs is itself a cost the user sees; on a development device, reinstall or
+  clear app data to reset test channels.
+- **A notification posted to a blocked channel succeeds silently.** `notify()` does not throw;
+  only `areNotificationsEnabled()` plus the channel's `getImportance()` distinguish "delivered"
   from "accepted and discarded".
-- **A foreground-service notification may not appear for ten seconds.** Android 12 and higher
-  defer it, which is right for short work and wrong when the user is waiting to see it —
-  `setForegroundServiceBehavior(FOREGROUND_SERVICE_IMMEDIATE)` is the opt-out.
-- **Rapid updates are dropped, not queued.** Re-posting the same notification ID many times a
-  second is throttled by the system; a progress notification that updates per percent will
-  visibly stutter or lag. Update on meaningful change, with `setOnlyAlertOnce(true)`.
+- **A foreground-service notification may not appear for ten seconds.** Android 12+ defers it —
+  right for short work, wrong when the user is waiting; `FOREGROUND_SERVICE_IMMEDIATE` opts out.
+- **Rapid updates are dropped, not queued.** Re-posting the same ID many times a second is
+  throttled; update on meaningful change, with `setOnlyAlertOnce(true)`.

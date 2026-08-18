@@ -5,26 +5,41 @@
 
 Reusable, spec-based [Claude Code](https://claude.com/claude-code) skills and
 agents for native Android engineering — project setup, Jetpack Compose UI,
-feature implementation as a flat view layer, mobile UX, perceived performance,
-QR/barcode scanning, and local debugging.
+feature implementation as a flat view layer, permissions and notifications,
+QR/barcode scanning, USB (UVC) cameras, localization, test suites and CI,
+toolchain upgrades, perceived performance, local debugging, and read-only
+UX, code, security, and release-readiness reviews.
 
 ## Purpose
 
-<!-- TODO(audience-doc-author): replace with two to six bullets describing the
-problem this repository solves, naming the primary audiences from
-AUDIENCES.md (android-dev-operator, public-plugin-consumers). -->
-
-Replace this with two to six bullets describing the problem this repository
-solves and who its intended consumers are.
+- Gives Android developers (the operator, and anyone who installs the plugin)
+  skills that scaffold, build, audit, and debug native Kotlin/Compose apps in
+  conformance with an explicit, bilingual spec corpus under `spec/android/`.
+- Every skill is grounded in a spec and closes on a green `./gradlew build`;
+  when a decision is not covered by a spec, the skill reports the gap instead
+  of deciding silently (`project/requirements/android-engineering-skills.md`).
+- Read-only reviewer agents (UX, code, security, release readiness) surface
+  findings with `file:line` and the violated spec section; the skills apply
+  the fixes.
+- Play-Store release tooling is out of scope; production-grade release-build
+  quality of the source is in scope (`spec/android/release-readiness/`).
 
 ## Usage
 
-<!-- TODO(audience-doc-author): document the plugin install path once the
-distribution channel (marketplace vs git reference) is decided. -->
+Add this repository as a plugin marketplace in Claude Code and install the
+plugin; the `nolte-shared` hub plugin supplies the inherited portfolio specs
+and shared skills:
 
 ```shell
-# TODO: plugin installation command (distribution channel pending)
+/plugin marketplace add nolte/claude-shared
+/plugin install nolte-shared@nolte-shared
+/plugin marketplace add nolte/claude-android-engineering
+/plugin install claude-android-engineering@claude-android-engineering
 ```
+
+Skills are then callable as `/claude-android-engineering:<name>` (for example
+`/claude-android-engineering:android-project-scaffold`); the reviewer agents
+are dispatched by the skills or directly via Claude Code's agent tool.
 
 ### Local development
 
@@ -49,11 +64,14 @@ environment; it tells you how to create one if it is missing.
 
 ```text
 .claude-plugin/  # plugin manifest (plugin.json)
-skills/          # eight skills: android-project-scaffold, android-compose-ui,
+skills/          # twelve skills: android-project-scaffold, android-compose-ui,
                  #   android-feature-implement, android-permissions-derive,
                  #   android-notification-derive, android-perceived-performance,
-                 #   android-debugging, android-barcode-scanner-scaffold
-agents/          # android-ux-reviewer (read-only UI audit)
+                 #   android-debugging, android-barcode-scanner-scaffold,
+                 #   android-uvc-microscope-scaffold, android-localization-apply,
+                 #   android-test-suite-apply, android-toolchain-upgrade
+agents/          # read-only reviewers: android-ux-reviewer, android-code-reviewer,
+                 #   android-security-reviewer, android-release-readiness-reviewer
 spec/            # bilingual spec corpus (en canonical + de); android/ holds the Android specs
 project/         # planning artifacts (requirements; mission/roadmap pending)
 docs/            # MkDocs site sources, per-language trees (en/, de/)
@@ -65,13 +83,16 @@ AUDIENCES.md     # audience analysis for this repository
 
 - [nolte/claude-shared](https://github.com/nolte/claude-shared) — hub plugin; portfolio-wide specs and shared skills this repository inherits
 - [nolte/gh-plumbing](https://github.com/nolte/gh-plumbing) — reusable GitHub workflows and Probot commons configs wired into `.github/`
-- [nolte/taskfiles](https://github.com/nolte/taskfiles) — shared Taskfile collection (not yet included here)
+- [nolte/taskfiles](https://github.com/nolte/taskfiles) — shared Taskfile collection included by the Taskfile (`mkdocs:*` targets)
 
 ## Status
 
-Early stage: the spec corpus, repository structure, and the first skills
-(project scaffold, Compose UI, feature implementation, perceived performance,
-debugging, barcode scanner) plus the UX-review agent are in place. Play-Store
+Early stage: the spec corpus (19 Android specs, en canonical + de), twelve
+skills, and four read-only reviewer agents are in place; every spec under
+`spec/android/` is bound to at least one executor. The 2026-08-18 audit
+remediation added the security, code, and release-readiness reviewers plus the
+UVC, localization, test-suite, and toolchain-upgrade skills (REQ-22 to REQ-28,
+recorded as `assumed` pending teach-back). Play-Store
 release tooling is out of scope; production-grade release-build quality of the
 source is covered by `spec/android/release-readiness/`.
 

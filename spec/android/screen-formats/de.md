@@ -58,12 +58,12 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - **MUSS [MUST]** **Tier 3 („adaptive ready")** bedingungslos erfüllen — die Untergrenze, unter der Play die App auf Tablets abwertet und eine Qualitätswarnung zeigt: Full-Window-Rendering ohne Letterboxing, jeder Konfigurationswechsel und jede Kombination (Rotieren + Resize + Falten) übersteht mit intaktem Zustand, volle Funktion im Split-Screen, Multi-Resume-Korrektheit, Kamera-Previews korrekt in jeder Orientierung und jedem Faltzustand sowie Basis-Support für Tastatur, Maus/Trackpad und Stylus [R5][R6]
 - **SOLLTE [SHOULD]** **Tier 2 („adaptive optimized")** erfüllen — das Zielniveau dieses Portfolios: size-class-getriebene adaptive Layouts, keine Full-Width-Sekundär-UI, 48dp-Touch-Targets, Fokuszustände für interaktive Elemente, Tastaturnavigation durch die Hauptflüsse plus Standard-Shortcuts (Copy/Paste/Undo, Esc, Enter, Leertaste), Rechtsklick-Kontextmenüs, Hover-Zustände und Content-Zoom [R6]
 - **KANN [MAY]** **Tier-1**-Features („adaptive differentiated": Foldable-Postures, Multi-Instance, Drag-and-drop, Stylus-Optimierung, Desktop-Windowing-Politur) pro App verfolgen, wo sie differenzieren
-- **MUSS [MUST]** gegen die offizielle Referenzmatrix verifizieren: Foldable 841×701dp, 8"-Tablet 1024×640dp, 10,5"-Tablet 1280×800dp, 13" 1600×900dp [R15] (Ausführung über `spec/android/test-automation/` §D — `DeviceConfigurationOverride.ForcedSize`, Robolectric-Qualifier, Resizable Emulator, `@PreviewScreenSizes`)
+- **MUSS [MUST]** gegen die offizielle Referenzmatrix verifizieren: Foldable 841×701dp, 8"-Tablet 1024×640dp, 10,5"-Tablet 1280×800dp, 13" 1600×900dp [R5] (Ausführung über `spec/android/test-automation/` §D — `DeviceConfigurationOverride.ForcedSize`, Robolectric-Qualifier, Resizable Emulator, `@PreviewScreenSizes`)
 
 ### E. Foldables und Desktop-Windowing (begrenzter Scope)
 
 - **MUSS [MUST]** Falten/Entfalten als zustandserhaltenden Konfigurationswechsel behandeln (durch Tier 3 abgedeckt); Apps, die nur Size Classes korrekt umsetzen, sind auf Foldables akzeptabel — Posture-Support ist offiziell optionale Differenzierung
-- **MUSS [MUST]** bei einem `FoldingFeature` mit `isSeparating` kritische UI vom Scharnier fernhalten (die kanonischen Pane-Scaffolds tun das automatisch — ein Grund mehr, sie zu nutzen)
+- **MUSS [MUST]** bei einem `FoldingFeature` mit `isSeparating` kritische UI vom Scharnier fernhalten (die kanonischen Pane-Scaffolds tun das automatisch — ein Grund mehr, sie zu nutzen); die Posture-Quelle ist der `WindowInfoTracker.getOrCreate(context).windowLayoutInfo(activity)`-Flow von Jetpack WindowManager, dessen `displayFeatures` das `FoldingFeature` mit `state` (`FLAT`/`HALF_OPENED`), `orientation`, `isSeparating` und `occlusionType` tragen — Tabletop ist `HALF_OPENED` + `HORIZONTAL`, Book ist `HALF_OPENED` + `VERTICAL` [R10]; eine App, die Postures liest, liest sie aus diesem Flow und leitet sie nie aus der Fenstergröße ab
 - **SOLLTE [SHOULD]** die Desktop-Windowing-Chrome behandeln, wo relevant: Caption-Bar-Insets (`WindowInsets.captionBar`); Freiform-Fenster resizen Apps unabhängig von Legacy-Einschränkungen
 - **KANN [MAY]** Tabletop-/Book-Posture-Layouts, Rear-Display-Erlebnisse und Multi-Instance-Support als Tier-1-Arbeit umsetzen
 
@@ -95,26 +95,26 @@ Alle vier Fragen sind Parking-Lot-Klasse: Die Anforderungen oben nennen für jed
 - Tier-2-Eingabe-Vollständigkeit (volles Shortcut-Set, Content-Zoom) für die *erste* generierte App-Version: von Anfang an scaffolden oder gestuft, nachdem das Phone-Erlebnis stabil ist?
 - Large/Extra-large-Opt-in: jetzt übernehmen für künftiges Desktop-Windowing oder aufschieben, bis ein reales Ziel existiert?
 - Foldable-Postures: als optionales Standardmodul im Compose-UI-Skill oder nur pro App?
-- Die material3-adaptive-Navigation-3-Integration (`ListDetailSceneStrategy`) ist noch experimentell — jetzt festlegen (NiA tut es) oder auf Stabilisierung warten?
+- Die material3-adaptive-Navigation-3-Integration (`ListDetailSceneStrategy` in `adaptive-navigation3`) ist noch ein Alpha-Artefakt (1.3.0-alpha-Linie zum Abrufzeitpunkt; weder Beta noch Stable existieren) [R13] — jetzt festlegen (NiA tut es) oder auf Stabilisierung warten? Arbeitsannahme: protokollierte Entscheidung pro Projekt; `NavigableListDetailPaneScaffold` bleibt der stabile Pfad
 
 ## Referenzen
 
-Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär. Plattformverhaltens-Fakten (Breakpoints, targetSdk-Gates, Qualitätsstufen) zitieren die maßgebliche Primärquelle gemäß Portfolio-Triangulationskonvention; R16–R17 sind korroborierender Kontext.
+Alle Quellen abgerufen am 11.08.2026; R5, R10 und R13 erneut verifiziert am 19.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär. Plattformverhaltens-Fakten (Breakpoints, targetSdk-Gates, Qualitätsstufen) zitieren die maßgebliche Primärquelle gemäß Portfolio-Triangulationskonvention; R16–R17 sind korroborierender Kontext.
 
 - [R1] Window Size Classes (Breakpoints, API, Dynamik): <https://developer.android.com/develop/ui/compose/layouts/adaptive/use-window-size-classes>
 - [R2] Adaptive-Layouts-Überblick (Ersetzen statt Strecken): <https://developer.android.com/develop/ui/compose/layouts/adaptive>
 - [R3] Kanonische Layouts: <https://developer.android.com/develop/ui/compose/layouts/adaptive/canonical-layouts>
 - [R4] List-Detail-Scaffolds und Back-Verhalten: <https://developer.android.com/develop/ui/compose/layouts/adaptive/list-detail>
-- [R5] Adaptive App Quality (Tier-System): <https://developer.android.com/docs/quality-guidelines/large-screen-app-quality>
+- [R5] Adaptive-App-Quality-Richtlinien (Tier-System; Referenzgeräte-Matrix — Foldable 841×701dp, 8" 1024×640dp, 10,5" 1280×800dp, 13" 1600×900dp): <https://developer.android.com/docs/quality-guidelines/large-screen-app-quality>
 - [R6] Tier-3-/Tier-2-/Tier-1-Checklisten: <https://developer.android.com/docs/quality-guidelines/adaptive-app-quality/tier-3> (und /tier-2, /tier-1)
 - [R7] Android-16-Behavior-Changes (Orientierung/Resizability ignoriert): <https://developer.android.com/about/versions/16/behavior-changes-16>
 - [R8] Orientierungs-/Aspect-Ratio-/Resizability-Guidance: <https://developer.android.com/develop/ui/compose/layouts/adaptive/app-orientation-aspect-ratio-resizability>
 - [R9] Multi-Window-Support (Multi-Resume, Resizability-Defaults): <https://developer.android.com/guide/topics/large-screens/multi-window-support>
-- [R10] Fold-aware Apps (`FoldingFeature`, Postures): <https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware>
+- [R10] Fold-aware Apps (`WindowInfoTracker.windowLayoutInfo`, `FoldingFeature.state`/`orientation`/`isSeparating`/`occlusionType`, Tabletop- und Book-Erkennung): <https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware>
 - [R11] Desktop-Windowing-Support: <https://developer.android.com/develop/ui/compose/layouts/adaptive/support-desktop-windowing>
 - [R12] androidx.window-Releases (L/XL-Klassen, Deprecations): <https://developer.android.com/jetpack/androidx/releases/window>
-- [R13] material3-adaptive-Releases: <https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive>
+- [R13] material3-adaptive-Releases (Alpha-Status von `adaptive-navigation3`): <https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive>
 - [R14] Screen Densities (dp/sp, Vector-first): <https://developer.android.com/training/multiscreen/screendensities>
-- [R15] Testen über Bildschirmgrößen (Referenzgeräte, Werkzeuge): <https://developer.android.com/training/testing/different-screens/tools>
+- [R15] Testen über Bildschirmgrößen (Werkzeuge: `DeviceConfigurationOverride`, Robolectric-Qualifier, Resizable Emulator, Previews): <https://developer.android.com/training/testing/different-screens/tools>
 - [R16] Play-Large-Screen-Discovery-Änderungen (Ranking, Warnungen, Formfaktor-Ratings; Ankündigung 2022, Policy weiterhin in Kraft gemäß R5) (P): <https://android-developers.googleblog.com/2022/03/helping-users-discover-quality-apps-on.html>
 - [R17] Now-in-Android-Adaptive-Implementierung (NavigationSuiteScaffold, ListDetailSceneStrategy) (S): <https://github.com/android/nowinandroid>

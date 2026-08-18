@@ -6,7 +6,7 @@ Status: draft
 
 Mehrsprachigkeit ist keine am Ende angeschraubte Übersetzungsdatei — sie ist ein Satz von Disziplinen, die ab der ersten String-Ressource gelten müssen: externalisierte Strings, locale-korrekte Formatierung, RTL-fähige Layouts, eine Per-App-Sprachoberfläche und ein Übersetzungs-Workflow, der Sprachen synchron hält. Diese Spec ist das vollständige Internationalisierungs-/Lokalisierungskonzept für Apps, die mit den Skills dieses Repositories gebaut werden — dimensioniert für den typischen Portfolio-Fall (zweisprachig Englisch/Deutsch), aber korrekt für jedes Sprachset.
 
-Der Inhalt ist aus einem Recherche-Durchlauf (August 2026) destilliert: die offizielle Android-Lokalisierungsdokumentation (String-Ressourcen, mehrsprachige Ressourcenauflösung, Per-App-Sprachen, RTL, Pseudolocales, nichtlineare Font-Skalierung), die aktuelle Gradle-/AGP-Oberfläche (`generateLocaleConfig`, `localeFilters` als Ersatz des seit AGP 8.8 deprecateten `resourceConfigurations`), Googles Per-App-Language-Sample sowie Übersetzungs-Workflow-Praxis für kleine Teams (TMS-Optionen, der ehrliche Stand 2025/2026 LLM-gestützter Übersetzung).
+Der Inhalt ist aus einem Recherche-Durchlauf (August 2026) destilliert: die offizielle Android-Lokalisierungsdokumentation (String-Ressourcen, mehrsprachige Ressourcenauflösung, Per-App-Sprachen, RTL, Pseudolocales, nichtlineare Font-Skalierung), die aktuelle Gradle-/AGP-Oberfläche (`generateLocaleConfig`, `androidResources.localeFilters` als Ersatz für das seit AGP 8.8 deprecatete `resourceConfigurations`), die APIs für grammatische Flexion und ICU-Message-Formatierung, Googles Per-App-Language-Sample sowie Übersetzungs-Workflow-Praxis für kleine Teams (TMS-Optionen, der ehrliche Stand 2025/2026 LLM-gestützter Übersetzung).
 
 Grenzen: Textexpansions-sichere Layout-Mechanik und Font-Skalierung teilen sich mit `spec/android/app-design-navigation/` §A (diese Spec besitzt die locale-getriebenen Ursachen); Icon-Spiegelungsregeln liegen in `spec/android/iconography/` §B; die Ausführung der Per-Locale-Tests gehört `spec/android/test-automation/`.
 
@@ -41,7 +41,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 ### B. Ressourcenauflösung und Build-Konfiguration
 
 - **MUSS [MUST]** das Default-`values/` in der Source-of-Truth-Sprache vollständig halten (Englisch für dieses Portfolio); ein im Default-Set fehlender String crasht nicht unterstützte Locales — `MissingTranslation`/`ExtraTranslation`-Lint bleibt als Vollständigkeits-Gate auf Fehler-Stufe
-- **MUSS [MUST]** das unterstützte Locale-Set im Build deklarieren: `androidResources { localeFilters += listOf("en", "de") }` (der AGP-8.8+-Ersatz für das deprecatete `resourceConfigurations`), was zugleich Library-Locales strippt
+- **MUSS [MUST]** das unterstützte Locale-Set im Build deklarieren: `androidResources { localeFilters += listOf("en", "de") }` — `resourceConfigurations` ist seit AGP 8.8 deprecatet (AGP hat die Dichte-Filterung aufgegeben, und Play verlangt App Bundles), und `androidResources.localeFilters` ist der Ersatz für dessen Sprachanteil [R11]; es strippt zugleich Library-Locales
 - **SOLLTE [SHOULD]** BCP-47-Qualifier (`values-b+…`) für neue Ressourcenverzeichnisse nutzen und sich auf die Android-7+-Auflösungskette (exakt → Sprache → Kind-Dialekte → nächste Nutzer-Locale → Default) verlassen, statt Ressourcen je Dialekt zu duplizieren
 - **KANN [MAY]** partielle Übersetzungen transient führen (der Fallback deckt Lücken), aber eine Release-Runde schließt sie (Gate gemäß §E)
 
@@ -50,7 +50,9 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - **MUSS [MUST]** unterstützte Sprachen für das System sichtbar machen: `generateLocaleConfig = true` mit `resources.properties` (`unqualifiedResLocale=…`) — oder ein manuelles `locales_config.xml`, verdrahtet via `android:localeConfig`
 - **MUSS [MUST]** den In-App-Sprachwähler über `AppCompatDelegate.setApplicationLocales()`/`getApplicationLocales()` implementieren (Activities sind `AppCompatActivity`, auch in Compose-Apps), mit dem `autoStoreLocales`-Manifest-Service für Persistenz unterhalb Android 13
 - **SOLLTE [SHOULD]** „Systemstandard" als Wahl anbieten (`setApplicationLocales(emptyLocaleList)`) und gespeicherte Locales zurücksetzen, wenn eine Sprache aus der Konfiguration fällt, damit Nutzer nicht stranden
+- **MUSS [MUST]** das Argument des Wählers mit `LocaleListCompat.forLanguageTags("<bcp47>")` bauen und mit `LocaleListCompat.getEmptyLocaleList()` zurücksetzen; der Aufruf läuft auf dem Main-Thread, weil er die Activity neu erzeugen kann, und die Optionsliste des Wählers wird aus der deklarierten Locale-Konfiguration (§C oben) abgeleitet statt aus einer zweiten hartkodierten Liste [R4]
 - **KANN [MAY]** den Framework-`LocaleManager` direkt nutzen, aber nur bei minSdk ≥ 33
+- **SOLLTE [SHOULD]**, wo eine unterstützte Sprache nach dem grammatischen Geschlecht der angesprochenen Person flektiert (Deutsch tut das), die Wahl über `GrammaticalInflectionManager.setRequestedApplicationGrammaticalGender()` ab API 34 anbieten und die flektierten Varianten als `values-<locale>-feminine|masculine|neuter`-Ressourcensätze ausliefern, wobei die ungegenderte Form der Default bleibt; die Änderung ist ein Konfigurationswechsel, sofern `grammaticalGender` nicht in `configChanges` deklariert ist [R19]. Unterhalb API 34 rendert der ungegenderte Default unverändert
 
 ### D. Locale-korrektes Verhalten
 
@@ -59,19 +61,20 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - **MUSS [MUST]** RTL durchgängig unterstützen: `android:supportsRtl="true"`, überall start/end (nie left/right), Composes automatische `LayoutDirection`-Spiegelung mit bewussten `CompositionLocalProvider`-Overrides nur für richtungsfixierten Inhalt (Telefonnummern, Code); direktionale Icons spiegeln automatisch gemäß `spec/android/iconography/` §B
 - **SOLLTE [SHOULD]** frei gerichtete Inline-Daten (Adressen, Telefonnummern in übersetzten Sätzen) mit `BidiFormatter.unicodeWrap` wrappen
 - **SOLLTE [SHOULD]** `android.icu.*`-Klassen (API 24+) gegenüber ihren `java.text`-Pendants bevorzugen
+- **MUSS [MUST]** für Text, den die App aus servergelieferten oder programmatischen Vorlagen statt aus `strings.xml` formatiert (der eine Fall, den `<plurals>` aus §A nicht abdecken kann), `android.icu.text.MessageFormat` (API 24+) mit `plural`-, `select`- und `selectordinal`-Argumenten statt String-Interpolation verwenden, damit Zählungen und gegenderte Formen auch dort grammatisch bleiben [R20]; die Vorlagen selbst bleiben Content-Lokalisierung gemäß Nicht-Zielen
 
 ### E. Testen und Übersetzungs-Workflow
 
 - **MUSS [MUST]** Pseudolocales in Debug-Builds aktivieren (`isPseudoLocalesEnabled = true`) und vor jeder Übersetzungsrunde einen `en-XA`- (Expansion, Hardcoded-String- und Konkatenations-Erkennung) und `ar-XB`-Durchlauf (RTL) fahren
 - **MUSS [MUST]** eine Sprache als Source of Truth behandeln und alle anderen ableiten; Übersetzungen divergieren nie strukturell (Per-Locale-Dateien tragen dieselben Keys, durch das Lint-Gate erzwungen)
-- **MUSS [MUST]** Layouts bei 200 % Font-Skalierung und mit expandiertem Pseudolocale-Text verifizieren (Deutsch läuft ~30–40 % länger; keine Textcontainer fester Breite) — Ausführung über die Previews von `spec/android/test-automation/` (`@Preview(locale = …)`, `@PreviewFontScales`) und Per-Locale-Screenshot-Tests, wo vorhanden
+- **MUSS [MUST]** Layouts bei 200 % Font-Skalierung und mit expandiertem Pseudolocale-Text verifizieren (Deutsch läuft ~30–40 % länger; keine Textcontainer fester Breite) — Ausführung über die Previews von `spec/android/test-automation/` (`@Preview(locale = …)`, `@PreviewFontScale`) und Per-Locale-Screenshot-Tests, wo vorhanden
 - **SOLLTE [SHOULD]** einen leichtgewichtigen Übersetzungs-Workflow fahren: String-Freeze vor einer Release-Runde, LLM-gestützte Entwurfsübersetzung mit menschlichem Review für sichtbare Strings (der ehrliche Stand 2025/2026: LLM-Output wird in 55–80 % der Blind-Bewertungen als „gut" eingestuft — Entwurfsqualität, keine Ship-Qualität), ein TMS (Weblate/Crowdin) erst, wenn Contributor-Übersetzung beginnt
 - **SOLLTE [SHOULD]** den App-Namen als `translatable="false"`-Marke behandeln, sofern lokalisiertes Branding keine bewusste Entscheidung ist
 
 ### F. Compose-Spezifika
 
 - **MUSS [MUST]** Strings in Composables über `stringResource`/`pluralStringResource` lesen (rekompositionssicher bei Sprachwechsel); **DARF NICHT [MUST NOT]** Strings in Composables konkatenieren oder locale-abhängige Werte ohne Locale-/Configuration-Key in `remember` cachen
-- **SOLLTE [SHOULD]** Per-Locale-Previews (`@Preview(locale = "de")`, `@Preview(locale = "ar")` für RTL) ins Standard-Preview-Set aufnehmen; Hinweis: der Preview-`locale`-Parameter setzt nur `LocalConfiguration` — Code, der `Locale.getDefault()` direkt liest, sieht ihn nicht (und sollte in UI-Code ohnehin nicht existieren)
+- **SOLLTE [SHOULD]** Per-Locale-Previews (`@Preview(locale = "de")`, `@Preview(locale = "ar")` für RTL) und die Font-Skalierungs-Multipreview (`@PreviewFontScale` aus `androidx.compose.ui.tooling.preview` — die Annotationsklasse ist Singular, auch wo Prosa sie im Plural schreibt; eine Pluralschreibweise kompiliert nicht) ins Standard-Preview-Set aufnehmen [R9]; Hinweis: der Preview-`locale`-Parameter setzt nur `LocalConfiguration` — Code, der `Locale.getDefault()` direkt liest, sieht ihn nicht (und sollte in UI-Code ohnehin nicht existieren)
 
 ## Akzeptanzkriterien
 
@@ -81,12 +84,13 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§F, 
 - [ ] Jeder parametrisierte String nutzt positionale Platzhalter; keine Laufzeit-Konkatenation baut einen Satz
 - [ ] Mengen rendern über `<plurals>` mit `other`-Fall und der Zahl im Text
 - [ ] Der Build deklariert `localeFilters` passend zum unterstützten Set, und der System-Sprachwähler listet die App mit genau diesen Sprachen
-- [ ] Der In-App-Sprachwähler wechselt die Sprache zur Laufzeit, persistiert über Neustarts auf Android 12 und 13+ und bietet „Systemstandard" an
+- [ ] Der In-App-Sprachwähler wechselt die Sprache zur Laufzeit, persistiert über Neustarts auf Android 12 und 13+, bietet „Systemstandard" an und leitet seine Optionen aus der deklarierten Locale-Konfiguration ab
 - [ ] Daten, Zahlen und Währungen rendern in jeder unterstützten Sprache locale-korrekt; interne Keys nutzen `Locale.ROOT`-Operationen
 - [ ] Die App rendert korrekt unter `ar-XB` (vollständig gespiegelt, kein left/right-Leck) und unter `en-XA` bei 200 % Font-Skalierung ohne abgeschnittene kritische UI
 - [ ] `values/` (Quellsprache) ist vollständig; jede andere Locale-Datei trägt dasselbe Key-Set
 - [ ] Composables lesen allen Text über `stringResource`-Familien-APIs; Per-Locale-Previews existieren für jedes Screen-Level-Composable
 - [ ] Das generierte Projekt liefert zweisprachig aus (en Quelle, de Übersetzung), mit allem Obigen grün beim ersten Build
+- [ ] String-Keys folgen der Präfix-Konvention `<screen>_<what>`, oder die Abweichung vom SHOULD in §A ist protokolliert
 
 ## Offene Fragen
 
@@ -99,7 +103,7 @@ Alle Fragen sind Parking-Lot-Klasse: Die Anforderungen oben nennen für jede ein
 
 ## Referenzen
 
-Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär. Plattform-Fakten zitieren die maßgebliche Primärquelle gemäß Portfolio-Triangulationskonvention; Workflow-Befunde sind inline attribuiert, wo einzelstudienbasiert.
+Alle Quellen abgerufen am 11.08.2026; R19–R20 und die AGP-Formulierung erneut verifiziert am 19.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär. Plattform-Fakten zitieren die maßgebliche Primärquelle gemäß Portfolio-Triangulationskonvention; Workflow-Befunde sind inline attribuiert, wo einzelstudienbasiert.
 
 - [R1] Lokalisierungs-Überblick (P): <https://developer.android.com/guide/topics/resources/localization>
 - [R2] String-Ressourcen (Platzhalter, Plurale, Arrays, Styling) (P): <https://developer.android.com/guide/topics/resources/string-resource>
@@ -119,3 +123,5 @@ Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche V
 - [R16] LLM-Übersetzungsqualitäts-Evaluation 2025 (Einzelstudie, attribuiert) (S): <https://lokalise.com/blog/what-is-the-best-llm-for-translation/>
 - [R17] TMS-Landschaft für kleine Teams (S): <https://www.saashub.com/compare-crowdin-vs-weblate>
 - [R18] Turkish-i-Casing-Problem (S): <https://garygregory.wordpress.com/2015/11/03/java-lowercase-conversion-turkey/>
+- [R19] Grammatical Inflection API (Android 14, `GrammaticalInflectionManager`, Gender-Ressourcen-Qualifier) (P): <https://developer.android.com/about/versions/14/features/grammatical-inflection>
+- [R20] `android.icu.text.MessageFormat`-Referenz (plural/select/selectordinal-Argumente, API 24+) (P): <https://developer.android.com/reference/android/icu/text/MessageFormat>

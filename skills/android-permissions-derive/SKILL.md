@@ -1,6 +1,6 @@
 ---
 name: android-permissions-derive
-description: "Determines which Android permissions an app genuinely needs and records them conformantly, per spec/android/permissions/. Derives the set forward — feature to capability to API call to permission — rejects any permission a documented permission-free alternative serves (photo picker, capture intents, code scanner, SAF), reads the merged manifest to catch library-injected permissions, and writes a justified ledger row per permission. Then applies the declaration (maxSdkVersion, neverForLocation, uses-feature, foreground-service types, queries, tools:node=remove), wires the runtime request, denial, and degradation paths, verifies the shipped set, and hands store-side declaration obligations to the operator. Operations: derive, audit, apply. Invoke when the user asks which permissions an app needs, wants one added, removed, or justified, wants the manifest set audited, or hits a denial or a SecurityException. Also handles equivalent German-language requests. Supports resume on re-invocation."
+description: "Determines which Android permissions an app genuinely needs and records them per spec/android/permissions/. Derives the set forward from user-visible features, rejects any permission a permission-free alternative serves, reads the merged manifest for library-injected permissions, and writes a justified ledger row per permission (trigger point, denial behaviour, store obligation). Then applies the declaration (bounds, flags, uses-feature, foreground-service types, removals), wires request and degradation paths, and verifies the shipped set. Operations: derive, audit (read-only report), apply. Invoke when the user asks which permissions an app needs, wants one added, removed, justified, or audited, or hits a denial or SecurityException. Also handles equivalent German-language requests. Don't use for the scanning camera path (android-barcode-scanner-scaffold) or the alerting channel (android-notification-derive). Supports resume on re-invocation."
 tags: [privacy, audit, implementation]
 phase: build
 summary: "Derives an Android app's required permission set from its features, rejects permissions a permission-free alternative serves, and records the result in manifest, runtime flow, ledger, and tests."
@@ -20,11 +20,15 @@ dont_use_when:
     alternative: android-compose-ui
   - situation: "A build failure or crash needs diagnosing rather than a permission decision"
     alternative: android-debugging
+  - situation: "A whole-app security audit (storage, network, components, WebView, auth) is wanted rather than a permission decision"
+    alternative: android-security-reviewer
 see_also:
   - android-notification-derive
   - android-feature-implement
   - android-barcode-scanner-scaffold
   - android-project-scaffold
+  - android-security-reviewer
+  - android-uvc-microscope-scaffold
 resumable: true
 ---
 
@@ -44,51 +48,61 @@ The authoritative rules live in `spec/android/permissions/`; this skill operatio
 never restates or contradicts them. On any conflict the spec wins — report the gap and propose a
 spec change rather than deciding silently (REQ-6).
 
-Grounding specs, in the order they bind this skill: `spec/android/permissions/` (the model, the
-derivation, the declaration, the runtime flow, the families, verification, testing),
-`spec/android/security/` §E/§D (permission minimalism as a security obligation, Data Safety
-accuracy, component hardening), `spec/android/app-design-navigation/` §F (in-context request
-timing and rationale), `spec/android/notifications-alerting/` §C/§G (the channel
-that implies the permission), `spec/android/adb-workflows/` (the device commands used for verification
-and test-state setup), `spec/android/test-automation/` (where the permission-path tests live),
-and `spec/android/release-readiness/` (what "done" means for the touched build).
+Grounding specs, in the order they bind this skill: `spec/android/permissions/` (model,
+derivation, declaration, runtime flow, families, verification, testing), `spec/android/security/`
+§E/§D (permission minimalism, Data Safety accuracy, component hardening),
+`spec/android/app-design-navigation/` §F (in-context request timing and rationale),
+`spec/android/notifications-alerting/` §C/§G (the channel that implies the permission),
+`spec/android/adb-workflows/` (device commands for verification and test states),
+`spec/android/test-automation/` (where the permission-path tests live), and
+`spec/android/release-readiness/` (what "done" means for the touched build).
+
+## German trigger phrases
+
+Respond to these (and equivalents) exactly as to their English counterparts; the frontmatter
+`description` stays English-only per `skill-management` §Structure:
+
+- "Welche Berechtigungen braucht die App?", "Leite die Permissions für dieses Feature ab"
+- "Prüfe/auditiere die Manifest-Berechtigungen", "Begründe die Permission X", "Entferne die
+  Berechtigung, die die Library mitbringt"
+- "Die Permission wird verweigert / dauerhaft abgelehnt", "SecurityException wegen fehlender
+  Berechtigung", "Foreground-Service-Typ / Hintergrundstandort / exakter Alarm deklarieren"
 
 ## Why this is a skill, not an agent
 
-- **Mid-flow approval is the contract.** Admitting a permission, rejecting an alternative as
-  insufficient, removing a library-injected permission, and every manifest write are operator
-  decisions with consequences that outlive the run (REQ-8); an agent's fire-and-forget shape
-  cannot carry those gates.
-- **The persistent artifact is the deliverable.** The permission ledger and the manifest edits
-  land in the working tree and are reviewed in context, not behind a structured-report boundary.
-- **It composes with sibling capabilities.** The scanning access-path decision belongs to
-  `android-barcode-scanner-scaffold`, the request UI to `android-compose-ui`, a red build to
-  `android-debugging`; per `spec/claude/skill-vs-agent/` §Primary decision rule the orchestrator
-  is always a skill.
-- Counter-dimension considered: the audit operation alone — reading the merged manifest,
-  enumerating declared permissions, tracing call sites — would suit an agent's context
-  isolation, but its findings feed directly into the admit/reject gates that follow, so
-  splitting it out would break the interaction it exists to serve.
+- **Mid-flow approval is the contract.** Admitting a permission, rejecting an alternative,
+  removing a library-injected permission, and every manifest write are operator decisions with
+  consequences that outlive the run (REQ-8); an agent's fire-and-forget shape cannot carry them.
+- **The persistent artifact is the deliverable.** Ledger and manifest edits land in the working
+  tree and are reviewed in context, not behind a structured-report boundary.
+- **It composes with sibling capabilities.** Scanning access path → `android-barcode-scanner-scaffold`,
+  request UI → `android-compose-ui`, red build → `android-debugging`; per
+  `spec/claude/skill-vs-agent/` §Primary decision rule the orchestrator is always a skill.
+- Counter-dimension considered: the read-only `audit` would suit a dedicated auditor agent
+  (a candidate spec extension); it stays here because its findings are phrased as the `derive`
+  rows the operator starts next, so one gate vocabulary serves both.
 
 ## Boundary vs the sibling capabilities
 
 - `android-barcode-scanner-scaffold` owns the scanning access-path decision (REQ-18), including
-  whether `CAMERA` is held at all. When the capability under derivation is code scanning, hand
-  that decision there and take its result as input.
+  whether `CAMERA` is held at all; for code scanning, hand that decision there and take its
+  result as input.
 - `android-feature-implement` owns feature work across layers (REQ-19) and **calls this skill**
   for the permission step rather than deciding permissions itself.
-- `android-compose-ui` owns the rationale surface, the denied-state UI, and the settings-route
-  affordance (REQ-13); this skill decides *what* those surfaces must express and hands the
-  authoring there.
-- `android-project-scaffold` creates the project (REQ-12); a scaffolded app starts with an empty
-  permission set, and every later addition comes through this skill.
-- `android-ux-reviewer` reviews UI read-only (REQ-14) and never writes a manifest.
+- `android-compose-ui` owns the rationale surface, denied-state UI, and settings affordance
+  (REQ-13); this skill decides *what* they must express and hands the authoring there.
+- `android-project-scaffold` creates the project (REQ-12) with an empty permission set; every
+  later addition comes through this skill. `android-ux-reviewer` (REQ-14) never writes a manifest.
 - Notification permissions follow from an alerting channel owned by `android-notification-derive`
   (REQ-21; `spec/android/notifications-alerting/` §C); its ledger row is the input here — see
-  `references/permission-decision-catalog.md` §Notifications.
+  `references/permission-decision-catalog.md` §4 Notifications. **Guard-code ownership:** the
+  SDK-version guards around `canUseFullScreenIntent()` (API 34+) and
+  `canPostPromotedNotifications()` (API 36+), their degradation branch, and the settings-intent
+  launch (`ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT`, `ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS`)
+  are written by that skill's `apply` templates; this skill records the obligation in the
+  ledger row and verifies its presence at step 8, but never writes the guard.
 - `android-debugging` diagnoses build failures and crashes (REQ-16). A `SecurityException`
-  belongs here only as evidence of a missed derivation path; a crash that needs diagnosing first
-  goes there.
+  belongs here only as evidence of a missed derivation path.
 
 ## User-language policy
 
@@ -99,21 +113,25 @@ externalized to `strings.xml` per `spec/android/localization/` §A.
 
 ## Operations
 
-Pick one at the start and say which is running. All three share the gates below. The split is
-deliberate: `derive` and `audit` **decide and record**, `apply` **writes**. Nothing is written
-into the app before a complete ledger row exists for it.
+Pick one at the start and say which is running. The split is deliberate: `derive` **decides and
+records**, `audit` **only reports**, `apply` **writes**. Nothing is written into the app before
+a complete ledger row exists for it.
 
 - **`derive`** — a capability exists or is planned and its permission consequence is unknown.
-  Runs steps 1–4, then step 7's ledger write. Touches no manifest and no code.
+  Runs steps 1–5 and ends with the ledger row. Touches no manifest and no code.
 - **`audit`** — an app already declares permissions and the set needs justifying, reducing, or
-  proving. Runs steps 2–4 against the existing set — treating every declared permission as a
-  candidate that must earn its row — then step 7 in full (ledger, verification, report).
-- **`apply`** — a `derive` or `audit` result exists and is being written into the app. Runs
-  steps 5–7. Refuses to start when the ledger has no complete row for the permission at hand.
+  proving. Runs the audit procedure in `references/ledger-and-verification.md` §4 and **writes
+  nothing at all** — not the ledger, not the manifest, not tests: it produces a
+  severity-classified findings report (`Critical` / `Warning` / `Suggestion` / `Info` per
+  `spec/claude/review-plan/`) naming the ledger rows the app owes; turning a finding into a row
+  is a `derive` run, the removal or declaration it implies an `apply` run. (Changed from the
+  earlier revision, in which `audit` wrote ledger rows and tests; it now mirrors
+  `android-notification-derive`'s read-only `audit`.)
+- **`apply`** — a `derive` result exists and is being written into the app. Runs steps 6–8.
+  Refuses to start when the ledger has no complete row for the permission at hand.
 
-An end-to-end request ("add this capability") is `derive` followed by `apply`; run them
-back-to-back in one invocation and say when the handover happens, so the operator sees the
-ledger before anything is written.
+An end-to-end request ("add this capability") is `derive` then `apply`, run back-to-back with
+the handover named, so the operator sees the ledger before anything is written.
 
 ## Preconditions
 
@@ -122,12 +140,11 @@ Before writing anything:
 - Confirm the working directory is a git repository holding an Android project with a Gradle
   application module and an `AndroidManifest.xml`. Without one, stop and route to
   `android-project-scaffold`.
-- Read `references/permission-decision-catalog.md` in full. It is the decision surface distilled
-  from `spec/android/permissions/` §C/§D/§F — the alternatives gate, the declaration details,
-  and the families whose rules differ — and every admitted permission is checked against it.
-- Establish the app's `minSdk` and `targetSdk` from the module's build script. Nearly every rule
-  in §D and §F is version-conditional, and a derivation run without these two numbers produces
-  declarations that are wrong on some devices.
+- Read `references/permission-decision-catalog.md` in full — the decision surface distilled
+  from `spec/android/permissions/` §A/§C/§D/§E/§F; entries marked *spec-extension proposed
+  (REQ-6)* are provisional.
+- Establish the app's `minSdk` and `targetSdk` from the module's build script; nearly every
+  rule in §D and §F is version-conditional.
 - Check for uncommitted changes in the manifest and build scripts. If dirty, report and ask
   whether to stash, commit, or abort — never overwrite unconfirmed work (REQ-8).
 
@@ -137,116 +154,96 @@ Run the steps in order. Confirm with the operator at each gate before writing.
 
 ### 1. State the capability as a user-visible feature
 
-Restate what the app will do, in one sentence, as an outcome for a user — not as a technical
-capability. "The user picks a photo to attach" is derivable; "the app needs storage access" is
-already a conclusion and skips the step that matters. Where a requirement artifact or feature
-file exists in the repository, read it first and work from it. Gate: confirm the restatement.
+Restate what the app will do, in one sentence, as an outcome for a user — "the user picks a
+photo to attach" is derivable; "the app needs storage access" is already a conclusion. Where a
+requirement artifact or feature file exists, work from it. Gate: confirm the restatement.
 
 ### 2. Run the alternatives gate
 
-For the stated feature, consult the alternatives table in
-`references/permission-decision-catalog.md` and establish whether the platform offers a
-documented path that reaches the same outcome without a permission. Present the alternative, its
-cost, and what would be given up by taking the permission instead.
+Consult the alternatives table in `references/permission-decision-catalog.md` §1 and establish
+whether the platform offers a documented path to the same outcome without a permission. Present
+the alternative, its cost, and what taking the permission gives up. A permission passes only
+when the alternative provably does not serve the feature, and the reason is recorded verbatim
+in the ledger — "more convenient" and "the SDK does it that way" are not reasons. Gate: confirm
+each admission or adoption.
 
-A permission is admitted past this gate only when the alternative provably does not serve the
-feature — and the reason is recorded verbatim in the ledger. "It is more convenient" and "the
-SDK does it that way" are not reasons. Gate: confirm each admission or adoption.
+### 3. Classify and trace each admitted permission to its API
 
-Two traps to apply rather than rediscover: declaring `CAMERA` while relying on
-`ACTION_IMAGE_CAPTURE` turns a permission-free path into a `SecurityException`, and a
-third-party SDK's permission appears to the user as the app's own request.
-
-### 3. Trace each admitted permission to its API
-
-For every permission that survived step 2, establish the exact API call that requires it, and
-establish the requirement from an authoritative source — the API's reference documentation or
-its `@RequiresPermission` annotation, reading `allOf` / `anyOf` / `conditional` precisely. Never
-from memory, and never by pattern-matching a permission name to a capability name. Where the
-requirement is version-conditional, record the API-level boundary; it becomes the
-`maxSdkVersion` in step 5.
-
-Where a capability's permission requirement is settled by no spec and no primary source, stop
-and report the gap with a proposed spec extension (REQ-6).
+For every permission that survived step 2, classify its type per `spec/android/permissions/` §A
+(install-time normal, signature, runtime, special — catalog §0) and note which permission-model
+surface the user meets (Privacy Dashboard, indicators, sensor toggles). Then establish the exact
+API call that requires it from an authoritative source — the reference documentation or the
+`@RequiresPermission` annotation, reading `allOf` / `anyOf` / `conditional` precisely — never
+from memory or by name-matching. A version-conditional requirement records its API-level
+boundary; it becomes the `maxSdkVersion` in step 6. Where no spec and no primary source settles
+the requirement, stop and report the gap with a proposed spec extension (REQ-6).
 
 ### 4. Read the merged manifest
 
-Build the variant and read the merged permission set, not the hand-written manifest — library
-contributions and merger-injected implicit permissions appear only there. Use the commands in
-`references/ledger-and-verification.md`.
+Build the variant and read the merged permission set (commands in
+`references/ledger-and-verification.md` §2), never the hand-written manifest — library and
+merger-injected permissions appear only there. Diff it against the derived set: **in merged,
+not derived** is a library contribution or leftover, adopted with a written reason or removed
+in step 6 with `tools:node="remove"`; **in derived, not merged** is a declaration that lands
+in step 6. Gate: confirm the classification of every difference before any removal.
 
-Diff the merged set against the derived set and classify every difference:
+### 5. Decide trigger point, degradation, and store obligation — then write the row
 
-- **in merged, not derived** — a library contribution or a leftover. Each one is either adopted
-  with a written reason or removed in step 5 with `tools:node="remove"`.
-- **in derived, not merged** — a declaration still missing; it lands in step 5.
+Before any row is written, decide and confirm per admitted permission: the **trigger point**
+(the in-context user action at which the request is made, incremental per §E — foreground
+location before background, never a startup bundle; for a special or non-runtime notification
+permission, the explicit user step at which the settings route is offered); the **degradation
+on denial** (what the user sees and what still works, including the permanently denied state
+with explanation plus settings route, and the sensor-toggle case of §A that is not a denial —
+a denial that leaves no usable path is a derivation error: return to step 2); and the
+**store-side obligation** (catalog §5 — recorded and handed to the operator, never filed here).
 
-Gate: confirm the classification of every difference before any removal.
+Then write or update `project/permissions-ledger.md` from the template in
+`references/ledger-and-verification.md` §1 — one row per admitted permission and one per
+permission deliberately removed. Gate: confirm the row; `derive` ends here.
 
-### 5. Write the declaration
+### 6. Write the declaration
 
-Precondition, not a formality: the permission's ledger row is **complete before this step
-writes anything** — including its trigger point and its behaviour on denial. Step 6 implements
-those two decisions; it does not discover them. A permission whose denial behaviour is still
-unknown is not ready to be declared, and the run returns to step 2.
+Precondition: the ledger row from step 5 is complete. Apply, per
+`references/permission-decision-catalog.md` §2: `<uses-permission>` with `android:maxSdkVersion`
+wherever the requirement ends at an API level and `neverForLocation` on `BLUETOOTH_SCAN` /
+`NEARBY_WIFI_DEVICES` wherever no location is derived; `<uses-feature android:required="false">`
+plus the `hasSystemFeature()` check for optional hardware; the foreground-service triple (type
+on the `<service>`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_*`) plus the runtime permission
+the type presupposes; `<queries>` for package visibility (`QUERY_ALL_PACKAGES` only with a
+recorded justification); `tools:node="remove"` (narrowed with `tools:selector`) for every
+unwanted contribution from step 4; a custom permission only at `signature` level on the
+component it guards. Gate: confirm before each manifest write (REQ-8).
 
-Apply, per `references/permission-decision-catalog.md` §Declaration:
-
-1. `<uses-permission>` for every admitted permission, with `android:maxSdkVersion` wherever the
-   requirement ends at an API level, and `android:usesPermissionFlags="neverForLocation"` on
-   `BLUETOOTH_SCAN` wherever the app does not derive location from scan results.
-2. `<uses-feature android:required="false">` for every hardware-bound permission the app can
-   live without, plus the runtime `hasSystemFeature()` check at the call site.
-3. Foreground services: `android:foregroundServiceType` on the `<service>`, the base
-   `FOREGROUND_SERVICE` permission, the type-specific `FOREGROUND_SERVICE_*` permission, and the
-   runtime permission the type presupposes.
-4. `<queries>` for package visibility; `QUERY_ALL_PACKAGES` only with a recorded justification
-   that targeted queries cannot express the need.
-5. `tools:node="remove"` (narrowed with `tools:selector` when only one library is meant) for
-   every unwanted contribution from step 4, with the removal recorded so a later dependency bump
-   does not silently reinstate it.
-
-Gate: confirm before each manifest write (REQ-8).
-
-### 6. Wire the runtime flow and the degradation path
+### 7. Wire the runtime flow and the degradation path
 
 For every runtime permission, put in place the flow of `spec/android/permissions/` §E:
 `checkSelfPermission` immediately before each protected access (never cached), the
-`shouldShowRequestPermissionRationale` gate, the request through
-`ActivityResultContracts.RequestPermission` / `RequestMultiplePermissions`, the branch on the
-result, and the degraded path. Permanent denial is detected and answered with an explanation
-plus a route into the app's settings — never a re-request into a dialog the system will not
-show.
+`shouldShowRequestPermissionRationale` gate read together with the request history, the request
+through `ActivityResultContracts.RequestPermission` / `RequestMultiplePermissions`, the branch
+on the result, and the degraded path decided in step 5; permanent denial gets an explanation
+plus a settings route, never a re-request. Where the Compose wrappers are used, keep the
+`@ExperimentalPermissionsApi` opt-in confined to one wrapper type, and apply the
+`VIEW_PERMISSION_USAGE` and `revokeSelfPermissionOnKill` rules (catalog §3). A special
+permission takes its own path: dedicated check method, rationale that explains the settings
+step, settings intent, `onResume()` re-check. For the two non-runtime notification permissions
+the guard code is owned by `android-notification-derive` (§Boundary) — confirm it is present
+rather than writing it. Hand the rationale surface, denied-state UI, and settings affordance to
+`android-compose-ui` with what each must express.
 
-For every special permission, use its own path instead: the dedicated check method, a rationale
-that explains what to do in settings, the settings intent, and a re-check in `onResume()`.
-
-Requests are incremental and in context — foreground location before background, never a
-startup bundle. Hand the rationale surface, the denied-state UI, and the settings affordance to
-`android-compose-ui`; this skill supplies what each must express and the state model behind it.
-
-Then state, per permission, what the app does when the answer is no. A permission whose denial
-leaves no usable path is a derivation error from step 2, not a UX problem — return to that gate
-rather than shipping a dead end.
-
-### 7. Verify, test, and hand off
+### 8. Verify, test, and hand off
 
 - Verify the shipped set from the merged manifest and, where an artifact exists,
-  `apkanalyzer manifest permissions`. Confirm no permission lacks a ledger row and no ledger row
-  lacks a declaration.
-- Ensure Android Lint runs with `MissingPermission` as an error, per
-  `spec/android/security/` §F.
+  `apkanalyzer manifest permissions`: no permission without a ledger row, no row without a
+  declaration, every runtime guard the ledger records present in the code.
+- Ensure Android Lint runs with `MissingPermission` as an error (`spec/android/security/` §F).
 - Cover granted, denied, and permanently denied as tests for every permission in the ledger,
-  with the state established through ADB rather than by tapping dialogs. `GrantPermissionRule`
-  only grants and cannot revoke — it is not the mechanism for denial coverage.
-- Write or update the permission ledger at `project/permissions-ledger.md` from the template in
-  `references/ledger-and-verification.md` — including a row for every permission deliberately
-  removed, so a later dependency bump cannot reinstate it unnoticed.
-- Report, in the operator's language: the admitted set with its justifications, every
-  alternative adopted, every permission removed and from which library, the declarations
-  written, the degradation behaviour per permission, the test states covered, every store-side
-  declaration obligation the operator must file, and any spec gap found. Never leave a red,
-  skipped, or unrunnable element unreported (REQ-1, REQ-7).
+  with the state established through ADB, never by tapping dialogs (`GrantPermissionRule` only
+  grants). Fill the row's **Declared as** and **Tests** lines.
+- Report, in the operator's language: the admitted set with justifications, alternatives
+  adopted, permissions removed and from which library, declarations written, degradation per
+  permission, test states covered, every store-side obligation the operator must file, and any
+  spec gap. Never leave a red, skipped, or unrunnable element unreported (REQ-1, REQ-7).
 
 Where this run touched a build, close on the release-readiness gate of
 `spec/android/release-readiness/` §E as `android-feature-implement` does; route a red build to
@@ -254,13 +251,13 @@ Where this run touched a build, close on the release-readiness gate of
 
 ## Reference files
 
-- Read `references/permission-decision-catalog.md` before step 2 — the alternatives gate, the
-  declaration details, and the per-family rules (location, media, notifications, Bluetooth,
-  exact alarms, health, package visibility, local network, policy-restricted).
-- Read `references/gotchas.md` before step 2 as well — the non-obvious platform facts that
-  silently produce a wrong permission set.
-- Read `references/ledger-and-verification.md` in steps 4, 6, and 7 — the ledger format, the
-  merged-manifest and artifact commands, and the ADB state-setup commands for the test states.
+- `references/permission-decision-catalog.md` before step 2 — type classification, the
+  alternatives gate, declaration and runtime-flow details, per-family rules, store obligations.
+- `references/gotchas.md` before step 2 as well — the platform facts that silently produce a
+  wrong permission set.
+- `references/ledger-and-verification.md` in steps 4, 5, and 8 and for `audit` — the ledger
+  format, the merged-manifest and artifact commands, the ADB test-state commands, and the
+  read-only audit procedure.
 
 ## Resumability
 
@@ -276,33 +273,28 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 
 ## Hard rules
 
-- **Never** admit a permission that was not traced forward from a named user-visible feature
-  through a concrete API call, and **never** derive the set from what the manifest already
-  contains.
+- **Never** admit a permission not traced forward from a named user-visible feature through a
+  concrete API call, and **never** derive the set from what the manifest already contains.
 - **Never** declare a permission where a documented permission-free alternative serves the
-  feature — and never declare one "just in case", which for `CAMERA` actively breaks
-  `ACTION_IMAGE_CAPTURE`.
+  feature — and never "just in case", which for `CAMERA` breaks `ACTION_IMAGE_CAPTURE`.
 - **Never** establish an API's permission requirement from memory; read the reference
   documentation or the `@RequiresPermission` annotation.
-- **Never** judge the permission set from the hand-written manifest — only the merged manifest
-  and the built artifact are evidence.
-- **Never** cache a permission check result across a protected access, and never build logic on
-  permission-group membership.
-- **Never** re-request a permanently denied permission, and never leave a denial as a dead end
-  or a generic block.
-- **Never** request permissions as a startup bundle, and never request background location
-  before a foreground grant.
+- **Never** judge the set from the hand-written manifest — only the merged manifest and the
+  built artifact are evidence.
+- **Never** cache a permission check across a protected access, never build logic on
+  permission-group membership, never re-request a permanently denied permission, never leave a
+  denial as a dead end, never request a startup bundle or background location before a
+  foreground grant.
 - **Never** declare `QUERY_ALL_PACKAGES`, `MANAGE_EXTERNAL_STORAGE`, `USE_EXACT_ALARM`, or a
-  broad media permission as a convenience — each is policy-restricted and needs the recorded
-  justification of §G.
+  broad media permission as a convenience — each needs the recorded justification of §G.
 - **Never** remove a library-injected permission without confirming the app does not depend on
   the library path that needs it, and never remove or overwrite anything without operator
   confirmation (REQ-8).
 - **Never** file, edit, or simulate a Play Console declaration; record the obligation and hand
-  it to the operator (`spec/android/permissions/` §G).
-- **Always** complete a permission's ledger row — trigger point and denial behaviour included —
-  before that permission is written into the manifest; step 6 implements those decisions rather
-  than discovering them.
+  it to the operator (§G). **Never** write anything in `audit`.
+- **Always** complete a permission's ledger row — trigger point, denial behaviour, and store
+  obligation included — before that permission is written into the manifest; step 7 implements
+  those decisions rather than discovering them.
 - **Always** report a capability whose permission requirement no spec and no primary source
   settles, with a proposed spec extension, instead of deciding silently (REQ-6).
 - When `spec/android/permissions/` disagrees with this skill, the spec wins.
@@ -310,14 +302,8 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 ## Gotchas
 
 Read `references/gotchas.md` before step 2 — it carries the full set. The three that most often
-produce a wrong result:
-
-- **Declaring a permission can break the permission-free path.** With `CAMERA` declared but not
-  granted, `ACTION_IMAGE_CAPTURE` raises a `SecurityException` instead of handing off to the
-  system camera. The defensive declaration is the defect.
-- **`shouldShowRequestPermissionRationale()` returning `false` is ambiguous by position.**
-  Before the first request it means "ask"; after a completed request on a not-granted
-  permission it means "permanently denied". Only grant state plus request history separate them.
-- **The merged manifest is where permissions actually come from.** A dependency bump can add a
-  permission with no source-manifest edit — which is why the check is re-run after every
-  dependency change.
+produce a wrong result: declaring `CAMERA` breaks the permission-free `ACTION_IMAGE_CAPTURE`
+path; `shouldShowRequestPermissionRationale()` returning `false` means "ask" before the first
+request and "permanently denied" after one, and only grant state plus request history separate
+them; and the merged manifest — not the source manifest — is where permissions come from, which
+is why the check re-runs after every dependency change.

@@ -1,6 +1,6 @@
 ---
 name: android-compose-ui
-description: "Authors new Jetpack Compose screens and components with mobile-UX patterns applied at authoring time — Material 3 theming through color/typography/shape roles, window-size-class adaptivity (list-detail, supporting-pane, feed), Material Symbols icons, externalized strings with per-locale previews, 48dp/200%-font-scale accessibility, and input handling with staged validation, error timing, and error semantics — generated as a stateful route plus stateless content composable split, with @PreviewScreenSizes, @PreviewFontScales, per-locale previews, and a Robolectric Compose test alongside. Invoke when the user asks to build, add, or scaffold an Android screen, a Compose UI, or a component. For reviewing existing UI, use the read-only ux-audit agent instead. Also handles equivalent German-language requests. Supports resume on re-invocation across per-screen approval gates."
+description: "Authors new Jetpack Compose screens and components grounded in the UI specs under spec/android/, with mobile-UX patterns applied at authoring time — Material 3 theming through color/typography/shape roles, window-size-class adaptivity (list-detail, supporting-pane, feed), Material Symbols icons, externalized strings, 48dp/200%-font-scale accessibility, input handling with staged validation, error timing, submission rules and IME insets, and perceived-performance hooks (200 ms wait rule, ReportDrawnWhen) — generated as a stateful route plus stateless content composable, with @PreviewScreenSizes, @PreviewFontScale, per-locale previews, and a Robolectric Compose test alongside. Invoke to build, add, or scaffold an Android screen, Compose UI, or component. For reviewing existing UI, use the read-only android-ux-reviewer agent instead. Also handles equivalent German-language requests. Supports resume on re-invocation across per-screen approval gates."
 tags: [ui, scaffolding]
 phase: build
 summary: "Authors Compose screens with M3 theming, adaptivity, localization, and accessibility baked in at authoring time — route/content split, previews, and a Robolectric Compose test."
@@ -12,9 +12,17 @@ use_when:
 dont_use_when:
   - situation: "You want a feature implemented across UI, ViewModel, repository, and backend boundary"
     alternative: android-feature-implement
+  - situation: "You want existing Compose UI reviewed or audited without changing it"
+    alternative: android-ux-reviewer
+  - situation: "You want the localization of existing screens audited or completed rather than a new screen authored"
+    alternative: android-localization-apply
 see_also:
+  - android-ux-reviewer
   - android-feature-implement
   - android-permissions-derive
+  - android-perceived-performance
+  - android-localization-apply
+  - android-code-reviewer
 resumable: true
 ---
 
@@ -30,6 +38,15 @@ The authoritative rules live in the specs under `spec/android/`; this skill oper
 them and never restates or contradicts them. On any conflict the spec wins — report the gap
 and propose a spec change rather than deciding silently.
 
+## Grounding specs
+
+Grounded in these `spec/android/` specs (canonical `en.md`), and nothing else decides a UX
+question: `app-design-navigation` (§A–§F, incl. deep links), `ui-components`,
+`screen-formats` (incl. foldables and input tiers), `iconography`, `localization`,
+`long-list-scrolling`, `user-input-validation` (§A–§H, incl. submission), plus
+`perceived-performance` §A (TTFD, `ReportDrawnWhen`), `test-automation` §D/§E (Compose tests,
+ATF), and `project-structure` §D/§E (placement, route/content split).
+
 ## Why this is a skill, not an agent
 
 - **Per-screen user approval is the contract.** Each screen is proposed, confirmed, and
@@ -44,12 +61,23 @@ and propose a spec change rather than deciding silently.
   heavy template generation, but the load-bearing part is the per-screen approval dialogue,
   so per `spec/claude/skill-vs-agent/` §Primary decision rule the skill wins.
 
-## Boundary vs the ux-audit agent
+## Boundary vs the android-ux-reviewer agent
 
 This skill **authors** new UI with UX patterns applied up front (REQ-13). Reviewing
-*existing* screens against the same UX criteria is the job of the read-only `ux-audit` agent
-(REQ-14): that agent inspects and reports, it never writes. Do not audit here and do not
-author there. When the user asks to review or critique existing UI, hand off to that agent.
+*existing* screens against the same UX criteria is the job of the read-only
+`android-ux-reviewer` agent (REQ-14): that agent inspects and reports, it never writes. Do not
+audit here and do not author there. When the user asks to review or critique existing UI, hand
+off to `android-ux-reviewer`; when that agent's findings come back, this skill applies them.
+
+## German trigger phrases
+
+Respond to these (and equivalents) exactly as to their English counterparts; the frontmatter
+`description` stays English-only per `skill-management` §Structure:
+
+- "Baue einen neuen Screen", "Erstelle eine Compose-UI für …", "Lege ein neues Composable an"
+- "Scaffolde den Einstellungs-Screen mit Preview und Test"
+- "Füge ein neues Navigationsziel mit Liste und Detail hinzu"
+- "Baue ein Formular für … (mit Validierung)"
 
 ## User-language policy
 
@@ -58,17 +86,29 @@ artifacts stay in their canonical form: Kotlin, resource keys, and code comments
 user-visible copy is externalized to `strings.xml` (English source in `values/`, German in
 `values-de/`) per `spec/android/localization/` §A — never inlined in composables.
 
+## Operations
+
+This skill has one dispatchable operation, `author`, run as the per-screen procedure below.
+Multi-screen requests run it once per screen, with a checkpoint after every gate.
+
 ## Preconditions
 
 Before writing anything:
 
 - Confirm the working directory is a git repository and locate the target module. This skill
-  authors *into* an app the `project-setup` skill already scaffolded per
-  `spec/android/project-structure/`; if no `:app` module or `designsystem` package exists,
-  stop and route the user to project setup first.
+  authors *into* an app the `android-project-scaffold` skill (or an equivalent existing
+  project) laid out per `spec/android/project-structure/`. If no Gradle application module
+  exists at all, stop and route the user to `android-project-scaffold`.
+- If the app has no `designsystem` package or module (project-structure §E makes it a SHOULD;
+  REQ-11 admits existing apps that lack it), **do not stop**: report the gap explicitly,
+  propose creating the package (theme + icon registry) as the first written item of this run,
+  and — if the user declines — continue by resolving every color, type, and shape through the
+  Material 3 roles of the app's existing `MaterialTheme` and referencing icons through a
+  registry object created next to the screen. Record the missing package as a spec-conformance
+  finding in the final report (REQ-6).
 - Read `references/ux-checklist.md` in full before proposing any screen — it is the
-  authoring-time rule set distilled from all eight grounding specs, and every generated screen
-  is checked against it.
+  authoring-time rule set distilled from the grounding specs listed above, and every generated
+  screen is checked against it.
 - Check for uncommitted changes in the paths to be touched (feature package, `strings.xml`,
   `src/test/`). If dirty, report and ask whether to stash, commit, or abort — never overwrite
   unconfirmed work (REQ-8).
@@ -83,9 +123,12 @@ writing files.
 Agree on the feature package, the screen name, the navigation destination (a `@Serializable`
 `NavKey`), and the `uiState` shape (a sealed/`data class` UI state covering loading,
 populated, empty, and error — every state must be constructible without a ViewModel per
-`spec/android/test-automation/` §D). Pick the layout family from
-`spec/android/screen-formats/` §C: list-detail, supporting-pane, or feed. Gate: confirm the
-contract before generating code.
+`spec/android/test-automation/` §D; the populated case carries an `ImmutableList` or an
+`@Immutable` type, the error case carries a closed `ErrorKind`, never a raw server string).
+Pick the layout family from `spec/android/screen-formats/` §C: list-detail, supporting-pane,
+or feed. If the destination is a top-level tab, note that it owns its own back stack
+(app-design-navigation §B); if it is deep-linkable, note the synthetic back stack it needs
+(§E). Gate: confirm the contract before generating code.
 
 ### 2. Generate the route + content split
 
@@ -95,35 +138,45 @@ stateless content composable that takes `uiState` plus event lambdas and passes 
 `NavController` (per `spec/android/app-design-navigation/` §B and project-structure §E).
 Apply, at authoring time: Material 3 roles/tokens only (no literals), window-size-class
 adaptivity, Material Symbols via the central icon registry, `stringResource` for every string,
-and the 48dp/`sp`/edge-to-edge accessibility baseline. Gate: confirm before writing.
+and the 48dp/`sp`/edge-to-edge accessibility baseline. The loading state shows nothing for the
+first ~200 ms and an indeterminate indicator afterwards (ui-components §A), and the screen
+signals full display with `ReportDrawnWhen { uiState is Success }` placed where the content is
+genuinely present (perceived-performance §A). Gate: confirm before writing.
 
 Where the screen takes a value from the user, apply `spec/android/user-input-validation/` in the
-same pass — input held in a state-based text field with a per-field touched flag and error
-(§B), keyboard type, capitalization, autocorrect, and IME action declared per field (§C), no
-error raised before the field is first left and every shown error cleared on the keystroke that
-fixes it (§D), and each error stated in text next to its field with `Modifier.semantics
-{ error(...) }` plus a live region for form-level status (§E). Client-side checks are shaping
-and well-formedness only; the acceptance decision stays with the backend (§A). Like the list
-rules below, these are authoring-time properties — retrofitting the touched flag and the error
-semantics later means rewriting the form.
+same pass — state-based text field with a per-field touched flag (§B); keyboard type,
+capitalization, autocorrect, IME action per field (§C); no error before the field is first
+left, every error cleared on the fixing keystroke (§D); error text next to the field with
+`Modifier.semantics { error(...) }`, a live region for form-level status, an error summary on
+long forms (§E); `ContentType.NewUsername`/`NewPassword` on registration and change-credential
+forms (§F); and the §G submission contract — exactly one in-flight submission with a visible
+pending state, values readable while pending and editable again on failure, rejection and
+transport failure never the same message, no navigation away before backend confirmation
+(queued/local-first writes excepted). The form sits under `Modifier.imePadding()` and brings
+the focused field into view (`BringIntoViewRequester`). Client-side checks are shaping and
+well-formedness only; the acceptance decision stays with the backend (§A). These are
+authoring-time properties — retrofitting them later means rewriting the form; the template
+carries the form snippet.
 
 Where the screen shows a collection, apply `spec/android/long-list-scrolling/` in the same
 pass — the container choice (§A), a stable domain `key` plus `contentType` on every item and
 no derivation inside an item body (§B), and a declared item size so nothing measures to zero
-before its content arrives (§A). These are authoring-time properties: retrofitting them later
-means rewriting the list.
+before its content arrives (§A); the template carries the lazy-list snippet. These are
+authoring-time properties: retrofitting them later means rewriting the list.
 
 ### 3. Externalize strings and icons
 
 Add every user-visible string to `values/strings.xml` (positional placeholders, `<plurals>`
-for counts) and its `values-de/` translation; register any new icon as a checked-in vector
-drawable behind the design-system registry (`spec/android/iconography/` §A/§B). Never add
+for counts, `translatable="false"` for brand/technical tokens, no translatable text in
+`<string-array>`) and its `values-de/` translation; register any new icon as a checked-in
+vector drawable behind the design-system registry, with `android:autoMirrored="true"` on
+directional glyphs (`spec/android/iconography/` §A/§B). Never add `material-icons-core` or
 `material-icons-extended`. Gate: confirm the string keys and translations.
 
 ### 4. Generate previews
 
 Emit `<Composable>Preview` functions next to the stateless content composable covering every
-`uiState`, plus `@PreviewScreenSizes`, `@PreviewFontScales`, and per-locale
+`uiState`, plus `@PreviewScreenSizes`, `@PreviewFontScale`, and per-locale
 `@Preview(locale = "de")` / `@Preview(locale = "ar")` (RTL) previews per
 `spec/android/localization/` §F and screen-formats §D.
 
@@ -132,12 +185,16 @@ Emit `<Composable>Preview` functions next to the stateless content composable co
 Read `references/compose-test-template.md` when writing the test. Generate a Robolectric-hosted
 Compose test in `src/test/` that drives the stateless content composable with fake `uiState`
 and no-op lambdas, matches nodes via semantics (resource-looked-up text, content descriptions,
-roles) not `testTag`, and asserts each state renders. Add a `StateRestorationTester` check
-where the screen holds `rememberSaveable` state (`spec/android/test-automation/` §D). Where the
-screen takes input, add the assertions `spec/android/user-input-validation/` §H requires at this
-level: the timing contract (no error before the field is first left, the error gone on the
-keystroke that fixes it) and the error semantics plus the form-level live region — without them a
-generated form can violate §D/§E and still build green.
+roles) not `testTag`, asserts each state renders, synchronizes via `mainClock`/`waitUntil`
+(never sleeps), and enables ATF checks (`spec/android/test-automation/` §D/§E). Add a
+`StateRestorationTester` check where the screen holds `rememberSaveable` state, a
+`DeviceConfigurationOverride.ForcedSize` case for the reference matrix, and — for a
+Navigation 3 destination — a test `NavDisplay` asserting on back-stack contents. Where the
+screen takes input, add the `spec/android/user-input-validation/` §H set the template carries:
+timing contract, error semantics and live region, the adversarial value set as pure-function
+tests, a `SavedStateHandle` round-trip for holder-owned input, and a server-rejection fake
+asserting the error lands on the field with the input preserved — without them a generated
+form can violate §D–§G and still build green.
 
 ### 6. Build green and report
 
@@ -149,11 +206,13 @@ spec-gap findings.
 ## Reference files
 
 - Read `references/ux-checklist.md` before step 1 for the authoring-time UX rule set (M3,
-  navigation, adaptivity, iconography, localization, accessibility) distilled from the specs.
+  navigation, adaptivity, iconography, localization, accessibility, lists, input, perceived
+  performance) distilled from the specs.
 - Read `references/screen-template.md` in step 2 for the route/content composable split,
-  adaptive list-detail layout, theming, and preview templates.
-- Read `references/compose-test-template.md` in step 5 for the Robolectric Compose-test and
-  state-restoration templates.
+  delayed loading state and `ReportDrawnWhen`, adaptive list-detail layout, lazy list, form
+  and submission, theming, and preview templates.
+- Read `references/compose-test-template.md` in step 5 for the Robolectric Compose-test,
+  state-restoration, configuration-variant, input, and Navigation 3 templates.
 
 ## Resumability
 
@@ -180,6 +239,9 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
   (segmented buttons, baseline bottom app bar, small FAB) — all outdated per the specs (REQ-9).
 - **Never** emit more than one primary action (filled button or FAB) per screen
   (`spec/android/ui-components/` §B).
+- **Never** show a loading indicator inside the first ~200 ms of a wait, and never ship a
+  screen without a `ReportDrawn*` signal placed where its content is genuinely ready
+  (ui-components §A, perceived-performance §A).
 - **Never** key a lazy list by index, emit several logical entries from one `item {}`, nest a
   same-direction scroll container with an unbounded inner size, or let an asynchronously filled
   item measure to zero in the scroll direction (`spec/android/long-list-scrolling/` §A/§B).
@@ -189,6 +251,9 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** let a screen lose what the user typed — through a failed submission, a rejection, a
   rotation, or process death — and never block pasting into a credential field
   (`spec/android/user-input-validation/` §B/§F).
+- **Never** allow a second in-flight submission of the same form, present a transport failure as
+  the user's mistake (or a rejection as a transport error), or navigate away before the backend
+  has confirmed a non-queued write (`spec/android/user-input-validation/` §G).
 - **Never** overwrite an existing file without explicit per-item confirmation (REQ-8).
 - **Always** generate the stateless content composable, its previews, and the Compose test in
   the same pass — a screen is not "done" without them.
@@ -203,9 +268,18 @@ Concrete corrections to non-obvious facts the executing agent would otherwise ge
 - **The `@Preview(locale = …)` parameter only sets `LocalConfiguration`.** Code that reads
   `Locale.getDefault()` directly won't see it — and such code shouldn't exist in UI. Verify
   German/RTL previews by reading through `stringResource`, not device-locale APIs.
+- **The multi-preview annotation is `@PreviewFontScale` (singular).** There is no
+  `@PreviewFontScales`; the sibling annotations are `@PreviewScreenSizes`, `@PreviewLightDark`,
+  and `@PreviewDynamicColors`.
+- **`Icons.AutoMirrored.*` lives in `material-icons-core`, which is forbidden.** Auto-mirroring
+  for checked-in vectors is `android:autoMirrored="true"` in the drawable XML; the registry
+  exposes the drawable, not an `Icons.*` reference.
 - **Robolectric is only sanctioned for UI-behavior and screenshot tests.** Plain
   ViewModel/logic unit tests stay pure-JVM (JUnit 4 + `kotlinx-coroutines-test`); do not reach
   for Robolectric there (`spec/android/test-automation/` §B).
+- **`StateRestorationTester` recreates only the composition.** A ViewModel stays alive, so it
+  proves nothing about `SavedStateHandle` keys — those need a direct round-trip test
+  (user-input-validation §H).
 - **Window size classes are window properties, not device properties.** They change at runtime
   on rotation, fold, and split-screen; every class transition must preserve UI state. Never
   cache "is tablet".

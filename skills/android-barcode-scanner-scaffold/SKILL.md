@@ -1,6 +1,6 @@
 ---
 name: android-barcode-scanner-scaffold
-description: "Builds a QR/barcode scanning surface into an existing Android app, grounded in spec/android/barcode-scanning/ — picks the access path on evidence (the Play-services code scanner needs no camera permission at all; an in-app CameraX plus ML Kit scanner is justified only by a named capability), configures the camera pipeline so detection can actually succeed (explicit ResolutionSelector against the 2-pixels-per-module budget, KEEP_ONLY_LATEST, closed ImageProxy, correct rotation), restricts formats, and puts every decoded payload behind a trust boundary before anything acts on it. Also generates the code-display side (quiet zone, error-correction level, whole-pixel module rendering). Invoke when the user asks to add barcode or QR scanning, build a scanner screen, read a code with the camera, or render a QR code. Also handles equivalent German-language requests. Supports resume on re-invocation."
+description: "Builds a QR/barcode scanning surface into an existing Android app per spec/android/barcode-scanning/ — picks the access path on evidence (the Play-services code scanner needs no camera permission; in-app CameraX plus ML Kit only for a named capability), configures a camera pipeline that can actually decode (ResolutionSelector computed from the 2-pixels-per-module budget, KEEP_ONLY_LATEST, closed ImageProxy, rotation), restricts formats, and puts every decoded payload behind a trust boundary; also generates the code-display side (quiet zone, error correction, whole-pixel modules). Invoke when the user asks to add barcode or QR scanning, build a scanner screen, read a code with the camera, or render a QR code. Handles equivalent German-language requests. Don't use for non-scanning camera work (android-feature-implement), the permission decision (android-permissions-derive), or USB/UVC cameras (android-uvc-microscope-scaffold). Supports resume on re-invocation."
 tags: [ui, scaffolding, privacy]
 phase: build
 summary: "Builds a QR/barcode scanner into an existing app — access-path decision, a camera pipeline that can actually decode, and a trust boundary on every decoded payload."
@@ -13,6 +13,20 @@ use_when:
 see_also:
   - android-permissions-derive
   - android-compose-ui
+  - android-feature-implement
+  - android-debugging
+  - android-uvc-microscope-scaffold
+dont_use_when:
+  - situation: "Camera work that is not scanning — photo capture, video, gallery import"
+    alternative: android-feature-implement
+  - situation: "The surrounding screen, theming, adaptivity, or previews are the question rather than the scanner"
+    alternative: android-compose-ui
+  - situation: "The permission decision, ledger row, or denial path itself needs deriving"
+    alternative: android-permissions-derive
+  - situation: "The camera is an external USB/UVC device (microscope, endoscope) rather than the built-in camera"
+    alternative: android-uvc-microscope-scaffold
+  - situation: "A red build or a device that delivers no frames needs diagnosing"
+    alternative: android-debugging
 resumable: true
 ---
 
@@ -51,7 +65,18 @@ screen, its theming, adaptivity, and previews belong to `android-compose-ui`, an
 hands off to it rather than re-implementing screen authoring. Reviewing existing UI is the
 read-only `android-ux-reviewer` agent. A red build or a device that will not deliver frames is
 `android-debugging`. Camera work that is not scanning — photo capture, video, gallery — has no
-spec yet; report the gap instead of inventing conventions.
+spec yet; route it to `android-feature-implement` (surface: `android-compose-ui`) and report the
+gap rather than inventing conventions here. An **external USB/UVC camera** is owned by
+`spec/android/uvc-microscope/` and its skill `android-uvc-microscope-scaffold` (created in
+parallel; if not yet on disk, report that rather than substituting this skill).
+
+## Operations
+
+Name one at the start: **`scaffold`** — add a scanning surface (steps 1–8); **`generate`** — the
+code-*display* side only (§"Generating codes" plus step 8's verification against the app's own
+scanner, and step 6's payload rules for the encoded value). Both end with `./gradlew build` and
+the run report; a `generate` run that turns out to need scanning switches to `scaffold`
+explicitly.
 
 ## User-language policy
 
@@ -101,13 +126,22 @@ immediately; the Play-services model is far smaller but must be downloaded, and 
 requests fail until that download completes**. Pre-request the module (install-time metadata or
 `ModuleInstallClient`) and handle the not-yet-available case as a real state.
 
-Declare the camera permission **only** on the in-app path. On the code-scanner path, declaring
-it forfeits the entire benefit that justified the choice. Where the in-app path is taken, hand
-the declaration and its record to `android-permissions-derive` (REQ-20) — the access-path
-decision stays here, the ledger row, the `<uses-feature>` pairing, and the denial path belong
-there.
+Declare the camera permission **only** on the in-app paths — Path B (CameraX plus ML Kit)
+**and** Path C (GMS-free decoder), since both drive the app's own camera. On the code-scanner
+path (A), declaring it forfeits the entire benefit that justified the choice. Where Path B or C
+is taken, hand the declaration and its record to `android-permissions-derive` (REQ-20) — the
+access-path decision stays here; the ledger row, the `<uses-feature>` pairing, and the denial
+path belong there.
 
-Gate: confirm the dependency set and the manifest diff.
+**Data Safety handoff (§G).** Record what happens to the decoded payload and the camera frame.
+Wherever either **leaves the device** (backend, third-party SDK), record the store-side Data
+Safety declaration obligation and hand it to the operator — the same handoff category
+`android-permissions-derive` uses for its §G obligations: discovery here, filing by the operator,
+no skill edits the Play Console. Never assert an exemption for on-device-only processing (spec
+§G / §Open Questions). Details and the 16 KB page-size check for the bundled ML Kit model
+(`spec/android/release-readiness/` §D) are in `references/access-path-decision.md` §7.
+
+Gate: confirm the dependency set, the manifest diff, and the recorded data flow.
 
 ### 3. Build the pipeline for the chosen path
 
@@ -118,9 +152,12 @@ and `enableAutoZoom()` enabled (both are off by default), the result handled, th
 and user-cancelled cases handled.
 
 **In-app path:** `Preview` plus one `ImageAnalysis`, and every one of these is load-bearing —
-an explicit `ResolutionSelector` sized against the pixel budget (never the VGA default),
+an explicit `ResolutionSelector` **computed** from the symbology and the scanning distance
+against the 2-pixels-per-module budget (never the VGA default, never a copied literal),
 `STRATEGY_KEEP_ONLY_LATEST`, `close()` on the `ImageProxy` on every path including the error
-path, `rotationDegrees` passed into the `InputImage`, the `YUV_420_888` default kept, and
+path, `rotationDegrees` passed into the `InputImage` **and** `targetRotation` kept current via an
+`OrientationEventListener` or `DisplayListener` on a rotating surface, the `YUV_420_888` default
+kept, and
 detection coordinates mapped through `MlKitAnalyzer` or the viewfinder's `CoordinateTransformer`
 rather than by hand. Wire ML Kit's zoom suggestion — bounded by the camera's real maximum ratio
 — instead of inventing a zoom heuristic.
@@ -158,10 +195,16 @@ step where a scanner becomes safe or does not.
 ### 7. Accessibility pass
 
 A camera-based flow excludes anyone who cannot aim a camera, so the non-camera path from step 5
-is an accessibility obligation, not a convenience. Announce results through a polite live region
-— **not** `announceForAccessibility`, deprecated in Android 16 — keep every scanner control at
-48dp, and keep the decoded content on the confirmation surface readable by a screen reader,
-since that is where the user makes the trust decision.
+is an accessibility obligation, not a convenience. Three announcement constructions, one per
+event (spec §H; snippets in `references/scanner-pipeline.md` §6) — never `announceForAccessibility`
+or `TYPE_ANNOUNCEMENT`, both deprecated in Android 16: the **result** through a **polite** live
+region (never assertive — that is reserved for time-critical content); the **surface change**
+(scanning → confirmation / manual entry) through a **pane title**; a **failed or rejected scan**
+through `CONTENT_CHANGE_TYPE_ERROR` / `setError`. Keep every scanner control at 48dp, and keep
+the decoded content on the confirmation surface readable by a screen reader, since that is where
+the user makes the trust decision. Do **not** cite WCAG SC 2.5.4 (Motion Actuation) as covering
+the flow — the W3C excludes camera aiming from its scope; the obligation carried is the
+non-camera path, nothing else.
 
 ### 8. Verify and build green
 
@@ -169,8 +212,15 @@ Generate tests against real code fixtures including the adversarial cases (damag
 angled, at the edge of the pixel budget) and the rejection payloads from step 6, plus the
 permission-denied and permanently-denied paths. Use the emulator's virtual-scene image import for
 the mechanical layer, and state plainly that focus, low light, distance, and torch behaviour are
-**not** evidenced by an emulator run. Finish with `./gradlew build`; report a red state rather
-than leaving it silent (REQ-1, REQ-7).
+**not** evidenced by an emulator run. Device-bound scanning tests SHOULD live in the instrumented
+lane per `spec/android/test-automation/` §F, not the per-commit suite.
+
+Two gaps to **report by name, never fill silently** (spec §B/§J, REQ-6): a **contrast
+threshold** (ISO/IEC 18004 does not own contrast grading, 15415 does, both paywalled) and a
+**scan-latency / detection-rate budget** (no camera spec; `spec/android/perceived-performance/`
+fixes startup and frame budgets only). Name the gap and propose the spec extension.
+
+Finish with `./gradlew build`; report a red state rather than leaving it silent (REQ-1, REQ-7).
 
 ## Generating codes
 
@@ -183,7 +233,7 @@ payload and record the restriction, or record the conflict; never decide it sile
 ## Reference files
 
 - Read `references/access-path-decision.md` before step 1 — the three-path decision, what each
-  path costs, and the dependency/manifest recipe per path.
+  path costs, the dependency/manifest recipe per path, and the Data Safety / 16 KB record.
 - Read `references/scanner-pipeline.md` in step 3 — the CameraX plus ML Kit templates and the
   code-scanner call site.
 - Read `references/payload-trust.md` in step 6 — payload classes, validation rules, rejection
@@ -204,9 +254,14 @@ keys and fail-closed semantics are owned by the spec and are not duplicated here
 
 - **Never** request or declare the `CAMERA` permission on the code-scanner path — that is the
   path's defining property, and requesting it anyway contradicts `spec/android/security/` §E.
+  On Path B **and** Path C it is declared, and handed to `android-permissions-derive`.
 - **Never** accept CameraX's default `ImageAnalysis` resolution. It is bounded at VGA
   (640×480); against the 2-pixels-per-module budget that is the single most common reason a
-  viewfinder never fires on a small or distant code.
+  viewfinder never fires on a small or distant code. Compute the target from the budget
+  (`references/scanner-pipeline.md` §1) and show the computation — never paste a literal.
+- **Never** assert a Data Safety exemption; where payload or frame leaves the device, record
+  the obligation and hand it to the operator. **Never** cite WCAG SC 2.5.4 as cover, and never
+  announce a scan assertively or through the deprecated announcement APIs.
 - **Never** act on a decoded payload without showing the destination and taking an explicit
   user action — no `ACTION_CALL`, no auto-join, no auto-submit. `ACTION_DIAL` is the only
   conformant way to reach a `tel:` payload.
@@ -232,32 +287,30 @@ this file stay English):
 - "Einen Scan-Screen bauen"
 - "Code mit der Kamera einlesen"
 - "Der Scanner erkennt nichts" (route to step 3 — usually the resolution default)
-- "QR-Code anzeigen / rendern"
+- "QR-Code anzeigen / rendern" / "QR-Code erzeugen"
+- "Welche Kamera-Bibliothek für den Scanner?" (route to step 1 — the access-path decision)
+- "Scan-Ergebnis prüfen, bevor die App etwas damit macht" (route to step 6)
 
 ## Gotchas
 
 Concrete corrections to non-obvious facts the executing agent would otherwise get wrong:
 
-- **The code scanner needing no camera permission is not a styling trade-off.** It is a
-  permission-surface decision. Reaching for the in-app path for cosmetic reasons buys a
-  permission prompt, a privacy indicator, and a pipeline that must be maintained.
-- **`displayValue` is not `rawValue` with nicer formatting.** It may omit information encoded
-  in the barcode. Anything the app acts on reads `rawValue`.
-- **Detection results are not stable frame to frame.** The vendor documentation says so
-  explicitly. A continuous scanner without an acceptance rule will act on a value it would not
-  have produced one frame later.
-- **`enableAllPotentialBarcodes()` returns codes it could not decode** — `rawValue` is null but
-  a bounding box exists. It is for guiding or zooming toward a code, and any UI built on it must
-  distinguish "seen" from "read".
+- **The code scanner needing no camera permission is not a styling trade-off** — the in-app
+  path for cosmetic reasons buys a permission prompt, a privacy indicator, and a pipeline.
+- **`displayValue` is not `rawValue` with nicer formatting** — it may omit information;
+  anything the app acts on reads `rawValue`.
+- **Detection results are not stable frame to frame** (vendor-documented). A continuous
+  scanner without an acceptance rule acts on a value it would not produce one frame later.
+- **`enableAllPotentialBarcodes()` returns codes it could not decode** (`rawValue` null, box
+  present) — enable only for small/distant codes, and distinguish "seen" from "read".
 - **A quiet zone is a property of the symbology, not a margin taste.** Four modules for
   full-size QR, two for Micro QR; 1D quiet zones are multiples of the narrow-bar width X and are
-  not numerically comparable with a module count.
-- **The "code size ≈ distance ÷ 10" rule and the 2 cm minimum are folklore.** No normative
-  source states them. Derive physical size from the 2-pixels-per-module rule and the target
-  device's capture resolution instead.
-- **A `WIFI:` payload carries the network password in plaintext inside the code** and is a
-  de-facto ZXing convention, not a standard. Where the project controls provisioning, Wi-Fi Easy
-  Connect (DPP) is Android's own cryptographically secured QR path.
-- **`zxing-android-embedded` looks like the obvious ZXing wrapper and is stale** — its last
-  release is from 2021 and it bundles an outdated ZXing core. Drive maintained
-  `com.google.zxing:core` from the project's own CameraX pipeline instead.
+  not numerically comparable with a module count. ZXing's `QRCodeWriter` reads the `MARGIN`
+  hint in **modules** (default 4), although the generic hint doc says "pixels" — set it to 4
+  explicitly and record the unit.
+- **The "code size ≈ distance ÷ 10" rule and the 2 cm minimum are folklore** — derive physical
+  size from the 2-pixels-per-module rule and the capture resolution instead.
+- **A `WIFI:` payload carries the network password in plaintext** and is a de-facto ZXing
+  convention, not a standard (`references/payload-trust.md` §2).
+- **`zxing-android-embedded` is stale** (last release 2021, outdated core) — drive maintained
+  `com.google.zxing:core` from the project's own pipeline (`references/access-path-decision.md` §4).

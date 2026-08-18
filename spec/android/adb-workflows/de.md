@@ -32,7 +32,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 ### A. Umgebung, Targeting und Verbindung
 
 - **MUSS [MUST]** genau ein `platform-tools`-ADB auf dem `PATH` haben (per `which -a adb` verifizieren); mehrere Installationen verursachen die `adb server version … doesn't match this client`-Kill-Schleife, und Tools mit gebündeltem adb (scrcpy) werden auf das eine gezeigt (`ADB=`-Env)
-- **MUSS [MUST]** Platform-Tools aktuell halten — Verhalten ist versionsabhängig (Shell-Exit-Code-Weitergabe ≥ 24 [R2][R27], ssh-artiges Quoting ≥ 23 [R2], `server-status`/Wireless-Debugging 2.0 ≥ 37 [R1][R2])
+- **MUSS [MUST]** Platform-Tools aktuell halten — Verhalten ist versionsabhängig: ssh-artige Argumentbehandlung seit Platform-Tools 23 [R1]; Geräte-Exit-Codes und stdout/stderr-Trennung brauchen *sowohl* Host-adb ≥ 24 (das shell-v2-Protokoll) **als auch** ein Gerät mit API ≥ 24 — die eine Regel, die der Exit-Code-Punkt in §E anwendet [R27][R30]; `adb server-status` ist älter als 37 (36.0.0 erweiterte es um den mDNS-Zustand), das `libadbmdns`-Backend wurde in 37.0.0 Default, und `openscreen` (samt `ADB_MDNS_OPENSCREEN`) ist in 37.0.1 entfernt, eine Wireless-Debugging-Diagnose setzt also `server-status`-Ausgabe mit `version: "37.0.0"` oder höher und `mdns_backend: LIBADBMDNS` voraus [R1][R2]
 - **MUSS [MUST]** Geräte explizit targeten, sobald mehr als ein Gerät angeschlossen sein kann: `-s <serial>` pro Aufruf oder `ANDROID_SERIAL` für Sessions exportiert (`-s` überschreibt die Variable); nach jedem Emulator-Retry/-Neustart nutzen alle Folgekommandos explizites `-s`
 - **MUSS [MUST]** den Gerätezustand vor dem Handeln prüfen und Zustände auf Abhilfen abbilden: `device` (Achtung: verbunden ≠ fertig gebootet), `offline` (Server neu starten / neu einstecken), `unauthorized` (RSA-Dialog nicht bestätigt — neu verbinden und am Gerät bestätigen)
 - **SOLLTE [SHOULD]** Android-11+-Wireless-Debugging über den Pairing-Fluss nutzen (`adb pair ip:port` mit dem Bildschirm-Code, danach Auto-Connect); Skripte verbinden per explizitem `ip:port` und hängen nicht von mDNS-Discovery ab; `adb server-status` und `adb mdns track-services` sind die Diagnosewerkzeuge
@@ -75,7 +75,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 ### E. Skripting- und Agenten-Robustheit
 
 - **MUSS [MUST]** auf echten Boot gaten, nicht auf Transportzustand: `adb wait-for-device` gefolgt von Polling auf `sys.boot_completed` bis `1` (beim Vergleich `\r` strippen) — `wait-for-device` allein kehrt mitten im Boot zurück
-- **MUSS [MUST]** Exit-Codes wahrheitsgemäß behandeln: `adb shell` propagiert Geräte-Exit-Codes nur ab API ≥ 24 [R2][R27] (und nie mit `-x`); `am instrument` endet immer mit 0 — `INSTRUMENTATION_STATUS_CODE` aus der `-w -r`-Ausgabe parsen; `adb install`-Ausgabe wird zusätzlich auf `Success`/`INSTALL_FAILED` gegrept
+- **MUSS [MUST]** Exit-Codes wahrheitsgemäß behandeln: `adb shell` propagiert Geräte-Exit-Codes nur, wenn Host-adb ≥ 24 *und* Geräte-API ≥ 24 zusammen gelten (der `shell,v2`-Dienst ist API ≥ 24 [R30]; ältere Hosts sprechen das v1-Protokoll [R27]) und nie mit `-x` [R30]; auf einem älteren Gerät ist `cmd; echo x$?` mit Parsen des Trailers der Fallback; `am instrument` endet immer mit 0 — `INSTRUMENTATION_STATUS_CODE` aus der `-w -r`-Ausgabe parsen; `adb install`-Ausgabe wird zusätzlich auf `Success`/`INSTALL_FAILED` gegrept
 - **MUSS [MUST]** hänganfällige Aufrufe (`screencap`, `dumpsys`, `uiautomator`) in `timeout` wrappen; es gibt kein host-seitiges adb-Timeout-Flag (`-t` ist eine Transport-ID)
 - **SOLLTE [SHOULD]** transiente `device not found`/`closed`-Fehler einmal via `adb kill-server && adb start-server` neu versuchen — nie in einer Schleife
 - **SOLLTE [SHOULD]** geleakten Zustand mit `trap`-Handlern aufräumen: `adb forward --remove-all`, veränderte `settings` zurücksetzen, gestartete Emulatoren beenden
@@ -88,7 +88,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 ### F. Emulator-Verwaltung (CLI)
 
 - **MUSS [MUST]** AVDs nicht-interaktiv erzeugen mit `echo "no" | avdmanager create avd --force -n <name> -k "system-images;…"` nach `sdkmanager --install` des Images
-- **MUSS [MUST]** das etablierte Headless-Flag-Set in CI/Agenten nutzen: `-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim` plus ein bewusstes Snapshot-Flag (nächster Punkt; GPU-Fallback `lavapipe` bei Crash); KVM ist auf Linux-Runnern Pflicht (udev-Regel) [R21][R28], gemäß `spec/android/test-automation/` §G
+- **MUSS [MUST]** das etablierte Headless-Flag-Set in CI/Agenten nutzen: `-no-window -gpu software -noaudio -no-boot-anim` plus ein bewusstes Snapshot-Flag (nächster Punkt); `-gpu software` (Emulator ≥ 36.4.9) wählt das beste verfügbare GLES-/Vulkan-Software-Backend, `-gpu swiftshader` ist die explizite SwiftShader-Wahl und `-gpu lavapipe` (Mesa) der Fallback, wenn der Default-Software-Renderer abstürzt; `swiftshader_indirect`, `swangle_indirect` und `guest` sind seit Emulator 36.4.9 deprecated und **DÜRFEN NICHT [MUST NOT]** in neue Scaffolds geschrieben werden (ein gepinnter älterer Emulator, der nur `swiftshader_indirect` kennt, hält das als datierte Abweichung fest) [R16][R31][R32]; KVM ist für Emulator-Jobs auf GitHub-gehosteten Linux-Runnern Pflicht (udev-Regel) [R21][R28], gemäß `spec/android/test-automation/` §G
 - **MUSS [MUST]** das Snapshot-Flag nach Laufzweck wählen: `-no-snapshot` (voller Cold Boot) für deterministische Debugging- und Reproduktionsläufe; Snapshot-gecachte AVDs mit `-no-snapshot-save` sind die sanktionierte Ausnahme für CI-Wanduhrzeit (gemäß `spec/android/test-automation/` §G)
 - **MUSS [MUST]** das Port-Modell respektieren: Konsolen-/adb-Portpaare ab 5554/5555 (+2 je Instanz, Serial `emulator-<console-port>`); headless Instanzen mit `adb -s emulator-<port> emu kill` stoppen
 - **KANN [MAY]** QoL-Aufgaben über `adb-enhanced` (`adbe`) als gepflegten Wrapper erledigen
@@ -119,16 +119,18 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, 
 
 ## Offene Fragen
 
+Jede Frage nennt die Vorgabe, die die Anforderungen oben bereits kodieren.
+
 - Googles `android`-Agent-CLI: als First-Class-Abhängigkeit des Debugging-Skills übernehmen, sobald sie stabilisiert, oder adb-only bleiben mit der CLI als optionaler Beschleunigung?
 - Unicode-Eingabe: Ist ADBKeyBoard (Drittanbieter-IME) als Skill-Abhängigkeit akzeptabel, oder sollen Skills Texteingabe-Automatisierung jenseits von ASCII meiden?
 - Wireless-Pairing-Automatisierung: Erst-Pairing ist bewusst interaktiv; sollen Skills nur einen USB-first-Setup-Pfad dokumentieren?
 
 ## Referenzen
 
-Alle Quellen abgerufen am 11.08.2026, außer [R29] (14.08.2026). Klassenmarker: (P) primäre/maßgebliche Vendor- oder AOSP-Dokumentation, (S) sekundär (gepflegte Tool-Repos, Engineering-Runbooks). Plattformverhaltens-Fakten zitieren die eine maßgebliche Primärquelle; Aussagen, die nachgelagertes Tooling steuern, tragen korroborierende Zitate inline.
+Alle Quellen abgerufen am 11.08.2026, außer [R29] (14.08.2026) und [R30]–[R32] (19.08.2026). Klassenmarker: (P) primäre/maßgebliche Vendor- oder AOSP-Dokumentation, (S) sekundär (gepflegte Tool-Repos, Engineering-Runbooks). Plattformverhaltens-Fakten zitieren die eine maßgebliche Primärquelle; Aussagen, die nachgelagertes Tooling steuern, tragen korroborierende Zitate inline.
 
 - [R1] Offizielle ADB-Dokumentation (Architektur, Targeting, Wireless, Install, Shell-Tools): <https://developer.android.com/tools/adb>
-- [R2] Platform-Tools-Release-Notes (versionsabhängiges Verhalten, mDNS-Backends): <https://developer.android.com/tools/releases/platform-tools>
+- [R2] Platform-Tools-Release-Notes (versionsabhängiges Verhalten; `server-status`-mDNS-Zustand in 36.0.0, `libadbmdns`-Default in 37.0.0, `openscreen` in 37.0.1 gelöscht; die Seite beginnt bei 24.0.4 und listet die 23er/24er-Protokolländerungen nicht mehr): <https://developer.android.com/tools/releases/platform-tools>
 - [R3] Offizielle logcat-Seite (+ Verweis auf `adb logcat --help`): <https://developer.android.com/tools/logcat>
 - [R4] AOSP-logcat-Quelle/Hilfetext (maßgebliche Optionsreferenz): <https://android.googlesource.com/platform/system/logging/+/refs/heads/main/logcat/logcat.cpp>
 - [R5] dumpsys-Dokumentation: <https://developer.android.com/tools/dumpsys>
@@ -153,6 +155,9 @@ Alle Quellen abgerufen am 11.08.2026, außer [R29] (14.08.2026). Klassenmarker: 
 - [R24] MASTG-JDWP/jdb-Technik (CLI-Debugger-Kette): <https://mas.owasp.org/MASTG/techniques/android/MASTG-TECH-0031/>
 - [R25] Process-Death-Simulations-Unterschied: <https://vtsen.hashnode.dev/how-to-simulate-process-death-in-android>
 - [R26] Host-lokalen Server vom Gerät erreichen (`adb reverse`, Secure Context) (P): <https://developer.android.com/develop/ui/views/layout/webapps/access-local-server>
-- [R27] AOSP-Issue: `adb shell`-Exit-Codes vor API 24 nicht propagiert (S): <https://issuetracker.google.com/issues/36908392>
+- [R27] AOSP-Issue: `adb shell`-Exit-Codes vor API 24 / Host-adb 24 nicht propagiert (S): <https://issuetracker.google.com/issues/36908392>
 - [R28] KVM-Hardwarebeschleunigung GA auf GitHub-gehosteten Runnern (S): <https://github.blog/changelog/2024-04-02-github-actions-hardware-accelerated-android-virtualization-now-available/>
 - [R29] Perfetto System-Tracing — der Helfer `record_android_trace`, seine Flags und die aufgezeichneten Kategorien: <https://perfetto.dev/docs/getting-started/system-tracing>
+- [R30] AOSP-adb-Services und Manpage — `shell,v2: (API>=24)` für Exit-Codes und stdout/stderr-Trennung, `-x` deaktiviert Remote-Exit-Codes, `server-status` (P): <https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/services.md>, <https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md>
+- [R31] Emulator-Hardwarebeschleunigung — die `-gpu`-Wertetabelle (`auto`, `host`, `software`, `lavapipe`, `swiftshader`, `swangle`; `swiftshader_indirect`/`swangle_indirect`/`guest` in 36.4.9 deprecated) (P): <https://developer.android.com/studio/run/emulator-acceleration>
+- [R32] Emulator-Release-Notes — 36.4.9: `-gpu software` eingeführt, Lavapipe als Default-Software-Renderer (P): <https://developer.android.com/studio/releases/emulator>

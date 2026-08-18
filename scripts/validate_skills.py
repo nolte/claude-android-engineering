@@ -67,12 +67,18 @@ SKILL_ACTION_TOKENS = {
     "orchestrate", "plan", "refactor", "refine", "review", "revise",
     "scope", "start", "sweep", "triage", "trigger",
     "add", "augment", "scaffold", "migrate", "sync", "determine", "release", "map",
-    "design", "implement",
+    "design", "implement", "upgrade",
 }
 # Closed exception list: established skill names whose trailing token is not an
 # action token and that predate or otherwise outweigh a breaking rename. Kept in
 # sync with skill-management §Frontmatter validation §"Documented exceptions".
-SKILL_NAME_FORM_EXCEPTIONS = {"spec", "yaml-json-schema", "quality-gate"}
+SKILL_NAME_FORM_EXCEPTIONS = {
+    "spec", "yaml-json-schema", "quality-gate",
+    # This repository's established REQ-13/15/16 skills; the names are referenced
+    # across specs, requirements, docs, and sibling artifacts, so a rename would
+    # be a breaking change with no functional gain (audit 2026-08-18, closed).
+    "android-compose-ui", "android-debugging", "android-perceived-performance",
+}
 # Agent role-noun morphology: an object-role name ends in an actor noun, which
 # in English almost always carries one of these derivational suffixes.
 AGENT_ROLE_SUFFIXES = ("er", "or", "ist", "ian", "eur")

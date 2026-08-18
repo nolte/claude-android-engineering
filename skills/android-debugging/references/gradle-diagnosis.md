@@ -53,9 +53,9 @@ Always name the **exact failing task** (`:app:compileDebugKotlin`, `:app:process
 ## Test-task failures
 
 - Run exactly one debug variant's task (`./gradlew testDebug`, never the all-variant `test` aggregate) — matches CI (`test-automation` §G) and halves the surface.
-- A red `testDebug` is a **test failure**, not necessarily an app defect; apply the boundary in `references/runtime-diagnosis.md` (§Test failure vs app defect) before treating it as a runtime bug.
+- A red `testDebug` is a **test failure**, not necessarily an app defect. Decide which before diagnosing (`test-automation`): a failure that reproduces deterministically on the JVM (`runTest`) points at an app defect — route it back through `SKILL.md` triage to Surface 3; an intermittent or CI-timing-only failure, a `Thread.sleep`/wall-clock wait, a missing `MainDispatcherRule`, or an order-dependent assertion points at a test defect/flake — fix the test, never institutionalize a retry.
 - JUnit XML under `build/test-results/…/` is the authoritative per-test evidence; cite the failing test class and assertion, not just "tests failed".
 
 ## Reporting
 
-State the failing task, the cited root-cause line, the failure class, and the documented remedy. Propose the concrete edit (a catalog version, a manifest attribute, a `gradle.properties` flag) and apply it only behind the `SKILL.md` step 4 approval gate. Re-run the same task to verify green; if still red, report the new output and the next step — never mark complete on a red build.
+State the failing task, the cited root-cause line, the failure class, and the documented remedy. Propose the concrete edit (a catalog version, a manifest attribute, a `gradle.properties` flag) and apply it only behind the `SKILL.md` step 4 approval gate. Re-run the same task first, then the full `./gradlew build` — the REQ-1 criterion and the `release-readiness` §E gate are the whole build (lint, tests, release assembly), not the one task that failed. If still red, report the new output and the next step — never mark complete on a red build. Never make the build green by adding a lint baseline entry, disabling a check, or annotating a suppression (`release-readiness` §E).

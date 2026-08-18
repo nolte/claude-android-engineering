@@ -20,6 +20,9 @@ placeholders for resource lookups, not a licence to inline text.
 
 Create every channel before its first use, at app start or at feature entry. Importance is
 fixed here **permanently** — the ledger row's importance column is what this argument reads.
+**One channel per type of event the user would want to control separately** — never one per
+notification site, and never one per feature module; the channel set stays small and semantic
+(spec §C).
 
 ```kotlin
 object NotificationChannels {
@@ -94,6 +97,17 @@ Rules the template encodes:
 - At most three actions, none duplicating the tap action.
 - No `setCustomContentView()`: the system re-decorates custom layouts into a standard template
   from Android 12, and the Live-Update surface rejects them outright.
+- Title under 30 characters, preview text under 40, and never the app name — the system renders
+  it already (spec §F SHOULD). Longer content goes into `BigTextStyle`, not the title.
+- Lock-screen visibility per the ledger's `Visibility` column: `VISIBILITY_PRIVATE` plus
+  `setPublicVersion()` for sensitive content, `VISIBILITY_SECRET` where even the presence is
+  sensitive; the public version is also what screen sharing shows.
+- `setLocalOnly(true)` for a notification meaningful only on the producing device (a
+  foreground-service progress the wearable cannot act on); otherwise let bridging to a paired
+  Wear OS device happen and control it by bridge tags rather than disabling it globally.
+- Accessibility: from Android 16 (API 36) `announceForAccessibility()` and `TYPE_ANNOUNCEMENT`
+  are deprecated — an in-app surface chosen at the presence gate carries its own accessibility
+  path (live region, pane title, error semantics), never an announcement of the event.
 
 ## Grouping and summary
 
@@ -199,14 +213,21 @@ A call additionally runs a foreground service so it ranks correctly on older ver
 full-screen intent — the one surface the platform still grants to calling apps — is guarded:
 
 ```kotlin
-if (notificationManager.canUseFullScreenIntent()) {
+// canUseFullScreenIntent() exists from API 34; below it the declared permission is simply held.
+val fullScreenAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE ||
+    notificationManager.canUseFullScreenIntent()
+if (fullScreenAllowed) {
     builder.setFullScreenIntent(fullScreenPendingIntent, true)
 } else {
-    // No grant: the CallStyle notification alone must remain answerable.
-    // Route the user to Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT only on an
-    // explicit user step, never as a startup interruption.
+    // No grant: the CallStyle notification alone must remain answerable (high importance).
+    // Offer the settings route only on an explicit user step, never as a startup interruption:
+    // Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:$packageName"))
 }
 ```
+
+This guard, its degradation branch, and the settings-intent launch are **owned here** (the
+`apply` operation); `android-permissions-derive` records the same obligation in its
+`USE_FULL_SCREEN_INTENT` ledger row and verifies the guard exists, but does not write it.
 
 ## Foreground-service notification
 
@@ -237,7 +258,15 @@ ServiceCompat.startForeground(
 ## Live Update / ProgressStyle
 
 Only for a user-initiated, ongoing, continuously time-sensitive activity. The full contract
-must hold before promotion is requested:
+must hold before promotion is requested. Permitted styles: the standard (no-style) template,
+`BigTextStyle`, `CallStyle`, `ProgressStyle` (Android 16), and `MetricStyle` (Android 17 — up
+to three metrics and three actions, with semantic colours via `createSemanticStyleAnnotation()`);
+every other style disqualifies the notification from promotion. Compat path: `NotificationCompat.ProgressStyle`
+and `setRequestPromotedOngoing()` ship in `androidx.core:core` 1.17+ and no-op below API 36,
+so one build serves every version; for `MetricStyle`, check whether the `androidx.core`
+release in use wraps it — until it does, build it behind `SDK_INT >= 37` with `ProgressStyle`
+or the standard template as the fallback (skill refinement; spec §D names `MetricStyle`, the
+compat handling is proposed as a spec extension, REQ-6).
 
 ```kotlin
 val notification = NotificationCompat.Builder(context, channelId)   // not IMPORTANCE_MIN
@@ -245,15 +274,29 @@ val notification = NotificationCompat.Builder(context, channelId)   // not IMPOR
     .setContentTitle(context.getString(R.string.delivery_en_route))  // required
     .setOngoing(true)                                                // required
     .setRequestPromotedOngoing(true)                                 // required
+    .setStyle(NotificationCompat.ProgressStyle().setProgress(percent)) // a permitted style
     .setShortCriticalText(context.getString(R.string.eta_minutes, eta))
     .setDeleteIntent(dismissedIntent)                                // required: never re-post
     .build()
+
+// canPostPromotedNotifications() exists from API 36; below it there is no promoted surface.
+val promotable = Build.VERSION.SDK_INT >= 36 && notificationManager.canPostPromotedNotifications()
+if (!promotable) {
+    // post the same event as an ordinary ongoing notification (the working fallback);
+    // offer the settings route only on an explicit user step, and only if a handler exists —
+    // the Settings reference warns that a matching activity may be absent (permissions spec §F [R32]):
+    // val intent = Intent(Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS)
+    //     .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+    // if (intent.resolveActivity(packageManager) != null) startActivity(intent)
+}
 ```
 
 Forbidden on a promoted notification: custom layouts, `setGroupSummary(true)`,
-`setColorized(true)`, a minimum-importance channel. Check `canPostPromotedNotifications()`
-before relying on the surface, and keep a working non-promoted fallback — OEMs may enforce
-additional criteria. A Live Update the user dismissed is **never** re-posted.
+`setColorized(true)`, a minimum-importance channel. Keep the non-promoted fallback working —
+OEMs may enforce additional criteria. A Live Update the user dismissed is **never** re-posted.
+The SDK guard, its fallback branch, and the settings-intent launch are **owned here**;
+`android-permissions-derive` records the obligation in its `POST_PROMOTED_NOTIFICATIONS`
+ledger row and verifies the guard exists, but does not write it.
 
 ## Checking before relying on the channel
 
@@ -275,3 +318,11 @@ if (!enabled || channelBlocked) {
 Settings routes: `Settings.ACTION_APP_NOTIFICATION_SETTINGS` for the app level,
 `Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS` with `EXTRA_CHANNEL_ID` for one channel. The
 app does not re-prompt into a dialog the system will no longer show.
+
+The `POST_NOTIFICATIONS` request itself is derived and wired by `android-permissions-derive`;
+what this skill supplies is the trigger and the rationale text: tied to the first moment the
+user opts into an event class, and the **rationale names that event class** ("get told when
+your order ships"), never a generic "allow notifications". Where the channel model alone is too
+coarse — frequency, quiet hours, per-topic subscription — expose the app's own notification
+preferences (spec §G SHOULD) and keep them consistent with the system channels rather than
+duplicating them; the preference screen is authored by `android-compose-ui`.

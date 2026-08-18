@@ -1,6 +1,6 @@
 # Scanner pipeline templates
 
-Implementation templates for the path chosen in `access-path-decision.md`. Grounded in
+Implementation templates for the path chosen in SKILL.md step 1. Grounded in
 `spec/android/barcode-scanning/` §B–§E; on any conflict that spec wins. Fill in the feature
 name, state shape, and destination; keep every constraint below intact — each one is the fix
 for a specific, silent failure mode.
@@ -24,10 +24,28 @@ and a viewfinder that never fires.
 - Worked consequences: an EAN-13 image should be at least **190 px wide**; a PDF417 ideally at
   least **1156 px wide**; a QR symbol needs twice its module count per side — at version 40's
   177×177 modules that is 354 px across the symbol alone, before the quiet zone.
-- **Capture resolution:** 1280×720 or 1920×1080 where codes are scanned at a distance. Do not
-  exceed roughly 2 MP for real-time scanning — beyond that latency is paid for nothing.
+- **Capture resolution is computed, not copied.** Work it out from the symbology, the physical
+  code size, and the intended scanning distance, and write the computation into the run report
+  and next to the selector in code:
+  1. Modules per side of the largest symbol the feature must read (QR version 40 = 177; an
+     EAN-13 spans 95 module widths; a compact QR version 10 = 57).
+  2. Fraction of the frame width the code occupies at the intended distance (a phone held at
+     arm's length over a 3 cm label typically frames it at roughly 15–25 % of the width; measure
+     it on the reference device rather than assuming).
+  3. Required width = `modules × 2 px ÷ frame-fraction`, then round up to the next standard
+     capture size and add the quiet zone.
+  Worked example: a QR version 10 (57 modules) at 20 % of the frame → `57 × 2 ÷ 0.20 = 570 px`
+  → 1280×720 suffices. Version 40 at the same distance → `177 × 2 ÷ 0.20 = 1770 px` →
+  1920×1080. Where the result exceeds roughly 2 MP for real-time scanning, that is a signal to
+  change the distance, zoom, or symbology — beyond that, latency is paid for nothing.
 - Quiet zone: 4 modules for full-size QR, 2 for Micro QR. 1D quiet zones are multiples of the
   narrow-bar width X and are not comparable with a module count.
+- **Contrast is a gap, not a number.** ISO/IEC 18004 does not own contrast grading — ISO/IEC
+  15415 does — and both are paywalled, so no verified threshold exists here. When a
+  low-contrast fixture or an acceptance rule needs one, report the gap (REQ-6) instead of
+  quoting a figure. The same applies to a scan-latency budget or a detection-rate number: no
+  camera spec exists and `spec/android/perceived-performance/` fixes startup and frame budgets
+  only — name the gap in the report.
 
 ## 2. Code-scanner call site
 
@@ -53,7 +71,8 @@ fun startScan(onResult: (ScanOutcome) -> Unit) {
 ```
 
 Handle `Unavailable` as the module-not-yet-downloaded case with a real UI state, and pair it
-with an install-time module request per `access-path-decision.md` §5.
+with an install-time module request (`com.google.mlkit.vision.DEPENDENCIES` metadata or
+`ModuleInstallClient`; SKILL.md step 2).
 
 ## 3. In-app pipeline
 
@@ -62,10 +81,24 @@ Every constraint marked **load-bearing** below fixes a failure that produces no 
 ```kotlin
 // LOAD-BEARING: without this, ImageAnalysis is bounded at VGA (640x480) — below the
 // budget in §1 for small or distant codes, and the most common reason nothing decodes.
+// The target size is COMPUTED from §1 — replace the inputs with the feature's own and keep
+// the derivation next to the value so a later reader can re-check it:
+//   largest symbol: QR version 10 = 57 modules per side
+//   frame fraction at intended distance (measured on <reference device>): 0.20
+//   required width = 57 * 2 px / 0.20 = 570 px  -> next standard size 1280x720
+private const val MODULES_PER_SIDE = 57
+private const val FRAME_FRACTION = 0.20f
+private val requiredWidthPx = (MODULES_PER_SIDE * 2 / FRAME_FRACTION).toInt()   // 570
+private val analysisTarget: Size = when {
+    requiredWidthPx <= 1280 -> Size(1280, 720)
+    requiredWidthPx <= 1920 -> Size(1920, 1080)
+    else -> error("budget exceeds ~2 MP real-time ceiling — change distance, zoom, or symbology")
+}
+
 private val resolutionSelector = ResolutionSelector.Builder()
     .setResolutionStrategy(
         ResolutionStrategy(
-            Size(1280, 720),
+            analysisTarget,
             ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER,
         ),
     )
@@ -87,6 +120,25 @@ a target aspect ratio and a target resolution on the same use case — that thro
 The analyzer, with the two mandatory disciplines:
 
 ```kotlin
+// LOAD-BEARING on a rotating surface: keep targetRotation current so rotationDegrees below
+// stays correct. Register at bind time; unregister on teardown. (Not needed when the activity
+// is locked to one orientation — say so in the run report if you rely on that.)
+private val orientationListener = object : OrientationEventListener(context) {
+    override fun onOrientationChanged(orientation: Int) {
+        if (orientation == ORIENTATION_UNKNOWN) return
+        val rotation = when (orientation) {
+            in 45 until 135 -> Surface.ROTATION_270
+            in 135 until 225 -> Surface.ROTATION_180
+            in 225 until 315 -> Surface.ROTATION_90
+            else -> Surface.ROTATION_0
+        }
+        imageAnalysis.targetRotation = rotation
+        // Preview's targetRotation follows the display when hosted by PreviewView/CameraXViewfinder.
+    }
+}
+// Alternative for a surface bound to the display rather than the sensor orientation:
+// DisplayManager.registerDisplayListener { display -> imageAnalysis.targetRotation = display.rotation }.
+
 @OptIn(ExperimentalGetImage::class)
 private fun analyze(imageProxy: ImageProxy) {
     val mediaImage = imageProxy.image
@@ -95,6 +147,7 @@ private fun analyze(imageProxy: ImageProxy) {
         return
     }
     // LOAD-BEARING: a rotation mismatch degrades detection without raising an error.
+    // rotationDegrees is derived from targetRotation — hence the listener above.
     val input = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
     scanner.process(input)
@@ -135,7 +188,9 @@ private fun buildScanner(camera: Camera): BarcodeScanner {
     }
     val options = BarcodeScannerOptions.Builder()
         .setBarcodeFormats(Barcode.FORMAT_QR_CODE)   // faster, and narrows the input surface
-        .enableAllPotentialBarcodes()                // optional; see the caveat below
+        // .enableAllPotentialBarcodes()             // ONLY when small/distant codes are expected
+        //                                           // and the UI guides toward a seen-not-read
+        //                                           // code; off by default — see the caveat below
         .setZoomSuggestionOptions(
             ZoomSuggestionOptions.Builder(zoomCallback)
                 // LOAD-BEARING: without a bound the library may suggest an unbounded
@@ -161,12 +216,15 @@ nothing else — do not add a re-detection trigger there; the next frame carries
 - `enableAllPotentialBarcodes()` returns codes that **could not be decoded**: `rawValue` and
   `rawBytes` are null, but a bounding box is present. It exists so the app can guide or zoom
   toward a code it has seen but not read — any UI built on it must distinguish "seen" from "read".
+  Enable it **only** when small or distant codes are expected and the surface actually uses the
+  seen-not-read state (a "move closer" hint, an auto-zoom); leave it off for a bounded near-field
+  scan, where it adds work and a state nothing consumes.
 - Results are **not stable frame to frame**; the vendor documentation says so. Define the
   acceptance rule (which value is acted on, and when) and the duplicate-suppression rule, and
   record both at their definition site. No vendor source states a debounce interval.
 - Read `rawValue`, or `rawBytes` for binary payloads. `displayValue` may omit information and is
   for display only. Branch on `valueType` for structured payloads — then treat the parsed
-  structure as untrusted anyway (`payload-trust.md`).
+  structure as untrusted anyway (SKILL.md step 6).
 
 **Documented exclusions — never build a required capability on these.** They fail silently:
 ECI-mode QR codes, FNC2/FNC3/FNC4 encodings, single-character 1D codes, ITF under six characters,
@@ -205,4 +263,12 @@ The surrounding screen follows `android-compose-ui` conventions. Scanner-specifi
   seconds.
 - Wait indication and message surfaces follow `spec/android/ui-components/` §A; error wording
   follows `spec/android/app-design-navigation/` §F. Do not invent scanner-specific indicators.
+- **Announcements (spec §H)** — three constructions, one per event, none of them
+  `announceForAccessibility`/`TYPE_ANNOUNCEMENT` (deprecated in Android 16):
+  - result → **polite** live region: `Modifier.semantics { liveRegion = LiveRegionMode.Polite }`
+    (View: `setAccessibilityLiveRegion(ACCESSIBILITY_LIVE_REGION_POLITE)`); never assertive;
+  - surface switch (viewfinder → confirmation / manual entry) → pane title:
+    `Modifier.semantics { paneTitle = stringResource(...) }` (View: `accessibilityPaneTitle`);
+  - failed or rejected scan → `Modifier.semantics { error(message) }`, which emits
+    `CONTENT_CHANGE_TYPE_ERROR` (View: `setError`/`setStateDescription` plus the error event).
 - Every control (torch, cancel, manual entry, gallery) meets 48dp × 48dp.

@@ -54,7 +54,7 @@ Readers: authors of this repository's Android skills that measure or remediate p
 
 ### B. When a number counts
 
-- **MUST** measure on a **physical device** — Macrobenchmark does not support emulators, and emulator timings do not transfer [R3]. An emulator is acceptable only for coarse loading-state UI checks, never for a reported startup or frame number
+- **MUST** measure on a **physical device** — Macrobenchmark discourages emulators because their numbers are not representative of the end-user experience, and it raises an error on an emulator (or a low-battery device) that only an explicit `androidx.benchmark.suppressErrors=EMULATOR` instrumentation argument silences [R3][R9]. A run that needed the suppression is a smoke test of the benchmark code, not a measurement: an emulator is acceptable only for coarse loading-state UI checks, never for a reported startup or frame number
 - **MUST** measure a **non-debuggable, minified, release-shaped** build with the target declared `profileable` [R3], matching the release configuration of `spec/android/release-readiness/` §A. A number from a debuggable or un-minified build **MUST NOT** be reported as a finding — the rule is the same one `spec/android/long-list-scrolling/` §G states for scroll
 - **MUST** hold the compilation state constant across compared runs and state it: `CompilationMode.DEFAULT` reflects what users get once a Baseline Profile ships, `None` reflects the worst case, `Full` reflects neither [R3]
 - **MUST** run enough iterations for the tail to exist — `measureRepeated` requires an explicit `iterations` value, and the five of the vendor sample is the floor, not a platform default — and **MUST** report the distribution, not a single value [R3]
@@ -75,7 +75,7 @@ Readers: authors of this repository's Android skills that measure or remediate p
 
 ### D. Startup methodology
 
-- **MUST** produce the reported startup number with a Macrobenchmark `StartupTimingMetric` run [R3]; `am start -W` and the `ActivityManager: Displayed` logcat line are a quick local check only, they measure TTID alone, and they **MUST NOT** be the basis of a reported finding
+- **MUST** produce the reported startup number with a Macrobenchmark `StartupTimingMetric` run [R3]; `am start -W` and the `ActivityManager: Displayed` logcat line are a quick local check only, they measure TTID alone, and they **MUST NOT** be the basis of a reported finding. The local TTFD counterpart is the `ActivityManager: Fully drawn <pkg>/.<Activity>: +<time>` logcat line the system prints once the app has signalled full display [R1] — the same status applies: a check that the §A instrumentation fires and roughly when, never a reported number, and its absence after the screen is visibly ready is itself the §A finding
 - **MUST** cover cold as the primary case, since optimizing cold improves warm and hot [R1], and report warm and hot alongside it rather than instead of it
 - **MUST** locate a slow startup before fixing it rather than guessing at `Application.onCreate()`: capture a Perfetto trace with the invocation `spec/android/adb-workflows/` §D owns, and read it against the documented startup phases [R1][R5]. Capture mechanics are that spec's; the reading and the verdict are this one's
 - **MUST** check the four documented startup cost centres before proposing anything else [R1]: work in `Application.onCreate()` and in eagerly-initialized content providers, heavy activity/first-screen initialization, blocking I/O or bitmap decoding on the main thread, and a custom splash-screen activity where the platform `SplashScreen` API belongs
@@ -84,7 +84,7 @@ Readers: authors of this repository's Android skills that measure or remediate p
 ### E. Jank methodology
 
 - **MUST** produce a reported jank number with Macrobenchmark `FrameTimingMetric` [R3], reading `frameOverrunMs` where available, as `spec/android/long-list-scrolling/` §G already requires for scroll
-- **MUST NOT** base a jank finding for a Compose surface on `dumpsys gfxinfo framestats` alone: the vendor documentation scopes that instrument to View-toolkit apps [R2]. It remains useful as a coarse local signal and for View-based screens, but the reported number comes from `FrameTimingMetric`
+- **MUST NOT** base a jank finding on `dumpsys gfxinfo framestats` alone, Compose surface or not: the vendor documentation scopes that instrument to apps drawing through the `View`-based toolkit (`Canvas`/View hierarchy — which includes Compose, whose `AndroidComposeView` renders through the same HWUI pipeline) and states that render statistics are unavailable for Vulkan, Unity, Unreal, and OpenGL surfaces [R2]. The instrument therefore *does* see a Compose screen; the reason it stays a coarse local signal is what it is, not what it covers — a per-process histogram without the per-frame overrun, iteration control, compilation-state, and condition record that §A/§B require. The reported number comes from `FrameTimingMetric` [R3]; a Vulkan/GL surface has no `gfxinfo` signal at all
 - **MUST** locate the cause with a trace before remediating — Perfetto's frame timeline shows which frames missed and what the main thread was doing [R2][R5]. A jank remedy proposed without a trace is a guess
 - **MUST** classify the cause into the documented families rather than reporting "it is slow" [R2]: main-thread work (I/O, binder calls, lock contention, allocation and GC pressure), rendering-thread work (oversized bitmap uploads, expensive paths), layout and recomposition cost, and image or data work that belongs off the main thread
 - **MUST** route a scroll surface's measurement and interpretation to `spec/android/long-list-scrolling/` §G, including its rule that a framework change is never the remedy for a slow list
@@ -126,7 +126,7 @@ The criteria are a representative rollup of §A–§I, not a 1:1 mapping; every 
 - [ ] Every reported number carries its device, Android version, build type, minification state, `CompilationMode`, refresh rate, and iteration count
 - [ ] Startup is reported as cold, warm, and hot separately, with both TTID and TTFD; an app without full-display instrumentation is reported as such instead of getting a TTFD number
 - [ ] Every reported number comes from a physical device running a non-debuggable, minified, profileable build; no emulator or debug-build number is presented as a finding
-- [ ] Startup numbers come from `StartupTimingMetric` and frame numbers from `FrameTimingMetric`; `am start -W` and `gfxinfo` appear only as local checks, and no Compose jank finding rests on `gfxinfo` alone
+- [ ] Startup numbers come from `StartupTimingMetric` and frame numbers from `FrameTimingMetric`; `am start -W`, the `Displayed`/`Fully drawn` logcat lines, and `gfxinfo` appear only as local checks, and no jank finding rests on `gfxinfo` alone
 - [ ] Frame timing is reported at P50/P90/P95/P99 with the deadline stated; no scroll journey is judged against an invented percentile budget
 - [ ] Any frozen frame is reported as a defect; startup is judged against the vitals ceiling and the corpus target, and **each** §C portfolio decision is labelled as a corpus decision in the report while the vendor-sourced rules are not
 - [ ] Compared runs hold `CompilationMode` constant and state it, run on the same device and configuration, and were taken with animations disabled on a thermally unthrottled device
@@ -136,6 +136,7 @@ The criteria are a representative rollup of §A–§I, not a 1:1 mapping; every 
 - [ ] Benchmarks live in a separate `com.android.test` module on a release-derived `benchmark` build type and are absent from the per-commit CI suite
 - [ ] No trace file or raw benchmark output is committed; any committed baseline record carries the §A conditions
 - [ ] Remediations are applied one at a time, each re-measured against the metric it targeted, with the delta and both runs' conditions recorded — including remediations that did not help
+- [ ] Where field performance telemetry (JankStats or equivalent) exists, its event payloads carry no personal data — no identifiers, free text, or screen content beyond the metric, the screen or journey name, and the §A conditions
 
 ## Open Questions
 
@@ -150,9 +151,10 @@ Each question states the working default the requirements above already encode.
 
 - [R1] App startup time — cold/warm/hot, TTID and TTFD, `reportFullyDrawn` and the Compose `ReportDrawn*` APIs, the vitals excessive-startup thresholds, and the documented startup cost centres: <https://developer.android.com/topic/performance/vitals/launch-time>
 - [R2] Slow rendering — janky, slow, and frozen frame definitions and thresholds, the per-refresh-rate deadline, the measurement instruments and their scope, and the documented jank cause families: <https://developer.android.com/topic/performance/vitals/render>
-- [R3] Macrobenchmark overview — separate `com.android.test` module, release-derived benchmark build type, profileable target, `StartupTimingMetric`/`FrameTimingMetric`, `CompilationMode`, `StartupMode`, iterations, physical-device requirement, and trace output location: <https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview>
+- [R3] Macrobenchmark overview — separate `com.android.test` module, release-derived benchmark build type, profileable target, `StartupTimingMetric`/`FrameTimingMetric`, `CompilationMode`, `StartupMode`, iterations, emulator discouraged (error unless suppressed), and trace output location: <https://developer.android.com/topic/performance/benchmarking/macrobenchmark-overview>
 - [R4] Baseline Profiles overview — generation via the Gradle plugin and `BaselineProfileRule`, journey coverage, minified-release verification, startup profiles, and `ProfileInstaller` requirements: <https://developer.android.com/topic/performance/baselineprofiles/overview>
 - [R5] Perfetto — trace capture and the frame timeline used to locate missed frames and startup phases: <https://perfetto.dev/docs/>
 - [R6] JankStats — field frame-timing collection: <https://developer.android.com/topic/performance/jankstats>
 - [R7] App Startup library — replacing per-dependency content providers with explicit initialization order: <https://developer.android.com/topic/libraries/app-startup>
 - [R8] Android vitals — the metric set and thresholds the platform judges an app by: <https://developer.android.com/topic/performance/vitals>
+- [R9] Macrobenchmark instrumentation arguments — `androidx.benchmark.suppressErrors` and the `EMULATOR`/`LOW-BATTERY` error classes it silences: <https://developer.android.com/topic/performance/benchmarking/macrobenchmark-instrumentation-args>

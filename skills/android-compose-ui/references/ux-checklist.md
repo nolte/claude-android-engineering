@@ -1,13 +1,15 @@
 # Authoring-time UX checklist
 
-The rule set every generated screen is checked against, distilled from the eight grounding specs
-under `spec/android/`. This is a working digest, not a source of truth: on any conflict the
-named spec wins. Apply these while writing the screen, not after.
+The rule set every generated screen is checked against, distilled from the grounding specs
+under `spec/android/`: `app-design-navigation`, `ui-components`, `screen-formats`,
+`iconography`, `localization`, `long-list-scrolling`, `user-input-validation`, plus
+`perceived-performance` §A and `test-automation` §D/§E. This is a working digest, not a source
+of truth: on any conflict the named spec wins. Apply these while writing the screen, not after.
 
 ## Table of contents
 
 - [1. Material 3 foundations](#1-material-3-foundations) — `app-design-navigation` §A
-- [2. Navigation architecture and UI](#2-navigation-architecture-and-ui) — `app-design-navigation` §B/§C/§D
+- [2. Navigation architecture and UI](#2-navigation-architecture-and-ui) — `app-design-navigation` §B/§C/§D/§E
 - [3. Adaptivity and screen formats](#3-adaptivity-and-screen-formats) — `screen-formats`
 - [4. Components](#4-components) — `ui-components`
 - [5. Iconography](#5-iconography) — `iconography`
@@ -16,6 +18,7 @@ named spec wins. Apply these while writing the screen, not after.
 - [8. Research-backed usability](#8-research-backed-usability) — `app-design-navigation` §F
 - [9. Lists and continuous scrolling](#9-lists-and-continuous-scrolling) — `long-list-scrolling`
 - [10. User input and validation](#10-user-input-and-validation) — `user-input-validation`
+- [11. Waits and time to full display](#11-waits-and-time-to-full-display) — `ui-components` §A, `perceived-performance` §A
 
 ## 1. Material 3 foundations
 
@@ -40,15 +43,26 @@ named spec wins. Apply these while writing the screen, not after.
 - Navigation arguments are IDs/simple values only — never entity objects.
 - Never navigate during composition; screens expose event lambdas and never receive a
   `NavController`. Guard rapid double-taps (`dropUnlessResumed`-style).
-- Top-level: 3–5 destinations in a navigation bar on compact (rail from medium); icon *and*
-  label on every item; visible selected state (filled-icon convention).
+- Top-level: 3–5 destinations in a navigation bar on compact (rail from medium, never a bottom
+  bar on large windows; no new modal drawer); icon *and* label on every item; visible selected
+  state (filled-icon convention). Each top-level destination owns its own back stack — tab
+  switch preserves per-tab state, reselecting a tab pops it to root — as explicit app state
+  (Navigation 3 has no built-in mechanism).
 - Primary actions in the thumb-friendly bottom zone; the top app bar carries only
   secondary/rare actions. One FAB maximum per screen.
-- Predictive back: `android:enableOnBackInvokedCallback="true"`, no `onBackPressed()`
-  interception; Compose uses `BackHandler`/`PredictiveBackHandler` enabled only while their
-  condition holds. Up and Back are identical inside the task.
+- Predictive back: `android:enableOnBackInvokedCallback="true"` (never set to `false` as an
+  opt-out), no `onBackPressed()` interception; Compose uses `BackHandler`/
+  `PredictiveBackHandler` enabled only while their condition holds. Up and Back are identical
+  inside the task (Up never exits the app); confirm-exit only for genuinely unsaved data.
 - State preservation: rotation, recents return, and process death land the user exactly where
   they were (serializable keys + `rememberSaveable`/`SavedStateHandle`).
+- Deep links (§E): verified App Links (`android:autoVerify` + `assetlinks.json`) for own-domain
+  content, custom schemes only for internal flows; the link lands directly on the content (no
+  interstitial, auth deferred to the first protected interaction); a mid-hierarchy landing
+  builds a synthetic back stack mirroring organic navigation — intent parsing to a typed
+  `NavKey` per the official recipe until Nav 3 deep-link APIs stabilize.
+- Conditional flows (auth, one-time onboarding) live in the back-stack holder, never as ad-hoc
+  checks inside screens.
 
 ## 3. Adaptivity and screen formats
 
@@ -64,27 +78,45 @@ named spec wins. Apply these while writing the screen, not after.
 - Canonical layouts: list-detail via `NavigableListDetailPaneScaffold` (or the Nav-3
   `ListDetailSceneStrategy`), supporting-pane ~70/30, feed as an adaptive grid. Selection
   state survives class changes; two-pane back uses `PopUntilScaffoldValueChange`.
-- Target Play adaptive-quality Tier 3 unconditionally, Tier 2 as the goal.
+- Target Play adaptive-quality Tier 3 unconditionally, Tier 2 as the goal: keyboard navigation
+  through the main flows (Tab/arrow focus order, Enter/Space activation, Esc dismisses), focus
+  states visible on every interactive element, hover states, right-click context menus
+  (a `DropdownMenu` anchored at the pointer position, attached to its element), standard shortcuts (copy/paste/undo).
+- Foldables: fold/unfold is a configuration change that preserves state. When
+  `WindowInfoTracker.windowLayoutInfo` reports a `FoldingFeature` with `isSeparating`, keep
+  critical UI off the hinge — the canonical pane scaffolds do this automatically, a bespoke
+  layout must read the feature. Desktop windowing: `WindowInsets.captionBar` where relevant.
+- Verify against the reference matrix (841×701, 1024×640, 1280×800, 1600×900 dp) via
+  `@PreviewScreenSizes` and `DeviceConfigurationOverride.ForcedSize` in the Compose test.
 
 ## 4. Components
 
 - Button emphasis ladder: filled = the one important final action; tonal = emphasized
-  secondary; outlined = medium; text = lowest/multi-option. Labels 1–3 words, single-line, at
-  most one leading icon, never underlined.
+  secondary; outlined = medium; text = lowest/multi-option. Labels 1–3 words, single-line (no
+  truncation or wrapping), at most one leading icon, never underlined (links are hyperlinked
+  body text).
 - Exactly one primary action (filled button or FAB, never both competing) per screen; no two
   equally-emphasized actions in a row.
-- Message surface by severity: dialog for blocking decisions (≤2 actions, dismissive never
-  disabled); snackbar for low/medium process feedback (≤1 action, no icon, never critical);
-  modal bottom sheet for long action lists; toast only for background context.
+- Message surface by severity: dialog for blocking decisions (≤2 actions, confirming action
+  right, dismissive never disabled); snackbar for low/medium process feedback (≤1 action, no
+  icon, never critical, never stacked); modal bottom sheet for long action lists; toast only
+  for background context.
+- Full-screen dialogs only on compact windows for multi-step subtasks; on medium+ windows a
+  basic (width-capped) dialog replaces them.
 - Selection controls: checkbox = multi-select in lists; radio = single (≤5, one pre-selected,
-  vertical); switch = standalone binary that applies immediately (never in a multi-select list
-  or behind a save step).
+  vertical, never nested); switch = standalone binary that applies immediately (never in a
+  multi-select list, for opposing options, or behind a save step).
 - Wait indication: nothing below ~200 ms; loading indicator 200 ms–5 s; determinate progress
-  beyond ~5 s; one variant per process app-wide.
+  beyond ~5 s; one variant per process app-wide (mechanics in section 11).
 - Text fields: one variant (filled OR outlined) per form; always-visible label (placeholder is
-  not a label); error text replaces supporting text.
-- Cards never scroll internally or host swipeable content. Chips represent forking paths, not
-  task progression; input chips carry a remove icon.
+  not a label); error text replaces supporting text; required fields marked and explained.
+- Cards never scroll internally or host swipeable content (at most one swipe action); list rows
+  keep element positions consistent, supporting text 1–3 lines. Menus show conditionally
+  unavailable items disabled instead of removing them and never embed direct controls
+  (switches/buttons). Chips represent forking paths, not task progression; never a single chip
+  alone; input chips carry a remove icon.
+- Design-system wrappers (`NiaButton` pattern) for every component whose defaults the app
+  changes; configure through theme roles and `*Defaults` only.
 - No superseded baseline components: segmented buttons, baseline bottom app bar, small FAB.
 
 ## 5. Iconography
@@ -95,19 +127,30 @@ named spec wins. Apply these while writing the screen, not after.
   no filled variant exists — selection is never carried by color alone.
 - Icons are checked-in vector drawables under `res/drawable/ic_<name>.xml`, accessed through
   one central registry object in the design system; tinted via `LocalContentColor`/theme roles.
-- Directional icons use auto-mirrored forms (`Icons.AutoMirrored.*`); media/clock icons do not
-  mirror. Standard icon 24dp on a 48dp touch target.
+- Directional icons mirror in RTL via `android:autoMirrored="true"` on the checked-in vector
+  drawable (`Icons.AutoMirrored.*` lives in the forbidden `material-icons-core` and is not an
+  option); media-playback and clock icons do not mirror. Standard icon 24dp on a 48dp touch
+  target; icons below 20dp always carry a text label.
+- Scope note: the launcher icon (adaptive, `mipmap-anydpi-v26`, monochrome layer), notification
+  small icons, shortcut, and tile icons follow `iconography` §C/§D and are **not** authored by
+  this skill's screen pass; never place launcher/product-logo artwork in an in-app icon slot.
 
 ## 6. Localization
 
 - Every user-visible string in `strings.xml`; `HardcodedText` is error-level. English source
   in `values/`, German in `values-de/`, both complete (`MissingTranslation` error-level).
 - Positional placeholders (`%1$s`) everywhere; `<plurals>` with an `other` case and the number
-  in the text for counts; never concatenate translated fragments.
+  in the text for counts; never concatenate translated fragments. Non-translatable entries
+  (brand names, technical tokens) carry `translatable="false"` and live only in `values/`.
+  No translatable text in index-matched `<string-array>` items — arrays reference `@string`.
 - Read strings via `stringResource`/`pluralStringResource` in composables; never concatenate
   in a composable or cache locale-dependent values in `remember` without a config key.
-- RTL end-to-end: `supportsRtl="true"`, start/end (never left/right). Dates/numbers via
-  `java.time`/`NumberFormat`, not hand-built patterns.
+- RTL end-to-end: `supportsRtl="true"`, start/end (never left/right); `CompositionLocalProvider`
+  overrides of `LayoutDirection` only for direction-fixed content. Free-direction inline data
+  (addresses, phone numbers in translated sentences) wrapped with `BidiFormatter.unicodeWrap`.
+- Dates/numbers via `java.time`/`NumberFormat` (prefer `android.icu.*`), not hand-built
+  patterns. `Locale.ROOT` for internal keys (Turkish-i), the user locale for display casing,
+  `Collator` for user-visible sorting.
 - `localeFilters += listOf("en", "de")` and `generateLocaleConfig = true`; in-app picker via
   `AppCompatDelegate.setApplicationLocales()`. Pseudolocales (`en-XA`, `ar-XB`) in debug.
 
@@ -130,7 +173,10 @@ named spec wins. Apply these while writing the screen, not after.
 - No function reachable only by a custom gesture; swipe actions have visible alternatives and
   undo for destructive ones. No forced tutorial carousels.
 - Permissions requested in context with a prior rationale, never up front cold.
-- Prefer undo (snackbar) over confirmation dialogs for frequent reversible actions.
+- Prefer undo (snackbar) over confirmation dialogs for frequent reversible actions;
+  confirmations only for serious irreversible consequences.
+- Progressive disclosure: core options first, advanced behind an explicit step; limit
+  simultaneous choices; front-load key information for scanning.
 
 ## 9. Lists and continuous scrolling
 
@@ -190,12 +236,42 @@ named spec wins. Apply these while writing the screen, not after.
   submit control is never the only statement of what is wrong.
 - Every error is text next to its field, carries a correction suggestion where one is known, and
   is exposed via `Modifier.semantics { error(...) }`; form-level status goes through
-  `liveRegion`, never through the deprecated `announceForAccessibility()`.
+  `liveRegion`, never through the deprecated `announceForAccessibility()`. A form whose errors
+  do not fit one screen adds an error summary *in addition to* the per-field messages.
 - Server rejections land on the field the contract identifies; the raw server string is never the
-  primary message.
+  primary message — the UI state carries a closed `ErrorKind`, the composable resolves the
+  localized text.
 - Nothing the user typed is lost by a failed submission, a rejection, a rotation, or process
   death (`rememberSaveable` / `SavedStateHandle`), and nothing oversized goes into saved
   instance state.
-- Credentials go through Credential Manager, autofill content types are set on fillable fields,
-  secrets use `SecureTextField` without autocorrect or suggestions, and pasting into a credential
-  field is never blocked.
+- Credentials go through Credential Manager, autofill content types are set on fillable fields
+  (`ContentType.NewUsername`/`ContentType.NewPassword` on registration and change-credential
+  forms, `AutofillManager.commit()` where the save moment is a button), secrets use
+  `SecureTextField` without autocorrect or suggestions, and pasting into a credential field is
+  never blocked. Sensitive values the app copies to the clipboard carry
+  `ClipDescription.EXTRA_IS_SENSITIVE`; input content is never logged (field name and reason
+  only).
+- Submission (§G): exactly one in-flight submission per form — the control is disabled or the
+  intent ignored while pending, and the pending state is visible; values stay readable while
+  pending and fully editable again on failure. A domain rejection names the field or rule and
+  asks for a change; a transport failure names retry and never implies user error — the two are
+  never the same message. No navigation away before the backend confirms the write (queued or
+  local-first writes excepted; their pending state travels with the data). Persisted drafts are
+  cleared only after confirmation; success is stated as legibly as failure and lands the user
+  where the result is visible.
+- Keyboard and insets: the form (or its scroll container) uses `Modifier.imePadding()` — or an
+  insets-aware `Scaffold` — under edge-to-edge so the keyboard never covers a field or its
+  error; the focused field scrolls into view via `BringIntoViewRequester` (or a
+  `Modifier.bringIntoViewRequester` + `onFocusChanged` pair) when the IME opens.
+
+## 11. Waits and time to full display
+
+- Nothing is shown for the first ~200 ms of a wait; an indeterminate loading indicator appears
+  after that (`LaunchedEffect` + `delay(200)` gating visibility, or `AnimatedVisibility` fed by
+  the same delayed flag); a determinate indicator takes over once progress is known beyond
+  ~5 s; the same variant is used for the same process app-wide; no in-place loading→determinate
+  hand-off.
+- Every screen signals full display: `ReportDrawnWhen { uiState is Success }` (or `ReportDrawn`
+  / `ReportDrawnAfter`) placed where the content is genuinely present — never at first frame.
+  A screen without the signal has no TTFD, and that absence is a finding.
+- Instant feedback on every tap (state layers, pressed state) even when the result takes time.

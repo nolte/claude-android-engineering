@@ -41,6 +41,12 @@ a defensive default rather than a cited mitigation; say so rather than overclaim
 Branch on `valueType`, then apply the class rule. A structure that parsed cleanly is still
 untrusted.
 
+> **Spec-extension proposed (REQ-6).** `spec/android/barcode-scanning/` §F fixes the boundary
+> (show-then-act, no auto-execute, no interpreter, URL rules) and names `tel:`/`WIFI:`/URL
+> explicitly; the per-class rules for `sms:`, contact/calendar, plain text, and product/ISBN
+> below are this skill's operationalization and are not yet spec text. Apply them, and record
+> in the run report that they rest on a proposed §F extension rather than on a spec bullet.
+
 | Class | Rule |
 |---|---|
 | URL | §3 below. Never navigate without the confirmation surface. |
@@ -91,9 +97,11 @@ restriction, or record the conflict — never decide it silently.
 
 - **Set the character set explicitly** (`EncodeHintType.CHARACTER_SET`) rather than inheriting
   the byte-mode default of ISO/IEC 8859-1.
-- **Quiet zone:** ZXing's `MARGIN` hint is specified *in pixels of the rendered matrix*, so a
-  caller that leaves it at a default or sets it in the wrong unit produces a symbol whose margin
-  is not the required 4 modules.
+- **Quiet zone:** ZXing's generic `EncodeHintType.MARGIN` documentation says "in pixels", but
+  `QRCodeWriter` interprets it in **modules** (its `QUIET_ZONE_SIZE` default is 4), so the
+  default already yields the required 4-module quiet zone for QR. Set
+  `EncodeHintType.MARGIN` to `4` explicitly anyway and record the unit — a later change of
+  writer (1D formats do read it as pixels) or of default must not silently shrink the zone.
 - **Error correction** (`EncodeHintType.ERROR_CORRECTION`) is a deliberate, recorded trade of
   capacity against damage tolerance. Only the 15 % figure at level M is stated by the
   symbology's originator; the 7 %/25 %/30 % figures for L/Q/H are widely repeated but were not
@@ -123,7 +131,10 @@ at an angle, and one at the intended scanning distance.
 
 **Rejection paths:** a `javascript:` URL, a homograph/punycode host, a shortened URL, an
 over-long payload, a `WIFI:` payload, and a `tel:` payload — each must reach the rejection or
-confirmation state, never an action.
+confirmation state, never an action. (Spec §J names the `javascript:` URL, the over-long
+payload, and the `WIFI:` payload; the homograph host, the shortened URL, and the `tel:` fixture
+follow from §F's URL rules and are marked **spec-extension proposed (REQ-6)** — apply them and
+say so in the report.)
 
 **Permission paths:** granted, denied, and permanently denied (the last is the one that is
 usually missed, and it is where the graceful-degradation requirement actually bites).

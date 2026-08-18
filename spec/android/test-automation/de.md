@@ -42,7 +42,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 ### B. Lokale Unit-Tests (JVM)
 
-- **MUSS [MUST]** Tests als JUnit-4-Testklassen schreiben — der einzige offiziell unterstützte Runner-Pfad auf Android; JUnit 5 via Community-Plugin ist ein **KANN [MAY]** für reine JVM-Module und **DARF NICHT [MUST NOT]** von generiertem Code vorausgesetzt werden
+- **MUSS [MUST]** Tests als JUnit-4-Testklassen schreiben — der Runner-Pfad, den Googles Guidance und AndroidX Test dokumentieren [R5]. JUnit 5 ist ein **KANN [MAY]**, und die Mechanik unterscheidet sich je Host: *lokale JVM*-Unit-Tests brauchen kein Drittanbieter-Plugin — AGPs lokale Unit-Test-Tasks sind Gradle-`Test`-Tasks (`testOptions.unitTests.all { it.useJUnitPlatform() }`) [R27][R28]; *Instrumented*-Tests auf JUnit 5 brauchen das Community-Plugin `android-junit5` samt Runner-Support und die dort dokumentierte Geräte-Untergrenze (Android 8.0/API 26 für JUnit 5, API 35 für JUnit 6) [R29]. Generierter Code **DARF NICHT [MUST NOT]** JUnit 5 in einem der beiden Hosts voraussetzen
 - **MUSS [MUST]** `kotlinx-coroutines-test` verwenden: jeder Coroutine-Testkörper läuft in `runTest`, mit genau einem `TestScheduler`, den alle `TestDispatcher` eines Tests teilen
 - **MUSS [MUST]** den Main-Dispatcher in ViewModel-Tests über eine `MainDispatcherRule` ersetzen (TestWatcher um `Dispatchers.setMain`/`resetMain`); **MUSS [MUST]** Dispatcher in Produktionsklassen injizieren statt `Dispatchers.IO`/`Default` hartzukodieren
 - **DARF NICHT [MUST NOT]** `Thread.sleep` aufrufen oder in irgendeinem Test Wanduhrzeit abwarten; virtuelle Zeit (`advanceUntilIdle`, `advanceTimeBy`) und Synchronisations-APIs sind die einzigen Wartemechanismen
@@ -74,7 +74,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 ### E. Screenshot- und Accessibility-Tests
 
-- **SOLLTE [SHOULD]** Screenshot-Tests auf der JVM ausführen (ohne Geräte): das Default-Werkzeug für einen Robolectric-Stack ist Roborazzi (`@GraphicsMode(NATIVE)`, Record-/Verify-/Compare-Gradle-Tasks); Paparazzi ist ein **KANN [MAY]** für reine Design-System-Module ohne Runtime-Bedarf; Googles Compose Preview Screenshot Testing ist ein **KANN [MAY]**, solange es alpha bleibt
+- **SOLLTE [SHOULD]** Screenshot-Tests auf der JVM ausführen (ohne Geräte): das Default-Werkzeug für einen Robolectric-Stack ist Roborazzi (`@GraphicsMode(NATIVE)`, Record-/Verify-/Compare-Gradle-Tasks); Paparazzi ist ein **KANN [MAY]** für reine Design-System-Module ohne Runtime-Bedarf; Googles Compose Preview Screenshot Testing ist ein **KANN [MAY]**, solange es alpha bleibt (`com.android.compose.screenshot` 0.0.1-alpha15 zum Recherchezeitpunkt — die volle IDE-Integration braucht AGP ≥ 9.0 und Kotlin ≥ 2.2.10, die Gradle-Tasks allein AGP ≥ 8.5.0; die APIs können sich noch erheblich ändern) [R21]
 - **MUSS [MUST]** Goldens auf genau einer Plattform aufnehmen (CI/Linux) — Text-Rendering unterscheidet sich zwischen Betriebssystemen; ein am Arbeitsplatz aufgenommenes Golden-Set ist Drift per Konstruktion. Goldens werden pro Modul eingecheckt (Platzierung per `spec/android/project-structure/` §F)
 - **MUSS [MUST]** Screenshots in CI auf jedem PR verifizieren, sobald Screenshot-Tests existieren; Vergleichsbilder werden als Build-Artefakte hochgeladen; ein Auto-Record-Commit-Bot für Same-Repo-PRs ist ein **KANN [MAY]**
 - **SOLLTE [SHOULD]** Accessibility-Test-Framework-Checks in die Suite integrieren: `enableAccessibilityChecks()`/`tryPerformAccessibilityChecks()` in Compose-Tests (Compose ≥ 1.8) oder ATF-Hooks im Screenshot-Helper, mit ausschließlich benannten, begründeten Suppressions
@@ -108,6 +108,8 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 ## Akzeptanzkriterien
 
+Die Kriterien sind eine repräsentative Zusammenfassung von §A–§H, keine 1:1-Abbildung; jede Anforderung oben ist für sich normativ.
+
 - [ ] Die Testquellen eines generierten Projekts enthalten JVM-Unit-Tests für jedes ViewModel und Repository, das der Generator erzeugt hat, mit je mindestens einem Fehler-/Edge-Case
 - [ ] Jeder Coroutine-Test nutzt `runTest`; eine `MainDispatcherRule` (oder Äquivalent) ist vorhanden und in jedem ViewModel-Test angewendet; keine Produktionsklasse hartkodiert einen Dispatcher
 - [ ] Kein Test im Repository ruft `Thread.sleep` oder ein äquivalentes Wanduhr-Warten auf
@@ -117,19 +119,22 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - [ ] Feature-Level-Compose-Tests laufen in `src/test/` unter Robolectric; Instrumented-Tests existieren nur für dokumentiertes gerätespezifisches Verhalten
 - [ ] Wo Screenshot-Tests existieren: Goldens sind pro Modul eingecheckt, ausschließlich auf CI/Linux aufgenommen, und `verifyRoborazzi…` (bzw. der Verify-Task des gewählten Tools) läuft auf jedem PR
 - [ ] Accessibility-Checks (ATF) laufen innerhalb der Compose- oder Screenshot-Test-Ebene, mit einzeln im Code begründeten Suppressions
-- [ ] CI führt pro PR genau die Unit-Tests einer Debug-Variante plus Lint über dieselben Einstiege wie lokal aus, lädt JUnit-XML-Artefakte hoch, und jeder Emulator-Job aktiviert KVM
+- [ ] CI führt pro PR genau die Unit-Tests einer Debug-Variante plus Lint über dieselben Einstiege wie lokal aus, lädt JUnit-XML-Artefakte hoch, und jeder Emulator-Job auf einem GitHub-gehosteten Linux-Runner aktiviert KVM
 - [ ] Retry-Mechanismen gelten, wo vorhanden, nur für Instrumented-/große Tests, und jeder bekannte flaky Test wird gemäß den Workflow-Health-Konventionen getrackt statt stillschweigend wiederholt
 - [ ] Kein Benchmark-Task (Macro-/Microbenchmark) läuft in der Per-Commit-CI-Spur
 - [ ] Das vollständige `task check` eines frisch generierten Projekts (inklusive seiner Test-Tasks) besteht lokal und in CI ohne manuellen Eingriff
 - [ ] Die gewählte Assertion-Library des Projekts wird konsistent genutzt (eine einzige Library über alle Testquellen)
+- [ ] Ein frisch generiertes Solo-Projekt liefert die §H-Minimalsuite und nicht mehr: kein Geräte-Matrix-CI-Job, keine Retry-Maschinerie und keine Benchmark-Spur existiert, sofern das Projekt die Strategieänderung, die sie hinzufügte, nicht festgehalten hat
 
 ## Offene Fragen
+
+Jede Frage nennt die Vorgabe, die die Anforderungen oben bereits kodieren.
 
 - Assertion-Library-Default: `kotlin.test` (Flaggschiff-Sample-Praxis) vs. `assertk` (Produktions-App-Favorit) — entscheiden, wenn der erste Skill Testcode generiert
 - Screenshot-Tool-Festlegung: Roborazzi ist hier der Default; neu bewerten, wenn Googles Compose Preview Screenshot Testing alpha verlässt (geteilte offene Frage mit `spec/android/project-structure/`)
 - Turbine: als Standard für Flow-Emissions-Tests übernehmen oder Opt-in-Bequemlichkeit lassen?
 - Coverage-Schwellen: ob generierte Projekte überhaupt ein Kover-Gate bekommen, und mit welchen Zahlen — verschoben, bis der Quality-Gate-Skill Gestalt annimmt
-- JUnit 5/6 auf Android: neu bewerten, falls Google je offiziellen Support shippt; bis dahin steht das JUnit-4-MUST
+- JUnit 5/6 auf Android: neu bewerten, falls Google je JUnit 5+ als AndroidX-Test-Runner-Pfad dokumentiert; bis dahin steht das JUnit-4-MUSS, und JUnit 5 bleibt das §B-KANN (JVM ohne Plugin, Instrumented mit dem Community-Plugin)
 - Maestro-Smoke-Journeys: als optionales Template für geräteechte Flows scaffolden oder komplett den Einzelprojekten überlassen?
 
 ## Referenzen
@@ -154,9 +159,12 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - [R18] CI-Automatisierung und -Features — Geräteoptionen, Retry-Matrix, Sharding, Benchmark-Kadenz: <https://developer.android.com/training/testing/continuous-integration/automation>
 - [R19] Roborazzi — Record-/Verify-Tasks, ATF-Checks, Threshold-Optionen: <https://github.com/takahirom/roborazzi>
 - [R20] Paparazzi — layoutlib-Rendering, AGP-Kopplung, Status: <https://cashapp.github.io/paparazzi/>
-- [R21] Compose Preview Screenshot Testing (alpha) — src/screenshotTest-Source-Set: <https://developer.android.com/studio/preview/compose-screenshot-testing>
+- [R21] Compose Preview Screenshot Testing (alpha) — src/screenshotTest-Source-Set, Plugin 0.0.1-alpha15, AGP-/Kotlin-Anforderungen für Gradle-only vs. IDE-Integration: <https://developer.android.com/studio/preview/compose-screenshot-testing>
 - [R22] KVM auf GitHub-gehosteten Runnern (GA 2024): <https://github.blog/changelog/2024-04-02-github-actions-hardware-accelerated-android-virtualization-now-available/>
 - [R23] android-emulator-runner-Action — AVD-Caching-Muster: <https://github.com/ReactiveCircus/android-emulator-runner>
 - [R24] Kover — Kotlin-first-Coverage, Multi-Modul-Aggregation, keine Instrumented-Coverage: <https://kotlin.github.io/kotlinx-kover/gradle-plugin/>
 - [R25] Now-in-Android-Testflächen — MainDispatcherRule, Test\*Repository-Fakes, Screenshot-Helper, Build-Workflow: <https://github.com/android/nowinandroid>
 - [R26] Navigation 3 — Back-Stack als State (Testgrundlage): <https://developer.android.com/guide/navigation/navigation-3>
+- [R27] Advanced test setup — `testOptions.unitTests.all {}` stellt lokale Unit-Test-Tasks als Gradle-`Test`-Tasks bereit (P): <https://developer.android.com/studio/test/advanced-test-setup>
+- [R28] Gradle Java Testing — `useJUnitPlatform()` auf einem `Test`-Task (P): <https://docs.gradle.org/current/userguide/java_testing.html>
+- [R29] Community-Plugin android-junit5 — JUnit 5 für Android-Unit- und Instrumented-Tests, Geräte-API-Untergrenze je JUnit-Generation (S): <https://github.com/mannodermaus/android-junit5>

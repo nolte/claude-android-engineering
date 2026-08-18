@@ -1,7 +1,7 @@
 # Gotchas
 
 Concrete corrections to non-obvious facts an executing agent would otherwise get wrong. Read
-before step 2 alongside `permission-decision-catalog.md`; the three load-bearing ones are also
+before step 2 alongside the decision catalog (see `SKILL.md` §Reference files); the three load-bearing ones are also
 restated in `SKILL.md`.
 
 - **Declaring a permission can break the permission-free path.** With `CAMERA` declared but not
@@ -33,6 +33,22 @@ restated in `SKILL.md`.
 - **`USE_EXACT_ALARM` is granted automatically — which is exactly why it is restricted.** It is
   not the easy way around `SCHEDULE_EXACT_ALARM`; Play limits it to alarm-clock and
   calendar-style cases, and most scheduling needs neither permission.
+- **`SCHEDULE_EXACT_ALARM` starts denied on Android 14+.** For apps targeting API 33 or higher
+  the grant is off by default on Android 14+ devices (calendar and alarm-clock apps excepted),
+  so `canScheduleExactAlarms()` returning `false` on a fresh install is the normal case, not an
+  edge case — the inexact or WorkManager fallback must be a working path.
+- **There is no `READ_HEART_RATE_IN_BACKGROUND`.** The Android 16 health permissions pair
+  `android.permission.health.READ_HEART_RATE` with the single background permission
+  `android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND`; a per-type background name is a
+  declaration the platform never grants.
+- **Local network access is a runtime permission on Android 17.** `ACCESS_LOCAL_NETWORK`
+  (group `NEARBY_DEVICES`) gates local-address sockets, mDNS, SSDP, and `NsdManager` for apps
+  targeting API 37+; the Android 16 opt-in preview never enforced it. Verify enforcement status
+  at run time and prefer the `NsdManager` discovery picker where the user chooses the device.
+- **The two non-runtime notification permissions still need a runtime check.** `canUseFullScreenIntent()`
+  (API 34+) and `canPostPromotedNotifications()` (API 36+) are guarded by SDK-version checks;
+  the guard code lives in `android-notification-derive`'s `apply` templates, and this skill's
+  ledger row records the obligation and step 8 verifies its presence.
 - **The merged manifest is where permissions actually come from.** A dependency bump can add a
   permission with no source-manifest edit, which is why the check is re-run after every
   dependency change.

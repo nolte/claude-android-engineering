@@ -29,7 +29,7 @@ Readers: authors of this repository's Android skills who must decide whether a c
 - Signing key material and custody, store metadata, listings, screenshots, release tracks, staged rollout, and the Data Safety questionnaire — out of this repository's scope by requirement
 - Security controls of the release build — `spec/android/security/` §F/§G
 - Test-lane composition — `spec/android/test-automation/` §A/§D–§F; CI workflow authoring and runner setup — that spec's §G
-- Startup-time and jank measurement methodology, and Baseline Profile authoring — no spec owns these yet (§Open Questions); the budgets below reference them without defining the method
+- Startup-time and jank measurement methodology, and Baseline Profile authoring — owned by `spec/android/perceived-performance/` §D–§F; §E of this spec consumes its regression *report* and does not define the method (see §Open Questions on whether to hard-gate)
 - Versioning schemes and changelog generation — a portfolio-level release concern, not an Android one
 - App size optimization beyond the shrinker defaults
 
@@ -39,7 +39,7 @@ Readers: authors of this repository's Android skills who must decide whether a c
 
 - **MUST** enable code shrinking, optimization, obfuscation, and resource shrinking for the release build type: on AGP ≥ 9.3 through the `optimization { enable = true }` block, on earlier AGP through `isMinifyEnabled = true` plus `isShrinkResources = true` with `proguard-android-optimize.txt` as the default file [R1]
 - **MUST NOT** enable the shrinker for debug or test build types, and **MUST NOT** disable it for release to make a failure go away — a failure under R8 is a defect in the keep configuration or in reflective code, and it is fixed there [R1]
-- **MUST** keep keep-rules specific and located per the AGP generation in use (`src/<variant>/keepRules/*.keep` on AGP ≥ 9.3, `proguardFiles` before that); blanket rules (`-keep class ** { *; }`, `-dontobfuscate`, `-dontoptimize`) are non-conformant except as a documented, dated, and ticketed interim [R1]
+- **MUST** keep keep-rules specific and located per the AGP generation in use (`src/<variant>/keepRules/*.keep` on AGP ≥ 9.3, `proguardFiles` before that); blanket rules (`-keep class ** { *; }`, `-dontobfuscate`, `-dontoptimize`) are non-conformant except as a documented, dated, and ticketed interim [R1]. `getDefaultProguardFile("proguard-android.txt")` is unsupported on AGP ≥ 9 because it carries `-dontoptimize`; the default set is `proguard-android-optimize.txt`, on the AGP ≥ 9.3 DSL included implicitly and omitted only deliberately via `optimization { keepRules { includeDefault = false } }` [R1][R7]. R8 runs in strict full mode by default on AGP 9 (a kept class no longer implicitly keeps its default constructor), so a keep rule names the constructor it needs (`spec/android/project-structure/` §B)
 - **MUST** retain the `mapping.txt` of every release build that leaves the machine, so a stack trace from that build can be retraced [R1]
 - **MUST** verify the change on an actual release build before calling the work done — install the release variant on a device and exercise the touched flow. R8 rewrites code, and reflection-based and serialization-based failures appear only there [R1]
 - **MUST** ensure the release variant assembles (`assembleRelease`, or `bundleRelease` where a bundle is the artifact) as part of the gate in §E; producing the artifact is in scope, publishing it is not
@@ -64,11 +64,13 @@ Readers: authors of this repository's Android skills who must decide whether a c
 
 ### D. Platform and dependency currency
 
-- **MUST** keep `compileSdk` at the latest stable SDK and `targetSdk` at the latest stable SDK the app has been verified against; a lagging `targetSdk` is recorded with a reason and a date, never left implicit [R2]
+- **MUST** keep `compileSdk` at the latest stable SDK and `targetSdk` at the latest stable SDK the app has been verified against; a lagging `targetSdk` is recorded with a reason and a date, never left implicit [R2]. The lag is bounded by the store's target-API rule, which this spec adopts as the outer limit even though store *release* is out of scope: since 2026-08-31 new apps and app updates must target API 36 (an extension to 2026-11-01 can be requested in the console), and an existing app that stays below API 35 is no longer offered to new users on newer OS versions [R8]. A recorded lag that crosses this line is a defect, not a deviation. On AGP 9 an unset `targetSdk` defaults to `compileSdk` (`spec/android/project-structure/` §B), so the *effective* value is what this bullet judges
 - **MUST** record `minSdk` with its rationale, and **MUST** re-verify the touched flow on the newest platform version the app claims to support [R2]
 - **MUST NOT** use non-SDK (hidden) interfaces; the lint check is the mechanical detector [R2]
 - **MUST** declare dependencies through the version catalog (`spec/android/project-structure/` §B) and **MUST** keep them current. The automation and the vulnerability scan that make currency practical — Renovate/Dependabot plus a scanner in CI — are owned by `spec/android/security/` §F, which states them as a **SHOULD**; this spec deliberately strengthens the *outcome* (dependencies are current) to a MUST while leaving that spec's choice of *mechanism* recommended rather than required. A dependency bump that changes behaviour is verified on the release build like any other change
 - **MUST** handle platform behaviour changes that the new `targetSdk` activates before raising it — the adaptive and edge-to-edge obligations are owned by `spec/android/screen-formats/` §B/§D and `spec/android/app-design-navigation/` §A, and are a precondition of the bump, not a follow-up
+- **MUST** review the documented behaviour-change list for the `targetSdk` being adopted and record the verdict per item, at minimum for API 36 [R9]: predictive back is on by default (`onBackPressed` is not called and `KEYCODE_BACK` is not dispatched; `android:enableOnBackInvokedCallback="false"` is a temporary opt-out that the predictive-back MUST of `spec/android/app-design-navigation/` §D does not permit as a steady state), orientation, resizability, and aspect-ratio restrictions are ignored on displays ≥ 600 dp smallest width, and the edge-to-edge opt-out (`windowOptOutEdgeToEdgeEnforcement`) is deprecated and disabled on Android 16 devices
+- **MUST** ship 16 KB-page-size-compatible native code: any app that carries `.so` files — directly or through an SDK such as ML Kit or a database engine — is built with AGP ≥ 8.5.1, which zip-aligns uncompressed shared libraries on 16 KB boundaries when `packaging { jniLibs { useLegacyPackaging } }` stays at its `false` default (on AGP ≤ 8.5 the documented workaround is `useLegacyPackaging = true` — compressed libraries are extracted at install and need no alignment, at the cost of install size) and NDK ≥ r28 or the explicit `-Wl,-z,max-page-size=16384` linker flags, and the alignment is verified on the release artifact — APK Analyzer's *Alignment* column, `check_elf_alignment.sh <apk>`, or `zipalign -c -P 16 -v 4 <apk>` [R10]. Play requires it for new apps and updates targeting API ≥ 35 since 2025-11-01 and for all app updates from 2027-02-01 [R10][R11]; an app with no native code satisfies this bullet by stating so
 
 ### E. The gate
 
@@ -107,6 +109,8 @@ The criteria are a representative rollup of §A–§F, not a 1:1 mapping; every 
 - [ ] `compileSdk` is the latest stable, `targetSdk` is the latest verified (any lag recorded with reason and date), `minSdk` carries a rationale, and no non-SDK interface is used
 - [ ] The six-element gate of §E is green, or every red or skipped element is named in the final report with its reason
 - [ ] No lint baseline entry, check disablement, or suppression was added to pass the gate on new code
+- [ ] Every interim deviation this spec allows (blanket keep rule, lagging `targetSdk`, skipped gate element) is recorded with the change together with its reason and its removal condition; a lagging `targetSdk` stays inside the store's target-API window
+- [ ] Native libraries, where present, are 16 KB-aligned on the release artifact and the verification method is named; the behaviour-change list of the adopted `targetSdk` was reviewed item by item
 
 ## Open Questions
 
@@ -119,9 +123,14 @@ Each question states the working default the requirements above already encode.
 
 ## References
 
-- [R1] Shrink, obfuscate, and optimize your app (R8) — enabling the shrinker, keep rules, resource shrinking, `mapping.txt`, "always test the release build", DEX-modifying tooling caveat: <https://developer.android.com/build/shrink-code>
+- [R1] Enable app optimization with R8 — the AGP ≥ 9.3 `optimization {}` DSL and the earlier `isMinifyEnabled`/`isShrinkResources` path, `keepRules` source set, `proguard-android.txt` dropped, "always test the release build", DEX-modifying tooling caveat (the former `/build/shrink-code` URL redirects here): <https://developer.android.com/topic/performance/app-optimization/enable-app-optimization>
 - [R2] Core app quality guidelines — testable criteria including `Production_Build_Quality`, `StrictMode_Compliance`, `Target_SDK_Version`, `Compile_SDK_Version`, `Non_SDK_Interfaces`, `SDK_Maintenance`, `Sensitive_Data_Logging`: <https://developer.android.com/docs/quality-guidelines/core-app-quality>
 - [R3] StrictMode — thread and VM policies, penalties, debug-only guidance: <https://developer.android.com/reference/android/os/StrictMode>
 - [R4] Android vitals — core vitals and bad-behaviour thresholds (user-perceived crash rate 1.09 %, ANR rate 0.47 %, 8 % per device; 28-day rolling window): <https://developer.android.com/topic/performance/vitals>
 - [R5] Android Lint — running lint, severities, and baselines: <https://developer.android.com/studio/write/lint>
 - [R6] Configure build variants — build types, flavors, and variant-scoped dependencies: <https://developer.android.com/build/build-variants>
+- [R7] Keep rules overview — default keep rules, `optimization { keepRules { includeDefault = false } }`, migration away from `proguard-android.txt`: <https://developer.android.com/topic/performance/app-optimization/keep-rules-overview>
+- [R8] Google Play target API level requirements — API 36 for new apps and updates from 2026-08-31, extension to 2026-11-01, existing apps below API 35 hidden from new users: <https://developer.android.com/google/play/requirements/target-sdk>
+- [R9] Android 16 behaviour changes for apps targeting API 36 — predictive back on by default and `enableOnBackInvokedCallback` opt-out, large-screen orientation/resizability restrictions ignored, `windowOptOutEdgeToEdgeEnforcement` disabled: <https://developer.android.com/about/versions/16/behavior-changes-16>
+- [R10] Support 16 KB page sizes — AGP 8.5.1 alignment, `useLegacyPackaging`, NDK r28 default, linker flags, APK Analyzer / `check_elf_alignment.sh` / `zipalign -c -P 16` verification, 2027-02-01 update cut-off: <https://developer.android.com/guide/practices/page-sizes>
+- [R11] Android Developers Blog — Play's 16 KB requirement for new apps and updates targeting Android 15+ from 2025-11-01: <https://android-developers.googleblog.com/2025/05/prepare-play-apps-for-devices-with-16kb-page-size.html>
