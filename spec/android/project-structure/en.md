@@ -40,6 +40,8 @@ Readers: authors of this repo's Android skills, and reviewers judging whether a 
 ### B. Gradle build conventions
 
 - **MUST** use the Kotlin DSL (`.gradle.kts`) for all build files — the default since AGP/Studio Giraffe and Gradle 8
+- **MUST** build on AGP's built-in Kotlin support (AGP ≥ 9.0, `android.builtInKotlin=true` by default) and **MUST NOT** apply `org.jetbrains.kotlin.android` (`kotlin-android`) in any module — that plugin is incompatible with the new DSL that AGP 9 enables by default (`android.newDsl=true`) and applying it breaks the build [R21][R22]. The Kotlin Gradle plugin still appears in the catalog for `org.jetbrains.kotlin.plugin.compose`, `org.jetbrains.kotlin.jvm` (plain JVM modules), and as the version AGP's runtime dependency is aligned to; AGP 9.0 pins KGP ≥ 2.2.10 and KSP ≥ 2.2.10-2.0.2 and upgrades lower versions itself, so the catalog states versions at or above that floor [R21]; the KSP version is compatible per the KSP compatibility table — the Kotlin-prefixed `<kotlin>-<ksp>` scheme applies only to KSP < 2.3.0, from 2.3.0 KSP is versioned independently and each release states its supported Kotlin range [R27]. `android.builtInKotlin=false` is a temporary, dated, recorded migration opt-out, never a scaffold default [R22]
+- **MUST** compile against one declared JDK toolchain: JDK 17 is AGP 9's minimum and default, the toolchain is declared once (`java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }`, or `kotlin { jvmToolchain(17) }` — a shared convention plugin once `build-logic/` exists) and provisioned via a toolchain resolver (`org.gradle.toolchains.foojay-resolver-convention` in `settings.gradle.kts`) so a missing local JDK is downloaded instead of silently compiling with whatever runs Gradle [R21][R23][R24]. `sourceCompatibility`/`jvmTarget` scattered per module are the pattern this replaces
 - **MUST** run builds exclusively through the committed wrapper (`gradlew`, `gradle/wrapper/` including the JAR); upgrade only via `./gradlew wrapper --gradle-version <v>`; **SHOULD** protect wrapper integrity via `distributionSha256Sum` and/or wrapper validation in CI
 - **MUST** declare all dependency and plugin coordinates in a single version catalog `gradle/libs.versions.toml`: sections `[versions]`/`[libraries]`/`[plugins]` (optionally `[bundles]`, used sparingly), central versions referenced via `version.ref`, aliases in kebab-case, plugins applied via `alias(libs.plugins.…)`
 - **MUST NOT** use dynamic dependency versions (for example `2.+`)
@@ -48,11 +50,15 @@ Readers: authors of this repo's Android skills, and reviewers judging whether a 
 - **MUST** keep the root `build.gradle.kts` free of code except a `plugins {}` block declaring all submodule plugins with `apply false` (uniform build-script classpath); **MUST NOT** use `allprojects {}` / `subprojects {}` cross-project configuration
 - **MUST** prefer `implementation` over `api`; `api` only when the type is part of the module's public ABI
 - **MUST** manage Compose versions through the Compose BOM (`platform(libs.androidx.compose.bom)`, also on test configurations); Compose libraries in the catalog carry no individual versions; **MUST** apply the Compose compiler via the Kotlin-owned plugin `org.jetbrains.kotlin.plugin.compose` with `version.ref` = the Kotlin version
-- **MUST** use KSP instead of kapt (kapt is in maintenance mode); no module may retain a kapt application
-- **MUST** enable in `gradle.properties`: `org.gradle.configuration-cache=true`, `org.gradle.caching=true`, `org.gradle.parallel=true`, `android.useAndroidX=true`, and an adequately sized `org.gradle.jvmargs` (raise heap when GC exceeds ~15 % of build time; set `-XX:MaxMetaspaceSize`)
-- **MUST NOT** set redundant or obsolete flags: `android.nonTransitiveRClass` (AGP 8+ default), `android.enableJetifier` (legacy support-library only), `kotlin.incremental` (default), debug PNG-crunching flags
+- **MUST** use KSP instead of kapt (kapt is in maintenance mode); no module may retain a kapt application. Where an annotation processor still has no KSP path, the *only* admissible interim is AGP's `com.android.legacy-kapt` plugin (same version as AGP — `org.jetbrains.kotlin.kapt`/`kotlin-kapt` is incompatible with built-in Kotlin), recorded with the processor, the reason, and the removal condition; a scaffold never emits it [R11][R22]
+- **MUST** enable in `gradle.properties`: `org.gradle.configuration-cache=true`, `org.gradle.caching=true`, `org.gradle.parallel=true`, and an adequately sized `org.gradle.jvmargs` (raise heap when GC exceeds ~15 % of build time; set `-XX:MaxMetaspaceSize`); `android.useAndroidX=true` is required only on AGP < 9 — AGP 9 defaults it to `true`, so on AGP 9 it falls under the redundant-flag rule below [R17][R21]
+- **MUST NOT** set redundant or obsolete flags: `android.nonTransitiveRClass` (AGP 8+ default), `android.enableJetifier` (legacy support-library only), `kotlin.incremental` (default), debug PNG-crunching flags, and — on AGP 9 — `android.useAndroidX`, `android.builtInKotlin`, `android.newDsl`, `android.r8.strictFullModeForKeepRules`, `android.proguard.failOnMissingFiles`, `android.sdk.defaultTargetSdkToCompileSdkIfUnset` set to their new `true` defaults [R17][R21]. Where the scaffold nevertheless needs one of these written out (a downstream tool that reads it), the reason is recorded next to it
+- **MUST** know the AGP 9 defaults a generated build inherits and treat them as behaviour, not noise [R21]: the new DSL is on (`android.newDsl=true` — the old variant API `applicationVariants`/`libraryVariants` is gone), R8 runs in strict full mode for keep rules (`android.r8.strictFullModeForKeepRules=true` — a kept class no longer implicitly keeps its default constructor, so keep rules name what they need), a keep file named in the DSL that is missing on disk fails the build (`android.proguard.failOnMissingFiles=true`), `targetSdk` defaults to `compileSdk` when unset (`android.sdk.defaultTargetSdkToCompileSdkIfUnset=true` — the release-readiness spec's `targetSdk` obligations in `spec/android/release-readiness/` §D therefore apply to the *effective* value, and an app that wants a lower verified `targetSdk` states it explicitly), and `getDefaultProguardFile("proguard-android.txt")` is no longer supported — only `proguard-android-optimize.txt` (`spec/android/release-readiness/` §A). Gradle ≥ 9.1 and JDK ≥ 17 are the floor
 - **SHOULD** enable typesafe project accessors (`enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")`) and reference modules as `implementation(projects.core.data)` — still incubating, hence not a MUST
+- **SHOULD** enable Gradle dependency verification with a committed `gradle/verification-metadata.xml` (checksums at minimum, PGP signatures where the publisher signs; bootstrapped with `--write-verification-metadata sha256`, refreshed deliberately on every dependency bump, never disabled to make a red build green) — the supply-chain counterpart to the wrapper checksum above [R25]
+- **SHOULD** be able to produce a software bill of materials from the build (for example the CycloneDX Gradle plugin, community-maintained, no official Android endorsement) so the dependency currency and vulnerability scan owned by `spec/android/security/` §F have a machine-readable input; the SBOM is a build output, not a committed file [R26]
 - **MAY** add dependency-hygiene tooling: Dependency Guard baselines or the Dependency Analysis Gradle Plugin (community standard, no official endorsement)
+- **MAY** use `testFixtures` (`android.testFixtures.enable`, `testFixtures/` source set) to share fakes and builders between a module's own tests and its consumers' tests in modularized projects; it complements, not replaces, the `:core:testing` module of §F [R14]
 
 ### C. Module strategy and taxonomy
 
@@ -101,11 +107,15 @@ Readers: authors of this repo's Android skills, and reviewers judging whether a 
 
 ## Acceptance Criteria
 
+The criteria are a representative rollup of §A–§G, not a 1:1 mapping; every requirement bullet above is normative on its own.
+
 - [ ] A freshly generated project builds green with `./gradlew build` immediately after generation
+- [ ] The repository root contains every §A file (`settings.gradle.kts`, `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/` with its JAR, `gradlew`, `gradlew.bat`, `.editorconfig`, `.gitignore`), and `gradle.properties` sets `kotlin.code.style=official`
+- [ ] No module applies `org.jetbrains.kotlin.android`; Kotlin compiles through AGP's built-in support with the KGP/KSP catalog versions at or above AGP's floor, and exactly one JDK 17 toolchain declaration plus a toolchain resolver exists
 - [ ] The root `build.gradle.kts` contains only a `plugins {}` block with `apply false` declarations; no `allprojects`/`subprojects` blocks exist anywhere
 - [ ] Every dependency and plugin in module build files resolves through `libs.versions.toml` accessors; no hard-coded coordinates or dynamic versions
-- [ ] `gradle.properties` enables configuration cache, build cache, parallel execution, and AndroidX, and contains none of the flags listed as obsolete in §B
-- [ ] No module applies kapt; annotation processing uses KSP
+- [ ] `gradle.properties` enables configuration cache, build cache, and parallel execution, and contains none of the flags listed as redundant or obsolete in §B for the AGP generation in use
+- [ ] No module applies kapt; annotation processing uses KSP — any `com.android.legacy-kapt` interim is recorded with processor, reason, and removal condition
 - [ ] Compose libraries carry no individual versions (BOM-managed), and the Compose compiler plugin version references the Kotlin version
 - [ ] A newly generated project contains exactly one `:app` module unless modularization was explicitly requested; when modularized, the module graph honors every dependency rule in §C
 - [ ] Unit and instrumented tests live in `src/test/` / `src/androidTest/` of the module under test
@@ -116,11 +126,13 @@ Readers: authors of this repo's Android skills, and reviewers judging whether a 
 
 ## Open Questions
 
-- detekt adoption: Google's reference projects skip it, the community embraces it — decide when this repo's quality-gate/audit skill takes shape
-- Threshold for the `:feature:x:api`/`:impl` split: at what project size does the Navigation-3-style split pay off?
-- Should the project-setup skill scaffold `build-logic/` from day one (cheap while empty) or only on first modularization (single-module purity)?
-- Screenshot-testing tool choice: Roborazzi vs Paparazzi vs Google's newer Compose Preview Screenshot Testing (`src/screenshotTest` source set)
-- Kotlin Multiplatform: if KMP ever enters scope, the top-level layout changes fundamentally (see Tivi) and needs its own spec
+Each question states the working default the requirements above already encode.
+
+- detekt adoption: Google's reference projects skip it, the community embraces it — decide when this repo's quality-gate/audit skill takes shape. *Default:* §G's **MAY** — detekt is not scaffolded; Spotless with ktlint plus Android Lint is the shipped set.
+- Threshold for the `:feature:x:api`/`:impl` split: at what project size does the Navigation-3-style split pay off? *Default:* §C's **MUST NOT** — no split on solo or small projects; a feature stays one module until a second consumer needs its navigation keys.
+- Should the project-setup skill scaffold `build-logic/` from day one (cheap while empty) or only on first modularization (single-module purity)? *Default:* §C ties `build-logic/` to modularization, so a single-module scaffold ships without it.
+- Screenshot-testing tool choice: Roborazzi vs Paparazzi vs Google's newer Compose Preview Screenshot Testing (`src/screenshotTest` source set). *Default:* §F's **MAY** keeps screenshot tests out of the scaffold; when one is added, `spec/android/test-automation/` §E's default applies.
+- Kotlin Multiplatform: if KMP ever enters scope, the top-level layout changes fundamentally (see Tivi) and needs its own spec. *Default:* out of scope per §Non-Goals — this spec targets Android-only apps.
 
 ## References
 
@@ -144,3 +156,10 @@ Readers: authors of this repo's Android skills, and reviewers judging whether a 
 - [R18] Navigation 3 modularization (feature api/impl): <https://developer.android.com/guide/navigation/navigation-3/modularize>
 - [R19] GitHub canonical Android.gitignore: <https://github.com/github/gitignore/blob/main/Android.gitignore>
 - [R20] Secrets Gradle Plugin (local.properties pattern): <https://github.com/google/secrets-gradle-plugin>
+- [R21] Android Gradle plugin 9.0 release notes — built-in Kotlin on by default, `org.jetbrains.kotlin.android` incompatible with `android.newDsl=true`, KGP 2.2.10 / KSP 2.2.10-2.0.2 floor, new `true` defaults (`android.newDsl`, `android.builtInKotlin`, `android.useAndroidX`, `android.r8.strictFullModeForKeepRules`, `android.proguard.failOnMissingFiles`, `android.sdk.defaultTargetSdkToCompileSdkIfUnset`), `proguard-android.txt` dropped, Gradle 9.1 / JDK 17 minimum (P): <https://developer.android.com/build/releases/agp-9-0-0-release-notes>
+- [R22] Migrate to built-in Kotlin — remove `kotlin-android`, `kotlin-kapt` → `com.android.legacy-kapt` only when KSP is not yet possible, `android.builtInKotlin=false` as temporary opt-out (P): <https://developer.android.com/build/migrate-to-built-in-kotlin>
+- [R23] Java versions in Android builds — toolchain declaration, JDK 17 for AGP, `JAVA_HOME` alignment (P): <https://developer.android.com/build/jdks>
+- [R24] Gradle toolchains and the Foojay toolchain-resolver convention plugin (P): <https://docs.gradle.org/current/userguide/toolchains.html>, <https://github.com/gradle/foojay-toolchains>
+- [R25] Gradle dependency verification — `gradle/verification-metadata.xml`, checksum and signature verification, bootstrapping (P): <https://docs.gradle.org/current/userguide/dependency_verification.html>
+- [R26] CycloneDX Gradle plugin — SBOM generation from the Gradle dependency graph (S): <https://github.com/CycloneDX/cyclonedx-gradle-plugin>
+- [R27] KSP releases — from 2.3.0 the KSP version is decoupled from the Kotlin version (no `<kotlin>-<ksp>` prefix); each release states its supported Kotlin range (P): <https://github.com/google/ksp/releases>

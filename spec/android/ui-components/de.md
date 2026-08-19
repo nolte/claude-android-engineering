@@ -60,7 +60,8 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 ### D. Expressive-Aktualität
 
 - **DARF NICHT [MUST NOT]** die abgelösten Baseline-Komponenten in neuen Code generieren: Segmented Buttons (→ Connected Button Group), die Baseline-Bottom-App-Bar (→ Docked Toolbar), den Small FAB
-- **KANN [MAY]** die neuen Expressive-Komponenten (Button Groups, Split Button, FAB Menu, Floating/Docked Toolbars, Loading Indicator, Wavy Progress) übernehmen, sobald ihre Compose-APIs Stabilität erreichen; solange `@ExperimentalMaterial3ExpressiveApi`, ist jede Übernahme eine protokollierte Entscheidung
+- **MUSS [MUST]**, solange das `compose-material3` des Projekts die stabile 1.4-Linie ist (die Nachfolger liegen nur in den 1.5.0-alpha-Artefakten — `ButtonGroup`, `SplitButton` und die Floating Toolbar sind innerhalb dieser Alpha-Linie aus dem Experimental-Status graduiert, aber kein stabiles Release trägt sie [R26]), diese baseline-konformen Defaults statt der verbotenen Komponenten verwenden: eine Single-Select-`FilterChip`-Reihe für eine segmentierte Wahl zwischen Filtern oder Modi und `PrimaryTabRow`, wo die Wahl Ansichten wechselt; die Primäraktion als der eine FAB mit Sekundäraktionen in der Top App Bar anstelle einer Bottom App Bar; den FAB in Standardgröße anstelle des Small FAB. Die 1.5.0-alpha-Nachfolger stattdessen zu übernehmen ist nur als protokollierte Entscheidung gemäß dem folgenden Punkt zulässig
+- **KANN [MAY]** die neuen Expressive-Komponenten (Button Groups, Split Button, FAB Menu, Floating/Docked Toolbars, Loading Indicator, Wavy Progress) übernehmen, sobald ihre Compose-APIs ein stabiles Release erreichen; solange sie in der Alpha-Linie liegen oder `@ExperimentalMaterial3ExpressiveApi` tragen, ist jede Übernahme eine protokollierte Entscheidung
 - **SOLLTE [SHOULD]** Änderungen der Komponenten-Guidance zur Authoring-Zeit verfolgen — das Komponentenset hat sich 2025 substanziell bewegt, und veraltete Komponentenwahl ist ein Audit-Befund, keine Stilfrage
 
 ## Akzeptanzkriterien
@@ -74,7 +75,7 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§D, 
 - [ ] Kein Formular mischt filled und outlined Textfelder; jedes Textfeld hat ein sichtbares Label; Fehlertext ersetzt Supporting-Text
 - [ ] Keine Card scrollt intern oder hostet swipebaren Inhalt; kein Menüeintrag bettet einen Switch oder Button ein; bedingt nicht verfügbare Menüeinträge rendern disabled
 - [ ] Kein Chip treibt eine Aufgabe voran; kein Einzel-Chip-Set existiert; jeder Input-Chip hat eine Entfernen-Affordanz
-- [ ] Generierter Code enthält keine Segmented Buttons, Baseline-Bottom-App-Bars oder Small FABs
+- [ ] Generierter Code enthält keine Segmented Buttons, Baseline-Bottom-App-Bars oder Small FABs; auf der stabilen material3-Linie treten an ihre Stelle die benannten Defaults (Single-Select-Filter-Chips / Tab Row, FAB plus Top-App-Bar-Aktionen, Standard-FAB) oder eine protokollierte Expressive-Übernahme
 - [ ] Alles Komponenten-Styling fließt über Theme-Rollen und `*Defaults`-/Wrapper-APIs; kein Farb- oder Maß-Literal erscheint an einer Komponenten-Aufrufstelle
 - [ ] Wo Design-System-Wrapper existieren, verbietet ein Lint-Check auf ERROR-Stufe die gewrappten rohen Material-Komponenten, und CI führt ihn aus
 - [ ] Experimentelle Expressive-APIs erscheinen nur mit protokollierter Übernahme-Entscheidung
@@ -84,13 +85,13 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§D, 
 Alle vier Fragen sind Parking-Lot-Klasse: Die Anforderungen oben nennen für jede einen funktionierenden Default (Wrap-bei-Anpassung, Baseline-Komponenten bereits verboten, Katalog optional, Komponenten-Defaults akzeptabel).
 
 - Wrapper-Scaffold-Zeitpunkt: Soll der Compose-UI-Skill die Design-System-Wrapper-Schicht (plus Lint-Check) ab dem ersten Screen generieren oder erst, wenn die App die Defaults einer Komponente anpasst?
-- Expressive-Komponenten-Übernahme: generierten Code jetzt auf Connected Button Groups und Docked Toolbars umstellen (die Guidance deprecatet die Baselines bereits), auch wo die Compose-API noch experimentell ist, oder auf stable warten?
+- Expressive-Komponenten-Übernahme: generierten Code jetzt auf Connected Button Groups und Docked Toolbars umstellen (die Guidance deprecatet die Baselines bereits), obwohl ihre Compose-APIs nur in den 1.5.0-alpha-Artefakten liegen, oder die Stable-Line-Defaults aus §D behalten, bis ein stabiles Release sie trägt?
 - Katalog-Fläche: Standard-`app-catalog`-Modul für jede generierte App oder nur für Apps mit gewachsenem Design-System?
 - Disabled-State-Alpha-Konstanten: aus einer geteilten Token-Datei lesen oder die Komponenten-Defaults stillschweigend akzeptieren?
 
 ## Referenzen
 
-Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär (Referenzprojekt-Code). m3.material.io-Seiten sind clientseitig gerendert; die Inhalte wurden über gerenderte Abrufe der kanonischen URLs erfasst. Komponenten-Nutzungsregeln sind Material 3s eigene maßgebliche Design-Spezifikation — die einzige Primärquelle je Komponente — korroboriert durch die Compose-API-Docs (R22–R24) und das Referenzprojekt (R25), wo Implementierungsverhalten behauptet wird.
+Alle Quellen abgerufen am 11.08.2026; R26 erneut verifiziert am 19.08.2026. Klassenmarker: (P) primäre/maßgebliche Vendor-Dokumentation, (S) sekundär (Referenzprojekt-Code). m3.material.io-Seiten sind clientseitig gerendert; die Inhalte wurden über gerenderte Abrufe der kanonischen URLs erfasst. Komponenten-Nutzungsregeln sind Material 3s eigene maßgebliche Design-Spezifikation — die einzige Primärquelle je Komponente — korroboriert durch die Compose-API-Docs (R22–R24) und das Referenzprojekt (R25), wo Implementierungsverhalten behauptet wird.
 
 - [R1] Buttons-Guidelines (P): <https://m3.material.io/components/buttons/guidelines>
 - [R2] FAB-Guidelines (P): <https://m3.material.io/components/floating-action-button/guidelines>
@@ -117,4 +118,4 @@ Alle Quellen abgerufen am 11.08.2026. Klassenmarker: (P) primäre/maßgebliche V
 - [R23] Material-3-Theming in Compose (Rollen, Defaults, No-Theme-Caveat) (P): <https://developer.android.com/develop/ui/compose/designsystems/material3>
 - [R24] Custom Design Systems in Compose (Wrap-then-Extend-Regel) (P): <https://developer.android.com/develop/ui/compose/designsystems/custom>
 - [R25] Now-in-Android-Design-System-Wrapper und Lint-Enforcement (S): <https://github.com/android/nowinandroid> (core/designsystem/component/*, lint/DesignSystemDetector.kt)
-- [R26] Compose-Material-3-Releases (Expressive-API-Graduierung) (P): <https://developer.android.com/jetpack/androidx/releases/compose-material3>
+- [R26] Compose-Material-3-Releases (stabil 1.4.0 vs. 1.5.0-alpha-Linie; Graduierung von `ButtonGroup`/`SplitButton`/Floating Toolbar innerhalb der Alphas) (P): <https://developer.android.com/jetpack/androidx/releases/compose-material3>

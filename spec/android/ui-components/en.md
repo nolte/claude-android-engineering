@@ -60,7 +60,8 @@ Readers: authors of this repo's Android skills and reviewers judging whether gen
 ### D. Expressive currency
 
 - **MUST NOT** generate the superseded baseline components into new code: segmented buttons (→ connected button group), the baseline bottom app bar (→ docked toolbar), the small FAB
-- **MAY** adopt the new Expressive components (button groups, split button, FAB menu, floating/docked toolbars, loading indicator, wavy progress) as their Compose APIs reach stability; while `@ExperimentalMaterial3ExpressiveApi`, each adoption is a recorded decision
+- **MUST** use, while the project's `compose-material3` is the stable 1.4 line (the successors ship only in the 1.5.0-alpha artifacts — `ButtonGroup`, `SplitButton`, and the floating toolbar graduated from experimental inside that alpha line but no stable release carries them [R26]), these baseline-conformant defaults instead of the banned components: a single-select `FilterChip` row for a segmented choice among filters or modes, and `PrimaryTabRow` where the choice switches views; the primary action as the one FAB with secondary actions in the top app bar in place of a bottom app bar; the standard-size FAB in place of the small FAB. Adopting the 1.5.0-alpha successors instead is admissible only as a recorded decision per the bullet below
+- **MAY** adopt the new Expressive components (button groups, split button, FAB menu, floating/docked toolbars, loading indicator, wavy progress) as their Compose APIs reach a stable release; while they sit in the alpha line or carry `@ExperimentalMaterial3ExpressiveApi`, each adoption is a recorded decision
 - **SHOULD** track component-guidance changes at authoring time — the component set moved substantially in 2025, and stale component choices are audit findings, not style preferences
 
 ## Acceptance Criteria
@@ -74,7 +75,7 @@ The criteria below are a deliberate representative rollup of §A–§D, not a 1:
 - [ ] No form mixes filled and outlined text fields; every text field has a visible label; error text replaces supporting text
 - [ ] No card scrolls internally or hosts swipeable content; no menu item embeds a switch or button; conditionally unavailable menu items render disabled
 - [ ] No chip advances a task; no single-chip set exists; every input chip has a remove affordance
-- [ ] Generated code contains no segmented buttons, baseline bottom app bars, or small FABs
+- [ ] Generated code contains no segmented buttons, baseline bottom app bars, or small FABs; on the stable material3 line their place is taken by the named defaults (single-select filter chips / tab row, FAB plus top-app-bar actions, standard FAB) or by a recorded Expressive adoption
 - [ ] All component styling flows through theme roles and `*Defaults`/wrapper APIs; no color or dimension literal appears at a component call site
 - [ ] Where design-system wrappers exist, a lint check at ERROR severity forbids the wrapped raw Material components, and CI runs it
 - [ ] Experimental Expressive APIs appear only with a recorded adoption decision
@@ -84,13 +85,13 @@ The criteria below are a deliberate representative rollup of §A–§D, not a 1:
 All four questions are parking-lot class: the requirements above state a working default for each (wrap-on-customization, baseline components already banned, catalog optional, component defaults acceptable).
 
 - Wrapper scaffold timing: should the Compose-UI skill generate the design-system wrapper layer (plus lint check) from the first screen, or only once the app customizes a component's defaults?
-- Expressive component adoption: switch generated code to connected button groups and docked toolbars now (guidance already deprecates the baselines) even where the Compose API is still experimental, or wait for stable?
+- Expressive component adoption: switch generated code to connected button groups and docked toolbars now (guidance already deprecates the baselines) even while their Compose APIs ship only in the 1.5.0-alpha artifacts, or keep §D's stable-line defaults until a stable release carries them?
 - Catalog surface: standard `app-catalog` module for every generated app, or only for apps with a grown design system?
 - Disabled-state alpha constants: read from a shared token file or accept the component defaults silently?
 
 ## References
 
-All sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendor documentation, (S) secondary (reference-project code). m3.material.io pages are client-rendered; contents were captured via rendered fetches of the canonical URLs. Component usage rules are Material 3's own authoritative design specification — the single primary source for each component — corroborated by the Compose API docs (R22–R24) and the reference project (R25) where implementation behavior is asserted.
+All sources retrieved 2026-08-11; R26 re-verified 2026-08-19. Class markers: (P) primary/authoritative vendor documentation, (S) secondary (reference-project code). m3.material.io pages are client-rendered; contents were captured via rendered fetches of the canonical URLs. Component usage rules are Material 3's own authoritative design specification — the single primary source for each component — corroborated by the Compose API docs (R22–R24) and the reference project (R25) where implementation behavior is asserted.
 
 - [R1] Buttons guidelines (P): <https://m3.material.io/components/buttons/guidelines>
 - [R2] FAB guidelines (P): <https://m3.material.io/components/floating-action-button/guidelines>
@@ -117,4 +118,4 @@ All sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendo
 - [R23] Material 3 theming in Compose (roles, Defaults, no-theme caveat) (P): <https://developer.android.com/develop/ui/compose/designsystems/material3>
 - [R24] Custom design systems in Compose (wrap-then-extend rule) (P): <https://developer.android.com/develop/ui/compose/designsystems/custom>
 - [R25] Now in Android design-system wrappers and lint enforcement (S): <https://github.com/android/nowinandroid> (core/designsystem/component/*, lint/DesignSystemDetector.kt)
-- [R26] Compose Material 3 releases (Expressive API graduation) (P): <https://developer.android.com/jetpack/androidx/releases/compose-material3>
+- [R26] Compose Material 3 releases (stable 1.4.0 vs 1.5.0-alpha line; `ButtonGroup`/`SplitButton`/floating toolbar graduation inside the alphas) (P): <https://developer.android.com/jetpack/androidx/releases/compose-material3>

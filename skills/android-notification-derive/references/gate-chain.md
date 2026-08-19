@@ -5,10 +5,20 @@ is a working digest, not a source of truth: on any conflict the spec wins.
 
 ## Table of contents
 
+- [The model to hold first](#the-model-to-hold-first-a) — §A
 - [The six axes](#the-six-axes) — §B
 - [The gates, in order](#the-gates-in-order) — §C
 - [What each channel buys and costs](#what-each-channel-buys-and-costs) — §D
 - [Refusal and gap outcomes](#refusal-and-gap-outcomes) — §C gates 8 and 9
+
+## The model to hold first (§A)
+
+The ability to notify is a revocable, app-wide, shared resource: from Android 13 a single
+denial silences every channel. Three qualifications, and only three: a **media-session
+notification** and a **self-managed `CallStyle` call** are exempt from `POST_NOTIFICATIONS`
+entirely, and a **foreground service may still be started** without it — its notification is
+then visible in the Task Manager only, not in the drawer. Nothing else survives a denial, so
+every posted notification is spent against every future one.
 
 ## The six axes
 
@@ -44,13 +54,13 @@ gate *and* the cheaper gate that was rejected, with the reason.
 | # | Gate | Matches when | Outcome |
 |---|---|---|---|
 | 1 | **Silence** | nothing the user would do differently changes | no channel; app state only |
-| 2 | **Ongoing activity** | user-initiated activity with a start and end, tracked while it runs — navigation, a ride, a delivery, a workout, playback; **not** a call, which is third-party-initiated and belongs to gate 4 | foreground-service notification, `ProgressStyle` / Live Update, or media notification |
+| 2 | **Ongoing activity** | user-initiated activity with a start and end, tracked while it runs — navigation, a ride, an active delivery, a workout, playback; **not** a call, which is third-party-initiated and belongs to gate 4. **Excluded:** an activity the user did not start, a far-future scheduled event (a remote appointment), and package tracking that needs no continuous attention — those fall through to gates 5–7; the Live-Update entry admits only the genuinely continuous, time-sensitive case and names package tracking, chat, ads, and upcoming calendar events as wrong | foreground-service notification, `ProgressStyle` / Live Update, or media notification |
 | 3 | **Presence** | a **point event** *and* the user is on the affected surface | in-app surface only (`android-compose-ui`) |
 | 4 | **Conversation** | real-time interpersonal communication | `MessagingStyle` + long-lived shortcut, or `CallStyle` — this gate also owns the call's full-screen intent, checked with `canUseFullScreenIntent()` before use |
 | 5 | **Interrupt** | missing it within minutes costs safety, money, or data **and** the user can act | high-importance channel (heads-up); a full-screen intent here only for an **alarm**, the calling half belonging to gate 4 |
 | 6 | **Await** | relevant today, no interruption warranted | default- or low-importance channel, silent where the user did not initiate it |
 | 7 | **Ambient** | a state to glance at repeatedly, not an occurrence to be told about | a widget, plus a badge only where the app's own navigation carries it — a launcher badge is a consequence of a posted notification and is never the outcome for an out-of-app event; where no widget is placed, the outcome is gate 1's |
-| 8 | **Refusal** | promotional, re-engagement-driven, or celebratory | no channel; reported as out of policy |
+| 8 | **Refusal** | promotional, re-engagement-driven, celebratory, a greeting, or a rating request | no channel; reported as out of policy |
 | 9 | **Gap** | nothing above matched and it is not a policy violation | no channel; reported as a spec gap (REQ-6) |
 
 **Why ongoing sits before presence.** An ongoing activity is almost always started from the
@@ -103,9 +113,10 @@ catalogue; read that section when an entry's trade-off is what the decision turn
   restrictions, Task-Manager stop, dismissible since Android 14, six-hour daily budget for
   `dataSync` and `mediaProcessing`). Only where work must continue *and* be noticeable now.
 - **Live Update / `ProgressStyle`** — promoted placement plus a status-bar chip; needs
-  `POST_PROMOTED_NOTIFICATIONS`, an explicit promotion request, ongoing flag, content title, a
-  permitted style, and forbids custom layouts, group summaries, colorization, and minimum
-  importance. Only for user-initiated, ongoing, continuously time-sensitive activity.
+  `POST_PROMOTED_NOTIFICATIONS`, an explicit promotion request, ongoing flag, content title, one
+  of the five permitted styles (standard, `BigTextStyle`, `CallStyle`, `ProgressStyle`,
+  `MetricStyle` from Android 17), and forbids custom layouts, group summaries, colorization, and
+  minimum importance. Only for user-initiated, ongoing, continuously time-sensitive activity.
 - **Media notification** — the system media carousel; requires a real `MediaSession`.
 - **Out-of-band (email, SMS, push to another device)** — reaches a user who revoked
   notifications, but is outside the app and outside this repository's scope: capture it as a
@@ -115,8 +126,9 @@ catalogue; read that section when an entry's trade-off is what the decision turn
 
 Both end the run without a channel, and they are **not** the same thing.
 
-**Refusal (gate 8).** The event is promotional, re-engagement-driven, or celebratory. The
-platform's own design guidance and Play policy both put it out of bounds. Report it as out of
+**Refusal (gate 8).** The event is promotional, re-engagement-driven, celebratory, a greeting,
+or a rating request — the platform's own design guidance names all five as wrong for a
+notification, and Play policy forbids ads that simulate one. Report it as out of
 policy — including when the operator asks for it directly. The report names the rule, offers
 the legitimate alternative where one exists (an in-app surface, a widget, an email the backend
 sends), and does not implement the notification.

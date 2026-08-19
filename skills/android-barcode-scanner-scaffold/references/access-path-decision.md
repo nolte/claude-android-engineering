@@ -13,6 +13,7 @@ conflict that spec wins.
 - [4. Path C — GMS-free decoder](#4-path-c--gms-free-decoder)
 - [5. Model and module supply](#5-model-and-module-supply)
 - [6. What to record](#6-what-to-record)
+- [7. Data Safety handoff and native-library check](#7-data-safety-handoff-and-native-library-check)
 
 ## 1. The decision
 
@@ -81,8 +82,8 @@ a pipeline to maintain — in exchange for full control of the surface.
   deciding them here. What stays here is the trigger point: the request happens **in context**,
   at the moment the user asks to scan, and the manual-entry fallback is what the degraded path
   degrades to.
-- The pipeline itself is in `scanner-pipeline.md`. The single most important line in it is the
-  explicit `ResolutionSelector`.
+- The pipeline itself is SKILL.md step 3 (and its pipeline reference). The single most important
+  line in it is the explicit, computed `ResolutionSelector`.
 
 ## 4. Path C — GMS-free decoder
 
@@ -95,6 +96,10 @@ a pipeline to maintain — in exchange for full control of the surface.
   codes, weaker on damaged ones" is the accurate statement, not "the same".
 - Relevant decode hints: `POSSIBLE_FORMATS` to restrict symbologies, `TRY_HARDER` for accuracy
   over speed, `ALSO_INVERTED` where light-on-dark codes must be read.
+- Manifest and permission handling: like Path B, this path drives the app's own camera and
+  therefore needs `CAMERA` — declared and handed to `android-permissions-derive` exactly as in
+  §3, with the same in-context trigger and manual-entry degradation. Only Path A is
+  permission-free.
 
 ## 5. Model and module supply
 
@@ -125,4 +130,27 @@ Persist to the resume state and state in the run report:
 - The chosen path and the **named reason** (for Path B, the capability Path A could not serve).
 - The model/module supply choice and how the pending state is handled.
 - For Path C: which devices justify it, and where the second code path begins and ends.
-- The resolved versions of every added artifact.
+- The resolved versions of every added artifact, and — for the bundled ML Kit model — the
+  16 KB page-size check result (`spec/android/release-readiness/` §D).
+- **The payload/frame data flow** (on-device only, or transmitted to a backend or third-party
+  SDK) and, wherever it leaves the device, the store-side Data Safety declaration obligation
+  handed to the operator. Never an asserted exemption for on-device processing (spec §G). See §7.
+
+## 7. Data Safety handoff and native-library check
+
+**Data Safety (spec §G).** Establish, and record in the run report, what happens to the decoded
+payload and to the camera frame: on-device only, or transmitted to a backend or a third-party
+SDK (analytics, crash reporting with breadcrumbs, a lookup service). Wherever payload or frame
+**leaves the device**, record the store-side Data Safety declaration obligation and hand it to
+the operator — the same handoff category `android-permissions-derive` uses for its §G
+obligations: discovery is this skill's, filing is the operator's, and no skill edits the Play
+Console or the Data Safety questionnaire. Never assert an exemption for on-device-only
+processing; no source states one (spec §G / §Open Questions) — say "no declaration obligation
+was found" at most, never "none applies". `spec/android/security/` §E owns the general
+obligation.
+
+**16 KB page size (`spec/android/release-readiness/` §D).** The bundled ML Kit model artifact
+(`com.google.mlkit:barcode-scanning`) ships native libraries inside the APK — the Play-services
+model, the code scanner, and pure-JVM ZXing core do not. Verify the resolved version's `.so`
+files are 16 KB-aligned (`zipalign -c -P 16 -v 4 <apk>`, or the APK Analyzer check) and report a
+non-aligned artifact as a finding with the version that fixes it — never bump silently.

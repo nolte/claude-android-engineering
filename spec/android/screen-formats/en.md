@@ -58,12 +58,12 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 - **MUST** meet **Tier 3 ("adaptive ready")** unconditionally — it is the floor below which Play down-ranks the app on tablets and shows a quality warning: full-window rendering without letterboxing, every configuration change and combination (rotate + resize + fold) survives with state intact, full function in split-screen, multi-resume correctness, camera previews correct in every orientation and fold state, and basic keyboard, mouse/trackpad, and stylus input [R5][R6]
 - **SHOULD** meet **Tier 2 ("adaptive optimized")** — the target level for this portfolio: size-class-driven adaptive layouts, no full-width secondary UI, 48dp touch targets, focus states for interactive elements, keyboard navigation through main flows plus standard shortcuts (copy/paste/undo, Esc, Enter, Space), right-click context menus, hover states, and content zoom [R6]
 - **MAY** pursue **Tier 1 ("adaptive differentiated")** features (foldable postures, multi-instance, drag-and-drop, stylus optimization, desktop windowing polish) per app where they differentiate
-- **MUST** verify against the official reference matrix: foldable 841×701dp, 8" tablet 1024×640dp, 10.5" tablet 1280×800dp, 13" 1600×900dp [R15] (execution via `spec/android/test-automation/` §D — `DeviceConfigurationOverride.ForcedSize`, Robolectric qualifiers, resizable emulator, `@PreviewScreenSizes`)
+- **MUST** verify against the official reference matrix: foldable 841×701dp, 8" tablet 1024×640dp, 10.5" tablet 1280×800dp, 13" 1600×900dp [R5] (execution via `spec/android/test-automation/` §D — `DeviceConfigurationOverride.ForcedSize`, Robolectric qualifiers, resizable emulator, `@PreviewScreenSizes`)
 
 ### E. Foldables and desktop windowing (bounded scope)
 
 - **MUST** treat fold/unfold as a configuration change that preserves state (covered by Tier 3); apps that implement only size classes correctly are acceptable on foldables — posture support is officially optional differentiation
-- **MUST**, when a `FoldingFeature` reports `isSeparating`, keep critical UI off the hinge (the canonical pane scaffolds do this automatically — one more reason to use them)
+- **MUST**, when a `FoldingFeature` reports `isSeparating`, keep critical UI off the hinge (the canonical pane scaffolds do this automatically — one more reason to use them); the posture source is Jetpack WindowManager's `WindowInfoTracker.getOrCreate(context).windowLayoutInfo(activity)` flow, whose `displayFeatures` carry the `FoldingFeature` with `state` (`FLAT`/`HALF_OPENED`), `orientation`, `isSeparating`, and `occlusionType` — tabletop is `HALF_OPENED` + `HORIZONTAL`, book is `HALF_OPENED` + `VERTICAL` [R10]; an app that reads postures reads them from this flow and never infers them from window size
 - **SHOULD** handle the desktop-windowing chrome where relevant: caption-bar insets (`WindowInsets.captionBar`); freeform windows resize apps regardless of any legacy restriction
 - **MAY** implement tabletop/book posture layouts, rear-display experiences, and multi-instance support as Tier-1 work
 
@@ -95,26 +95,26 @@ All four questions are parking-lot class: the requirements above state a working
 - Tier-2 input completeness (full shortcut set, content zoom) for the *first* generated app version: scaffold from day one or staged after the phone experience stabilizes?
 - Large/extra-large opt-in: adopt now for future desktop windowing, or defer until a real target exists?
 - Foldable postures: worth a standard optional module in the Compose-UI skill, or per-app only?
-- material3-adaptive Navigation-3 integration (`ListDetailSceneStrategy`) is still experimental — commit now (NiA does) or gate on stabilization?
+- material3-adaptive Navigation-3 integration (`ListDetailSceneStrategy` in `adaptive-navigation3`) is still an alpha artifact (1.3.0-alpha line at retrieval; no beta or stable exists) [R13] — commit now (NiA does) or gate on stabilization? Working default: recorded decision per project; `NavigableListDetailPaneScaffold` remains the stable path
 
 ## References
 
-All sources retrieved 2026-08-11. Class markers: (P) primary/authoritative vendor documentation, (S) secondary. Platform-behavior facts (breakpoints, targetSdk gates, quality tiers) cite the authoritative primary source per the portfolio triangulation convention; R16–R17 are corroborating context.
+All sources retrieved 2026-08-11; R5, R10, and R13 re-verified 2026-08-19. Class markers: (P) primary/authoritative vendor documentation, (S) secondary. Platform-behavior facts (breakpoints, targetSdk gates, quality tiers) cite the authoritative primary source per the portfolio triangulation convention; R16–R17 are corroborating context.
 
 - [R1] Window size classes (breakpoints, API, dynamics): <https://developer.android.com/develop/ui/compose/layouts/adaptive/use-window-size-classes>
 - [R2] Adaptive layouts overview (replace-don't-stretch): <https://developer.android.com/develop/ui/compose/layouts/adaptive>
 - [R3] Canonical layouts: <https://developer.android.com/develop/ui/compose/layouts/adaptive/canonical-layouts>
 - [R4] List-detail scaffolds and back behavior: <https://developer.android.com/develop/ui/compose/layouts/adaptive/list-detail>
-- [R5] Adaptive app quality (tier system): <https://developer.android.com/docs/quality-guidelines/large-screen-app-quality>
+- [R5] Adaptive app quality guidelines (tier system; reference device matrix — foldable 841×701dp, 8" 1024×640dp, 10.5" 1280×800dp, 13" 1600×900dp): <https://developer.android.com/docs/quality-guidelines/large-screen-app-quality>
 - [R6] Tier 3 / Tier 2 / Tier 1 checklists: <https://developer.android.com/docs/quality-guidelines/adaptive-app-quality/tier-3> (and /tier-2, /tier-1)
 - [R7] Android 16 behavior changes (orientation/resizability ignored): <https://developer.android.com/about/versions/16/behavior-changes-16>
 - [R8] Orientation/aspect-ratio/resizability guidance: <https://developer.android.com/develop/ui/compose/layouts/adaptive/app-orientation-aspect-ratio-resizability>
 - [R9] Multi-window support (multi-resume, resizability defaults): <https://developer.android.com/guide/topics/large-screens/multi-window-support>
-- [R10] Fold-aware apps (`FoldingFeature`, postures): <https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware>
+- [R10] Fold-aware apps (`WindowInfoTracker.windowLayoutInfo`, `FoldingFeature.state`/`orientation`/`isSeparating`/`occlusionType`, tabletop and book detection): <https://developer.android.com/develop/ui/compose/layouts/adaptive/foldables/make-your-app-fold-aware>
 - [R11] Desktop windowing support: <https://developer.android.com/develop/ui/compose/layouts/adaptive/support-desktop-windowing>
 - [R12] androidx.window releases (L/XL classes, deprecations): <https://developer.android.com/jetpack/androidx/releases/window>
-- [R13] material3-adaptive releases: <https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive>
+- [R13] material3-adaptive releases (`adaptive-navigation3` alpha status): <https://developer.android.com/jetpack/androidx/releases/compose-material3-adaptive>
 - [R14] Screen densities (dp/sp, vector-first): <https://developer.android.com/training/multiscreen/screendensities>
-- [R15] Testing across screens (reference devices, tools): <https://developer.android.com/training/testing/different-screens/tools>
+- [R15] Testing across screens (tools: `DeviceConfigurationOverride`, Robolectric qualifiers, resizable emulator, previews): <https://developer.android.com/training/testing/different-screens/tools>
 - [R16] Play large-screen discovery changes (ranking, warnings, per-form-factor ratings; 2022 announcement, policy still in force per R5) (P): <https://android-developers.googleblog.com/2022/03/helping-users-discover-quality-apps-on.html>
 - [R17] Now in Android adaptive implementation (NavigationSuiteScaffold, ListDetailSceneStrategy) (S): <https://github.com/android/nowinandroid>

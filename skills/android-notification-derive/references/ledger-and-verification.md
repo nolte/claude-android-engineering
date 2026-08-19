@@ -1,7 +1,14 @@
 # Notification ledger and verification
 
 The persistent artifact and the proof. Distilled from `spec/android/notifications-alerting/`
-§C (ledger), §G (degradation), and §H (verification); the spec wins on any conflict.
+§C (ledger), §E (delivery), §G (degradation), and §H (verification); the spec wins on any
+conflict.
+
+## Table of contents
+
+- [The ledger](#the-ledger) — column contract, row template, retirement rows
+- [Verification](#verification) — required states, delivery states, foreground-service rows,
+  instrumented assertions, what does not count
 
 ## The ledger
 
@@ -10,7 +17,7 @@ Path: `project/notification-ledger.md`, alongside `project/permissions-ledger.md
 not admitted, and no code is written for an event that lacks a row.**
 
 A row whose outcome is **no channel** carries `none` in every column that presupposes one
-(channel, category, delivery, grouping, dismissal, degradation) and is still complete: a
+(channel, category, visibility, delivery, grouping, dismissal, degradation) and is still complete: a
 silence, presence, or ambient row on its classification, gate, in-app path, and test hook; a
 refusal or gap row on its classification and gate alone, because nothing is implemented and
 there is nothing to hook a test to.
@@ -20,14 +27,16 @@ there is nothing to hook a test to.
 | Column | Content |
 |---|---|
 | `Event` | the business event in one sentence, stated as something that happens to or for the user |
-| `Classification` | all six axes from `references/gate-chain.md`, comma-separated |
+| `Classification` | all six axes (`SKILL.md` step 2), comma-separated |
 | `Gate` | the gate that matched |
 | `Rejected` | the cheaper gate *above* the matched one that was rejected **and the reason** — `n/a` for gates 1, 3, 8, and 9, which either are the cheap outcome (silence, presence) or produce nothing by policy (refusal, gap) |
 | `Channel` | channel ID, user-visible name, and importance (or `none` for a no-channel outcome) |
 | `Category` | the `setCategory()` constant |
-| `Delivery` | `local`, `scheduled`, or `pushed` |
+| `Visibility` | lock-screen visibility — `PUBLIC`, `PRIVATE` with a public version, or `SECRET` — and the sensitivity classification (`spec/android/security/` §A) it applied |
+| `Delivery` | `local`, `scheduled`, or `pushed`; where a server-rendered string is unavoidable, note it here with the language it was rendered in (§E) |
 | `Presence behaviour` | what happens in each of the three presence cases |
-| `Grouping` | group key and summary behaviour, or `single` |
+| `Grouping` | group key plus summary behaviour (`GROUP_ALERT_*`, summary ID), or `single` where only one of this kind can be active |
+| `Update key` | the stable notification ID or tag an update of the same event re-posts under (never a fresh notification per update); `n/a` only for a no-channel outcome |
 | `Dismissal` | auto-cancel, timeout, or explicit cancel — and what makes the notification stale |
 | `Degradation` | what the user sees when notifications are off or the channel is blocked |
 | `In-app path` | where the same information lives in the app, independently of the notification |
@@ -45,9 +54,11 @@ there is nothing to hook a test to.
 | Rejected | 3 — Presence: the event's relevance outlives the session in which it arrives, so it is not decided by where the user happens to be looking; 5 — Interrupt: a shipping update has no minutes-scale consequence, so the chain fell through to 6 |
 | Channel | `orders_shipping` / "Shipping updates" / `IMPORTANCE_DEFAULT` |
 | Category | `CATEGORY_STATUS` |
-| Delivery | pushed (data message; a missed message is recovered by the order sync on next foreground) |
+| Visibility | `VISIBILITY_PRIVATE` with a public version ("An order was updated") — order contents classified sensitive |
+| Delivery | pushed (data message; a missed message is recovered by the order sync on next foreground; text rendered on device from event key + parameters) |
 | Presence behaviour | on the order screen: inline state only, no notification. Elsewhere in the app: notification, silent. Out of app: notification with sound. |
 | Grouping | `orders` group with a constant-ID summary; `GROUP_ALERT_SUMMARY` |
+| Update key | notification ID derived from the order ID |
 | Dismissal | auto-cancel on tap; cancelled when the order screen is opened; stale once delivered |
 | Degradation | the order list shows the shipping state with a "notifications are off" hint and a settings route |
 | In-app path | order detail screen, shipping section |

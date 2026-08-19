@@ -1,8 +1,19 @@
 # Permission Ledger and Verification
 
 The persistent artifact and the commands that prove it, per `spec/android/permissions/` §B
-(ledger), §H (verification), and §I (testing). ADB mechanics themselves are owned by
+(ledger), §H (verification), and §I (testing), plus the read-only audit procedure. ADB mechanics themselves are owned by
 `spec/android/adb-workflows/`; the commands below are the permission-specific uses of them.
+
+## Table of contents
+
+- [1. The ledger](#1-the-ledger) — who writes it, the row template, removal rows, the
+  non-runtime notification rows
+- [2. Verifying the actual set](#2-verifying-the-actual-set) — merged manifest, artifact,
+  device, lint
+- [3. Establishing the test states](#3-establishing-the-test-states) — ADB state setup,
+  `GrantPermissionRule`, what each state asserts
+- [4. Audit procedure (operation `audit`)](#4-audit-procedure-operation-audit) — read-only,
+  severity-classified report
 
 ---
 
@@ -10,6 +21,11 @@ The persistent artifact and the commands that prove it, per `spec/android/permis
 
 One row per permission in the final set. A permission with an incomplete row is not admitted —
 that rule is what makes the set derived rather than accumulated.
+
+Who writes it: `derive` writes the row at `SKILL.md` step 5, after trigger point, denial
+behaviour, and store obligation are decided; `apply` fills the **Declared as** and **Tests**
+lines at steps 6 and 8 as it writes them. `audit` writes nothing — its report names the rows
+the app owes and the `derive` run that would write them.
 
 Location: `project/permissions-ledger.md`, fixed by `spec/android/permissions/` §B — alongside
 the requirement and backend-requirement artifacts under `project/`. Not a per-project choice.
@@ -34,6 +50,12 @@ the requirement and backend-requirement artifacts under `project/`. Not a per-pr
 - **Tests:** `ReportPhotoPermissionTest` covers granted, denied, permanently denied
 ```
 
+Optional lines, used where they apply: **Runtime check:** for a special permission or one of the
+two non-runtime notification permissions (the check method, its API-level guard, and the
+settings intent — see below); **Model surface:** where the Privacy Dashboard, the camera or
+microphone indicator, or a device-wide sensor toggle changes what "granted" means for this
+permission (`spec/android/permissions/` §A).
+
 ### Rows that record a removal
 
 ```markdown
@@ -45,6 +67,36 @@ the requirement and backend-requirement artifacts under `project/`. Not a per-pr
 - **Removed with:** `tools:node="remove" tools:selector="com.example.analyticssdk"`
 - **Re-check:** on every bump of that dependency (§H requires re-verification after dependency
   changes)
+```
+
+### Rows for the non-runtime notification permissions
+
+`USE_FULL_SCREEN_INTENT` and `POST_PROMOTED_NOTIFICATIONS` are declared at install time but
+behave like special permissions at runtime. Their row's **Feature** line names the notification
+ledger row (`project/notification-ledger.md`) the permission follows from, and the **Runtime
+check** line records the obligation that this skill verifies but does not implement:
+
+```markdown
+### `android.permission.POST_PROMOTED_NOTIFICATIONS`
+
+- **Type:** install-time (non-runtime), user-switchable per app — handled like special
+- **Feature:** the user tracks their active delivery on the lock screen and status bar
+  (notification ledger row "Delivery en route", gate 2, Live Update)
+- **API:** `NotificationCompat.Builder.setRequestPromotedOngoing(true)`
+- **Alternative considered:** a non-promoted ongoing notification — kept as the fallback,
+  rejected as the primary surface because the ETA must be glanceable without opening the drawer
+- **Declared as:** `<uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />`
+- **Requested at:** never (no dialog); the settings route is offered from the delivery screen on
+  an explicit user step
+- **Runtime check:** `canPostPromotedNotifications()` guarded by `SDK_INT >= 36`; on `false`
+  the non-promoted notification is posted; settings route
+  `Settings.ACTION_APP_NOTIFICATION_PROMOTION_SETTINGS` + `EXTRA_APP_PACKAGE`. Guard code owned
+  by `android-notification-derive` (`apply`, Live-Update template); presence verified at step 8
+- **On denial:** the same event stays visible as an ordinary ongoing notification and on the
+  delivery screen
+- **Store obligation:** none (`USE_FULL_SCREEN_INTENT` rows carry the Android 14+ category
+  claim instead)
+- **Tests:** `DeliveryLiveUpdateTest` covers promoted, promotion-off, notifications-off
 ```
 
 ---
@@ -158,3 +210,34 @@ permissions — such a run does not count as coverage of the granted state.
 | Denied once | The rationale is shown before the re-request; the degraded path is reachable |
 | Permanently denied | No system dialog is attempted; the explanation plus the settings route appears |
 | Special permission returning from settings | The `onResume()` re-check picks up the new state |
+
+---
+
+## 4. Audit procedure (operation `audit`)
+
+Read-only throughout. Nothing is written — not the ledger, not the manifest, not tests. (This
+replaces the earlier behaviour in which `audit` wrote ledger rows and tests; it now mirrors the
+read-only `audit` of `android-notification-derive`.)
+
+1. **Enumerate the surface.** The merged permission set (§2 commands), every `<uses-feature>`,
+   `<queries>`, foreground-service type, and `tools:node="remove"` marker, and every
+   `checkSelfPermission` / request / special-permission check call site.
+2. **Reconcile against the ledger.** Read `project/permissions-ledger.md` where it exists. A
+   declared permission with no row, and a row with no declaration, are both findings.
+3. **Re-derive each declared permission** as a candidate that must earn its row: `SKILL.md`
+   steps 1–3 against the feature it implies, then compare with what the manifest and code do.
+   A permission a permission-free alternative serves, and a library-injected one no feature
+   needs, are the findings this operation exists for. A notification permission with no
+   notification-ledger row behind it is a finding that routes to `android-notification-derive`
+   first (see the Notifications family of the decision catalog named in `SKILL.md` §Reference files).
+4. **Check the declaration and runtime rules** of the catalog per permission: `maxSdkVersion`
+   bounds, `neverForLocation`, the foreground-service triple, `<queries>`, the SDK guards the
+   ledger records, permanent-denial handling, no startup bundle, `MissingPermission` at error.
+5. **Report** on the canonical severity scale of `spec/claude/review-plan/`: `Critical` for a
+   declared permission with no traceable feature, a permission-free alternative ignored, a
+   missing notification-ledger row behind a notification permission, or a `MissingPermission`
+   lint finding; `Warning` for a declaration or runtime rule broken; `Suggestion` for a
+   narrower permission or bound the app would now qualify for; `Info` for a surface scanned
+   clean. Each finding carries the file and line, the spec section, and the operation
+   (`derive`, `apply`) that would fix it — turning a finding into a row is a `derive` run the
+   operator starts afterwards.

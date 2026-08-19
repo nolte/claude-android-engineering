@@ -37,9 +37,14 @@ production-grade release-build quality of the source is in scope
   (REQ-13), `android-perceived-performance` (REQ-15), `android-debugging`
   (REQ-16), `android-barcode-scanner-scaffold` (REQ-18),
   `android-feature-implement` (REQ-19), `android-permissions-derive` (REQ-20),
-  `android-notification-derive` (REQ-21);
+  `android-notification-derive` (REQ-21), `android-test-suite-apply` (REQ-25),
+  `android-toolchain-upgrade` (REQ-26), `android-uvc-microscope-scaffold`
+  (REQ-27), `android-localization-apply` (REQ-28);
   each grounded in the matching `spec/android/` spec
-- `agents/android-ux-reviewer` — read-only UI audit (REQ-14)
+- `agents/` — read-only reviewers that return a review-plan report the caller
+  persists under `.audits/<review-type>/`: `android-ux-reviewer` (REQ-14),
+  `android-security-reviewer` (REQ-22), `android-release-readiness-reviewer`
+  (REQ-23), `android-code-reviewer` (REQ-24)
 - `scripts/validate_skills.py` — frontmatter contract check wired as `task test`;
   scope one target with `python3 scripts/validate_skills.py skills/<name>/`. Only
   `Critical` findings fail CI (exit 1); Warning/Suggestion/Info are advisory.

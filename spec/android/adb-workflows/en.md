@@ -32,7 +32,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 ### A. Environment, targeting, and connection
 
 - **MUST** have exactly one `platform-tools` ADB on the `PATH` (verify with `which -a adb`); mismatched multiple installations cause the `adb server version … doesn't match this client` kill loop, and tools bundling their own adb (scrcpy) are pointed at the single one (`ADB=` env)
-- **MUST** keep platform-tools current — behavior is version-gated (shell exit-code propagation ≥ 24 [R2][R27], ssh-style quoting ≥ 23 [R2], `server-status`/Wireless-Debugging 2.0 ≥ 37 [R1][R2])
+- **MUST** keep platform-tools current — behavior is version-gated: ssh-style argument handling since platform-tools 23 [R1]; device exit codes and stdout/stderr separation need *both* host adb ≥ 24 (the shell-v2 protocol) **and** a device on API ≥ 24 — the single rule that §E's exit-code bullet applies [R27][R30]; `adb server-status` predates 37 (36.0.0 extended it with the mDNS state) and the `libadbmdns` backend became the default in 37.0.0, with `openscreen` (and `ADB_MDNS_OPENSCREEN`) removed in 37.0.1, so a Wireless-Debugging diagnosis assumes `server-status` output with `version: "37.0.0"` or higher and `mdns_backend: LIBADBMDNS` [R1][R2]
 - **MUST** target devices explicitly the moment more than one device can be attached: `-s <serial>` per call or `ANDROID_SERIAL` exported for sessions (`-s` overrides the variable); after any emulator retry/restart, all subsequent commands use explicit `-s`
 - **MUST** check device state before acting and map states to remedies: `device` (note: connected ≠ fully booted), `offline` (restart server / replug), `unauthorized` (RSA dialog not accepted — reconnect and confirm on device)
 - **SHOULD** use Android-11+ wireless debugging via the pairing flow (`adb pair ip:port` with the on-screen code, auto-connect afterwards); scripts connect by explicit `ip:port` and do not depend on mDNS discovery; `adb server-status` and `adb mdns track-services` are the diagnosis tools
@@ -75,7 +75,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 ### E. Scripting and agent robustness
 
 - **MUST** gate on real boot, not transport state: `adb wait-for-device` followed by polling `sys.boot_completed` until `1` (strip `\r` when comparing) — `wait-for-device` alone returns mid-boot
-- **MUST** handle exit codes truthfully: `adb shell` propagates device exit codes only on API ≥ 24 [R2][R27] (and never with `-x`); `am instrument` always exits 0 — parse `INSTRUMENTATION_STATUS_CODE` from `-w -r` output; `adb install` output is additionally grepped for `Success`/`INSTALL_FAILED`
+- **MUST** handle exit codes truthfully: `adb shell` propagates device exit codes only when host adb ≥ 24 *and* device API ≥ 24 hold together (the `shell,v2` service is API ≥ 24 [R30]; older hosts speak the v1 protocol [R27]) and never with `-x` [R30]; on an older device the fallback is `cmd; echo x$?` and parsing the trailer; `am instrument` always exits 0 — parse `INSTRUMENTATION_STATUS_CODE` from `-w -r` output; `adb install` output is additionally grepped for `Success`/`INSTALL_FAILED`
 - **MUST** wrap hang-prone calls (`screencap`, `dumpsys`, `uiautomator`) in `timeout`; there is no host-side adb timeout flag (`-t` is a transport id)
 - **SHOULD** retry transient `device not found`/`closed` errors once via `adb kill-server && adb start-server` — never in a loop
 - **SHOULD** clean up leaked state with `trap` handlers: `adb forward --remove-all`, restore modified `settings`, kill started emulators
@@ -88,7 +88,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 ### F. Emulator management (CLI)
 
 - **MUST** create AVDs non-interactively with `echo "no" | avdmanager create avd --force -n <name> -k "system-images;…"` after `sdkmanager --install` of the image
-- **MUST** use the established headless flag set in CI/agents: `-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim` plus a deliberate snapshot flag (next bullet; GPU fallback `lavapipe` on crash); KVM is mandatory on Linux runners (udev rule) [R21][R28], per `spec/android/test-automation/` §G
+- **MUST** use the established headless flag set in CI/agents: `-no-window -gpu software -noaudio -no-boot-anim` plus a deliberate snapshot flag (next bullet); `-gpu software` (emulator ≥ 36.4.9) selects the best available GLES/Vulkan software backend, with `-gpu swiftshader` as the explicit SwiftShader choice and `-gpu lavapipe` (Mesa) as the fallback when the default software renderer crashes; `swiftshader_indirect`, `swangle_indirect`, and `guest` are deprecated since emulator 36.4.9 and **MUST NOT** be written into new scaffolds (a pinned older emulator that only knows `swiftshader_indirect` records that as a dated deviation) [R16][R31][R32]; KVM is mandatory for emulator jobs on GitHub-hosted Linux runners (udev rule) [R21][R28], per `spec/android/test-automation/` §G
 - **MUST** choose the snapshot flag by run purpose: `-no-snapshot` (full cold boot) for deterministic debugging and reproduction runs; snapshot-cached AVDs with `-no-snapshot-save` are the sanctioned exception for CI wall-time (per `spec/android/test-automation/` §G)
 - **MUST** respect the port model: console/adb port pairs from 5554/5555 (+2 per instance, serial `emulator-<console-port>`); stop headless instances with `adb -s emulator-<port> emu kill`
 - **MAY** manage local-properties-style config drift via `adb-enhanced` (`adbe`) as a maintained QoL wrapper
@@ -119,16 +119,18 @@ The criteria below are a deliberate representative rollup of §A–§G, not a 1:
 
 ## Open Questions
 
-- Google's `android` agent CLI: adopt as a first-class dependency of the debugging skill once it stabilizes, or keep adb-only with the CLI as optional acceleration?
-- Unicode input: is ADBKeyBoard (third-party IME) acceptable as a skill dependency, or should skills avoid text-input automation beyond ASCII?
-- Wireless pairing automation: first-time pairing is deliberately interactive; should skills document a USB-first setup path only?
+Each question states the working default the requirements above already encode.
+
+- Google's `android` agent CLI: adopt as a first-class dependency of the debugging skill once it stabilizes, or keep adb-only with the CLI as optional acceleration? *Default:* adb-only — §A–§E carry every workflow through `adb`, and no skill may depend on the CLI.
+- Unicode input: is ADBKeyBoard (third-party IME) acceptable as a skill dependency, or should skills avoid text-input automation beyond ASCII? *Default:* §E's rule stands — `input text` is ASCII-only, and an IME bridge is a per-run, recorded exception rather than a skill dependency.
+- Wireless pairing automation: first-time pairing is deliberately interactive; should skills document a USB-first setup path only? *Default:* §A's pairing flow is documented as the wireless path with the code entered by the operator; scripts connect by explicit `ip:port` afterwards.
 
 ## References
 
-All sources retrieved 2026-08-11, except [R29] (2026-08-14). Class markers: (P) primary/authoritative vendor or AOSP documentation, (S) secondary (maintained tool repos, engineering runbooks). Platform-behavior facts cite the single authoritative primary source; assertions that direct downstream tooling carry corroborating citations inline.
+All sources retrieved 2026-08-11, except [R29] (2026-08-14) and [R30]–[R32] (2026-08-19). Class markers: (P) primary/authoritative vendor or AOSP documentation, (S) secondary (maintained tool repos, engineering runbooks). Platform-behavior facts cite the single authoritative primary source; assertions that direct downstream tooling carry corroborating citations inline.
 
 - [R1] ADB official documentation (architecture, targeting, wireless, install, shell tools): <https://developer.android.com/tools/adb>
-- [R2] Platform-tools release notes (version-gated behavior, mDNS backends): <https://developer.android.com/tools/releases/platform-tools>
+- [R2] Platform-tools release notes (version-gated behavior; `server-status` mDNS state in 36.0.0, `libadbmdns` default in 37.0.0, `openscreen` deleted in 37.0.1; the page starts at 24.0.4 and no longer lists the 23/24 protocol changes): <https://developer.android.com/tools/releases/platform-tools>
 - [R3] logcat official page (+ deferral to `adb logcat --help`): <https://developer.android.com/tools/logcat>
 - [R4] AOSP logcat source/help text (authoritative option reference): <https://android.googlesource.com/platform/system/logging/+/refs/heads/main/logcat/logcat.cpp>
 - [R5] dumpsys documentation: <https://developer.android.com/tools/dumpsys>
@@ -153,6 +155,9 @@ All sources retrieved 2026-08-11, except [R29] (2026-08-14). Class markers: (P) 
 - [R24] MASTG JDWP/jdb technique (CLI debugger chain): <https://mas.owasp.org/MASTG/techniques/android/MASTG-TECH-0031/>
 - [R25] Process-death simulation distinction: <https://vtsen.hashnode.dev/how-to-simulate-process-death-in-android>
 - [R26] Access a host-local server from the device (`adb reverse`, secure context) (P): <https://developer.android.com/develop/ui/views/layout/webapps/access-local-server>
-- [R27] AOSP issue: `adb shell` exit codes not propagated before API 24 (S): <https://issuetracker.google.com/issues/36908392>
+- [R27] AOSP issue: `adb shell` exit codes not propagated before API 24 / host adb 24 (S): <https://issuetracker.google.com/issues/36908392>
 - [R28] KVM hardware acceleration GA on GitHub-hosted runners (S): <https://github.blog/changelog/2024-04-02-github-actions-hardware-accelerated-android-virtualization-now-available/>
 - [R29] Perfetto system tracing — the `record_android_trace` helper, its flags, and the categories it records: <https://perfetto.dev/docs/getting-started/system-tracing>
+- [R30] AOSP adb services and manpage — `shell,v2: (API>=24)` for exit codes and stdout/stderr separation, `-x` disables remote exit codes, `server-status` (P): <https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/dev/services.md>, <https://android.googlesource.com/platform/packages/modules/adb/+/refs/heads/main/docs/user/adb.1.md>
+- [R31] Emulator hardware acceleration — the `-gpu` value table (`auto`, `host`, `software`, `lavapipe`, `swiftshader`, `swangle`; `swiftshader_indirect`/`swangle_indirect`/`guest` deprecated in 36.4.9) (P): <https://developer.android.com/studio/run/emulator-acceleration>
+- [R32] Emulator release notes — 36.4.9: `-gpu software` introduced, Lavapipe default software renderer (P): <https://developer.android.com/studio/releases/emulator>

@@ -1,6 +1,6 @@
 ---
 name: android-perceived-performance
-description: Measures UX-relevant Android performance (app-startup time, frame jank, loading-state correctness) on a physical device and remediates the findings. Invoke when the user asks to measure startup time, fix jank or dropped frames, profile app launch, add or repair Baseline Profiles, diagnose a slow or stuttering screen, or optimize perceived performance. Also handles equivalent German-language requests. Runs a MEASURE phase (Macrobenchmark TTID/TTFD, FrameTimingMetric, dumpsys gfxinfo framestats, Perfetto traces) then an interactive FIX phase (Baseline Profiles, lazy init, moving work off the main thread, corrected loading-state UI) with re-measurement. Do not use for functional-test authoring or crash/build-error debugging. Supports resume on re-invocation per spec/claude/resumable-work/.
+description: "Measures UX-relevant Android performance (app-startup time, frame jank, loading-state correctness) on a physical device and remediates the findings, grounded in spec/android/perceived-performance/. Invoke when the user asks to measure startup time, fix jank or dropped frames, profile app launch, add or repair Baseline Profiles, diagnose a slow or stuttering screen, or optimize perceived performance. Also handles equivalent German-language requests. Runs a MEASURE phase (Macrobenchmark TTID/TTFD, FrameTimingMetric, Perfetto traces read trace-first, dumpsys gfxinfo as a local check) then an interactive FIX phase (Baseline Profiles, deferred init, work off the main thread, corrected loading-state UI) with re-measurement. Don't use for build failures or crashes (android-debugging), for authoring a list or screen (android-compose-ui), or for functional-test authoring. Supports resume on re-invocation per spec/claude/resumable-work/."
 tags: [quality-gate, ui]
 phase: quality
 summary: "Measures Android startup time, jank, and loading-state correctness on a physical device, then interactively remediates and re-measures."
@@ -10,7 +10,18 @@ use_when:
   - "you want to find and fix jank or dropped frames"
   - "you want to add or repair Baseline Profiles"
   - "you want to check loading states against the response-time thresholds"
-allowed-tools: [Bash, Read, Grep, Glob, Edit, Write]
+see_also:
+  - android-debugging
+  - android-feature-implement
+  - android-compose-ui
+  - android-release-readiness-reviewer
+dont_use_when:
+  - situation: "A build failure, crash, ANR stack, or device-connection problem needs diagnosing"
+    alternative: android-debugging
+  - situation: "A list, screen, or loading state needs authoring rather than measuring"
+    alternative: android-compose-ui
+  - situation: "A feature needs implementing across layers; performance is one acceptance criterion of it"
+    alternative: android-feature-implement
 resumable: true
 ---
 
@@ -24,7 +35,7 @@ CLI-first: terminal, Gradle, and ADB are sufficient — Android Studio is never 
 
 - **Interactivity (decisive):** the FIX phase asks the operator to approve each remediation before editing code (REQ-8 forbids unconfirmed overwrites); a fire-and-forget agent has no stable way to surface that mid-flow gate.
 - **Change scope + lifecycle (decisive):** the run persists across the conversation — measure, edit, rebuild, re-measure, iterate — with edits flowing back into the main context, which is the skill bias.
-- **Orchestrator role:** the measurement sweep is the kind of step that would be dispatched to a sub-agent for context-window protection, and the orchestrator that fans out is always a skill (`spec/claude/skill-vs-agent/` §Hybrid pattern). No such measurement agent exists in this plugin today, and the declared `allowed-tools` carries no dispatch tool — adding one is a change to both.
+- **Orchestrator role:** the measurement sweep is the kind of step that would be dispatched to a sub-agent for context-window protection, and the orchestrator that fans out is always a skill (`spec/claude/skill-vs-agent/` §Hybrid pattern). No such measurement agent exists in this plugin today; this skill declares no `allowed-tools` restriction (consistent with its siblings), so a run may use web research where currency matters — Macrobenchmark/AGP/profile-plugin versions in particular — per REQ-5.
 - **Counter-dimension (outweighed):** the MEASURE step performs heavy device reads and trace parsing, which biases toward an isolated agent for context protection — but that step is the isolatable one, while the interactive FIX loop keeps the whole capability a skill.
 
 ## Operating principle: the spec owns the methodology
@@ -35,6 +46,13 @@ Neighbouring ownership still holds and is referenced, never duplicated: `spec/an
 
 On any conflict the spec wins. When a run needs a decision no spec covers, report the gap and propose a spec extension rather than deciding silently (REQ-6, REQ-17).
 
+## Operations
+
+Two operations, run in order or singly — say which is running:
+
+- **`measure`** — Phase 1 below: measurement infrastructure, run conditions and pre-flight, startup, jank, loading-state audit, baseline checkpoint. Writes no app code (a missing benchmark module or `profileable` flag is scaffolded only after the operator confirms, and is reported as infrastructure, not as a remediation).
+- **`fix`** — Phase 2 below: one remediation at a time behind an approval gate, rebuild, re-measure. Refuses to start without a checkpointed baseline from `measure` (or a committed baseline record with its §A conditions).
+
 ## Hard rules
 
 - **Measure on a physical device** for startup and jank; benchmarks run in a separate scheduled lane and **MUST NOT** be added to the per-commit CI suite (`spec/android/test-automation/` §F). An emulator is acceptable only for coarse loading-state UI checks, never for the reported startup/jank numbers.
@@ -43,35 +61,45 @@ On any conflict the spec wins. When a run needs a decision no spec covers, repor
 - **Never scaffold outdated mechanisms** (kapt, monolithic buildSrc, Groovy DSL) into a benchmark module; use KSP and the Kotlin DSL (REQ-9).
 - **Classify every number against `references/thresholds.md`** — a raw millisecond value is not a finding until it is compared to its budget.
 - **One change at a time.** Batching remediations destroys attribution: you cannot tell which edit moved which number.
+- **Trace before remedy.** For startup and jank alike, read the Perfetto trace and name the cause before proposing anything — a remedy without a trace is a guess (spec §D/§E).
+- **Never commit traces or raw benchmark output** (`*.perfetto-trace`, `build/outputs/connected_android_test_additional_output/`, benchmark JSON). What may be committed is the small baseline record described in `references/measurement.md` §"Baseline record", carrying the numbers **and** their §A conditions.
 
 ## Phase 1 — MEASURE
 
 Read `references/measurement.md` when you enter this phase — it holds the exact Macrobenchmark, `dumpsys gfxinfo`, and Perfetto command recipes. Read `references/thresholds.md` when you need the budget to classify a number as pass or fail.
 
-### 1. Establish the device and target
+### 1. Establish the device, target, and measurement infrastructure
 
 - Confirm exactly one `platform-tools` adb (`which -a adb`) and target the device explicitly (`-s <serial>` or `ANDROID_SERIAL`) per `spec/android/adb-workflows/` §A.
-- Build and install a **non-debuggable release-shaped** variant for measurement (a debuggable build distorts startup and frame timings). Disable animations for deterministic runs (`settings put global window_animation_scale 0.0` and the two siblings) per `spec/android/adb-workflows/` §E.
+- **Measurement infrastructure (spec §B/§G, MUST):** target app declared `profileable`; benchmarks in a separate **`com.android.test` module**; a dedicated **`benchmark` build type derived from `release`** (`initWith(release)`, non-debuggable, minified, `matchingFallbacks += listOf("release")` for multi-module resolution). Gradle shape: `references/measurement.md` §"Benchmark module setup". Where any is missing, propose scaffolding it (Kotlin DSL, KSP — REQ-9) and get confirmation before writing (REQ-8); it is infrastructure, not a remediation.
+- Build and install the **`benchmark`** variant (non-debuggable, release-shaped) for measurement — a debuggable build distorts startup and frame timings.
+- **Pre-flight the confounders (spec §B):** animations disabled (`settings put global window_animation_scale 0.0` and the two siblings, `spec/android/adb-workflows/` §E); device **not thermally throttled** (`dumpsys thermalservice` status 0/none, and let a hot device cool); **screen on and unlocked**; **no unrelated foreground work** (close other apps, no sync or download in progress, charger state consistent across compared runs). Record the pre-flight result with the conditions.
 - **Capture the run conditions now**, before any measurement: device model, Android version, build type, minification state, `CompilationMode`, refresh rate, iteration count (`references/measurement.md` §"Device preconditions" has the `getprop`/`dumpsys display` calls). `spec/android/perceived-performance/` §A makes a number without them unreportable, and they go into the resume state so a resumed run does not have to re-measure to restate them.
 
 ### 2. Measure startup (TTID/TTFD)
 
-- Produce the reported number with a Macrobenchmark `StartupTimingMetric` run; `am start -W` and the `ActivityManager: Displayed` logcat line are a quick local check only, measure TTID alone, and per `spec/android/perceived-performance/` §D **MUST NOT** be the basis of a reported finding. Report TTFD from the app's `reportFullyDrawn()`/`ReportDrawn*` instrumentation, and report its absence as the finding when there is none.
+- Produce the reported number with a Macrobenchmark `StartupTimingMetric` run; `am start -W` and the `ActivityManager: Displayed` logcat line are a quick local check only, measure TTID alone, and per `spec/android/perceived-performance/` §D **MUST NOT** be the basis of a reported finding. Report TTFD from the app's `reportFullyDrawn()`/`ReportDrawn*` instrumentation (the local check for it is the `ActivityManager: Fully drawn <pkg>/<activity>: +NNNms` logcat line, which only appears when the app reports it), and report its absence as the finding when there is none.
 - Run cold, warm, and hot and report each separately; cold is the primary case. See `references/measurement.md`.
+- **Trace first (spec §D, MUST):** when startup misses its budget, capture a Perfetto trace of a cold start (`spec/android/adb-workflows/` §D invocation) and read it against the startup phases **before** proposing any remedy. Check the four documented cost centres, in this order, and name which one(s) the trace shows: (1) work in `Application.onCreate()` and in eagerly-initialized content providers, (2) heavy activity / first-screen initialization, (3) blocking I/O or **bitmap decoding on the main thread**, (4) a custom splash-screen activity where the platform `SplashScreen` API belongs. Only then open `references/remediations.md`.
 
 ### 3. Measure jank
 
 - Produce the reported number with a Macrobenchmark `FrameTimingMetric` run and read `frameOverrunMs` at P50/P90/P95/P99 against `references/thresholds.md`. `dumpsys gfxinfo` is a coarse local check and, per `spec/android/perceived-performance/` §E, **MUST NOT** carry a jank finding for a Compose surface on its own — the vendor documentation scopes it to View-toolkit apps.
 - **For a scrolling list, follow `spec/android/long-list-scrolling/` §G rather than this skill's general recipe:** measure with `FrameTimingMetric` over a scroll journey, read `frameOverrunMs` as the primary number, report the P95/P99 tail (a healthy P50 proves nothing), and always state the refresh-rate deadline the budget is set against. A jank claim from a debug build is not a finding.
 - Capture a Perfetto trace with the `record_android_trace` invocation `spec/android/adb-workflows/` §D owns, for any stutter the frame metric flags, and read it to locate the offending work on the main thread (`spec/android/perceived-performance/` §E).
+- **Assign every jank finding to exactly one cause family (spec §E, MUST)** — the report may not say "the screen is slow": (a) **main-thread work** (I/O, binder calls, lock contention, allocation/GC pressure), (b) **render-thread work** (oversized bitmap uploads, expensive paths), (c) **layout and recomposition cost**, (d) **image or data work that belongs off the main thread**. The family comes from the trace, not from the symptom, and it selects the remediation entry.
+- Classify each frame with the spec's vocabulary: **janky** = over the display deadline; **slow** = 16–700 ms; **frozen** = over 700 ms (always a defect).
 
 ### 4. Audit loading-state correctness
 
-- Against `references/thresholds.md`, verify the response-time feedback semantics and the wait-indication matrix: instant feedback on tap, no indicator below ~200 ms, a loading indicator for short indeterminate waits (200 ms–5 s), a determinate progress indicator with cancel beyond ~5–10 s, one indicator per group, and no in-place loading→determinate hand-off.
+- Against `references/thresholds.md`, verify the response-time feedback semantics and the wait-indication matrix: instant feedback on tap, no indicator below ~200 ms, a loading indicator for short indeterminate waits (200 ms–5 s), a **progress indicator — determinate as soon as progress is known — beyond ~5 s** (`spec/android/ui-components/` §A), a **cancel affordance beyond ~10 s** (`spec/android/app-design-navigation/` §F), one indicator per group, and no in-place loading→determinate hand-off. The two thresholds are distinct obligations; do not fold them into "5–10 s".
+- The absolute TTFD number is also judged here: it is bounded by the wait indication the loading state owes the user (spec §C).
 
 ### 5. Checkpoint the baseline
 
 - Write the measured numbers and their pass/fail verdicts to the resume state (see Resume below). This baseline is what every FIX iteration is compared against.
+- When the operator wants a regression gate, write the **committed baseline record** in the format `references/measurement.md` §"Baseline record" fixes — numbers plus every §A condition; the file format is free, the condition fields are not (spec §G). Traces and raw output stay out of the repository.
+- State in the report which numbers are new, which are compared against a baseline, and which had no baseline (spec §G).
 
 ## Phase 2 — FIX
 
@@ -79,7 +107,8 @@ Read `references/remediations.md` when a finding needs a fix — it maps each fi
 
 ### 1. Propose one remediation
 
-- Pick the next finding in the user-impact order `spec/android/perceived-performance/` §H fixes — ANRs and frozen frames, then startup, then slow frames, then the rest — and within a category the largest budget gap. State the remediation, the files it will touch, and the expected effect on the number. Common remediations: Baseline Profiles (+ Startup Profiles), lazy/deferred initialization of app-startup work, moving work off the main thread, and correcting the loading-state UI to the wait-indication matrix.
+- Pick the next finding in the user-impact order `spec/android/perceived-performance/` §H fixes — ANRs and frozen frames, then startup, then slow frames, then the rest — and within a category the largest budget gap. State the remediation, the files it will touch, the trace evidence (cost centre or cause family) it rests on, and the expected effect on the number. Common remediations: removing the traced cost centre (deferred/lazy startup work, work off the main thread, platform `SplashScreen` instead of a splash activity), Baseline Profiles (+ Startup Profiles), and correcting the loading-state UI to the wait-indication matrix.
+- **Baseline Profile content (spec §F):** the `BaselineProfileRule` journey covers **startup, the main navigation paths, and the app's main list scroll**; `androidx.profileinstaller` is present and current; the profile is verified against the **minified release** build only; it is **regenerated whenever the covered journeys change materially**; and no post-R8 DEX-modifying tooling is introduced (it invalidates the profile and the DEX layout — `spec/android/release-readiness/` §A). A profile is required for any app whose startup or scroll is measured — its absence is itself a finding.
 
 ### 2. Get approval, then edit
 
@@ -97,9 +126,11 @@ Read `references/remediations.md` when a finding needs a fix — it maps each fi
 
 ## Report
 
-Conclude with: the baseline table (number, budget, verdict), the remediations applied with their before/after deltas, the final `./gradlew build` status, any red state left behind, and any `spec/android/perceived-performance/` gap surfaced during the run.
+Conclude with: the baseline table (number, budget, verdict, new/compared/no-baseline), the remediations applied with their before/after deltas (including the ones that did not move their number), the final `./gradlew build` status, any red state left behind, and any `spec/android/perceived-performance/` gap surfaced during the run.
 
-Every number in that table carries the conditions `spec/android/perceived-performance/` §A requires — device model, Android version, build type, minification state, `CompilationMode`, refresh rate, iteration count — and every verdict drawn against a §C **portfolio decision** says so, so the operator can tell a corpus target from a platform requirement. A number without its conditions is not reportable.
+Every number in that table carries the conditions `spec/android/perceived-performance/` §A requires — device model, Android version, build type, minification state, `CompilationMode`, refresh rate, iteration count — plus the pre-flight result, and every verdict drawn against a §C **portfolio decision** says so, so the operator can tell a corpus target from a platform requirement. A number without its conditions is not reportable. Every jank finding names its cause family; every startup finding names the cost centre the trace showed.
+
+**Field measurement (spec §I).** Recommend JankStats (`androidx.metrics:metrics-performance`) as a SHOULD where no field frame telemetry exists; where telemetry exists or is added, personal data **MUST** stay out of performance events entirely (no identifiers, content, free text, or precise location) — flag any violation as a finding.
 
 ## Resume
 
@@ -119,6 +150,9 @@ Also invoke on equivalent German requests, and reply to the operator in German (
 - "Baseline Profiles hinzufügen oder reparieren"
 - "Gefühlte Performance optimieren"
 - "Prüfe die Ladeindikatoren gegen die Reaktionszeit-Schwellen"
+- "Benchmark-Modul / Macrobenchmark einrichten"
+- "Kaltstart mit Perfetto tracen" / "Warum startet die App so langsam?"
+- "Frame-Drops beim Scrollen messen"
 
 ## Gotchas
 
@@ -127,3 +161,5 @@ Also invoke on equivalent German requests, and reply to the operator in German (
 - `dumpsys gfxinfo` accumulates until reset; always `reset` immediately before the scenario or the percentages fold in prior activity.
 - Baseline Profiles only take effect on a **release** install performed through the normal install path with profile compilation; verifying them on a debug build shows no gain and is a false negative.
 - The first cold start after install includes one-time work (dexopt, profile install); discard it and measure subsequent cold starts.
+- Macrobenchmark refuses to run against a debuggable target and needs the app `profileable`; a `benchmark` build type without `matchingFallbacks` fails to resolve library modules that only have `debug`/`release`.
+- The `Fully drawn` logcat line never appears for an app that does not call `reportFullyDrawn()` — its absence is data, not a logging problem.
