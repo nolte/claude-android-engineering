@@ -25,3 +25,7 @@
 | android | uvc-microscope | USB-C (UVC) Microscope Cameras | USB-C-(UVC-)Mikroskopkameras | draft | local | 2026-08-19 |
 
 Inherited portfolio specs: this repository inherits the portfolio-scope spec layer from `nolte-shared` (see `.spec-config.yml`, pinned at `v0.1.11`).
+
+## Local conventions
+
+Closed skill name-form exceptions per the inherited `spec/claude/skill-agent-naming/` (reviewers MUST NOT flag; mirrored in `SKILL_NAME_FORM_EXCEPTIONS` of `scripts/validate_skills.py`): `android-compose-ui`, `android-debugging`, `android-perceived-performance`. Reason: established REQ-13/15/16 names referenced across specs, requirements, docs, and sibling artifacts; a rename would break those references for no functional gain. Closed 2026-08-18; every new skill follows the `<object-noun>-<action>` form.

@@ -39,17 +39,17 @@ resumable: true
 
 # Android Localization Apply
 
-Brings the localization of an **existing** Android app in line with `spec/android/localization/`.
-The skill audits first, then applies the missing pieces one approved item at a time, and closes
-on a green `./gradlew build` and lint (REQ-1, REQ-7).
+Brings the localization of an **existing** Android app in line with `spec/android/localization/`:
+audit first, then apply the missing pieces one approved item at a time, closing on a green
+`./gradlew build` and lint (REQ-1, REQ-7).
 
 The governing idea is that multilingualism is a **set of disciplines that hold from the first
 string**, not a translation file added at the end: externalised, grammatically safe strings;
 one source-of-truth language with lint-gated completeness; a complete per-app language
 surface; locale-correct formatting and RTL; a pseudolocale pass before every translation
-round. The authoritative rules live in `spec/android/localization/`; this
-skill operationalizes them and never restates or contradicts them. On any conflict the spec
-wins — report the gap and propose a spec change rather than deciding silently (REQ-6).
+round. The authoritative rules live in `spec/android/localization/`; this skill
+operationalizes them, never restates them. On any conflict the spec wins — report the gap and
+propose a spec change rather than deciding silently (REQ-6).
 
 Grounding specs, in the order they bind this skill: `spec/android/localization/` §A (string
 resources), §B (resolution and build configuration), §C (per-app language surface), §D
@@ -66,8 +66,7 @@ build).
   a picker, and migrating a build script are operator decisions that outlive the run (REQ-8);
   an agent's fire-and-forget shape cannot carry them.
 - **The persistent artifacts are the deliverable.** `strings.xml` files, the locale config,
-  the picker, and build-script changes land in the working tree and are reviewed in context,
-  not behind a structured-report boundary.
+  the picker, and build-script changes land in the working tree, reviewed in context.
 - **It composes with sibling capabilities.** New screens → `android-compose-ui`, red build →
   `android-debugging`, greenfield → `android-project-scaffold`; per `spec/claude/skill-vs-agent/`
   §Primary decision rule the orchestrator is always a skill.
@@ -118,16 +117,17 @@ reports**, `apply` **writes**. Nothing is written into the project before the op
 approved the item.
 
 - **`audit`** — the app exists and its localization conformance is unknown. Runs the audit
-  procedure below and **writes nothing at all**: it produces a severity-classified findings
-  report on the canonical `Critical` / `Warning` / `Suggestion` / `Info` scale of
-  `spec/claude/review-plan/`. When the operator wants the report on disk, it goes to
-  `.audits/android-localization/<date>.md`, nowhere else.
+  procedure below and **writes nothing at all**: it produces a findings report on the
+  canonical `Critical` / `Warning` / `Suggestion` / `Info` scale of `spec/claude/review-plan/`.
+  When the operator wants the report on disk, it goes to `.audits/android-localization/<date>.md`,
+  nowhere else — a repository convention no spec names, reported as a spec gap (REQ-6) in each
+  report.
 - **`apply`** — findings exist (from this run, a previous `audit`, or an `android-ux-reviewer`
   report) and the missing pieces are to be written. Runs steps 1–7. Without a finding list it
   runs `audit` first and says so.
 
-An end-to-end request ("localize the app") is `audit` then `apply` back-to-back; say when the
-handover happens so the operator sees the report before anything is written.
+An end-to-end request ("localize the app") is `audit` then `apply` back-to-back; announce the
+handover so the operator sees the report before anything is written.
 
 ## Preconditions
 
@@ -244,8 +244,8 @@ Checkpoint after each file.
 
 ### 7. Verify, run the pseudolocale pass, and hand off
 
-- Run `./gradlew build` and the project's lint task. Both must be green; report every failure
-  with its output and route a red build to `android-debugging` (REQ-7).
+- Run `./gradlew build` once (it already runs lint via `check`). It must be green; report
+  every failure with its output and route a red build to `android-debugging` (REQ-7).
 - Run the pseudolocale pass of `references/apply-templates.md` §9 where a device or emulator
   is available (REQ-4): the debug build under `en-XA` (expansion, leaked hard-coded strings,
   concatenation) and `ar-XB` (mirroring, left/right leakage), and 200 % font scale; where none

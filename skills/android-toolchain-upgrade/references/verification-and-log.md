@@ -56,10 +56,15 @@ step, never a silent addition.
   (ask which; do not invent one) with the Gradle version catalog and wrapper managers enabled,
   grouped AndroidX/Kotlin updates, and no auto-merge. Record the choice as a spec gap when no
   spec names the preset (REQ-6).
-- **osv-scanner.** Run `osv-scanner scan --lockfile gradle/verification-metadata.xml` when
-  verification metadata exists, otherwise `osv-scanner scan -r .` against the resolved
-  dependencies (`./gradlew :app:dependencies --configuration releaseRuntimeClasspath > deps.txt`
-  as a fallback input); report findings by severity and route a vulnerable version into
+- **osv-scanner.** osv-scanner reads Gradle inputs only from files it parses — a
+  `gradle.lockfile` / `buildscript-gradle.lockfile` (produced by Gradle dependency locking:
+  `dependencyLocking { lockAllConfigurations() }` plus `./gradlew dependencies --write-locks`)
+  or `gradle/verification-metadata.xml`; it does **not** read the text output of
+  `./gradlew dependencies`. Run `osv-scanner scan --lockfile gradle/verification-metadata.xml`
+  when verification metadata exists, `osv-scanner scan --lockfile <module>/gradle.lockfile`
+  (or `osv-scanner scan -r .`, which discovers those files) when dependency locking is enabled;
+  when neither exists, enable dependency locking first (a plan step with confirmation) and only
+  then scan. Report findings by severity and route a vulnerable version into
   `upgrade-playbook.md` §1 step 8. When absent from CI and the operator accepts, add the step
   to the workflow the project already has (`android-test-suite-apply` owns the CI layout).
 - **Verification metadata.** When `gradle/verification-metadata.xml` exists, refresh it after every

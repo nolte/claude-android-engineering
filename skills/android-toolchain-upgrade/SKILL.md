@@ -200,8 +200,9 @@ a silent addition; dependency verification metadata is refreshed, never disabled
 
 ### 7. Close on the gate and record the run
 
-Run `./gradlew build`, `./gradlew lint`, the unit tests, and the release assembly; name any
-element that could not run and why (`release-readiness` §E). Update the local `platform-tools`
+Run `./gradlew build` (which already runs lint and the unit tests through `check` — do not
+invoke them again separately) and the release assembly; name any element that could not run
+and why (`release-readiness` §E). Update the local `platform-tools`
 when the inventory found it behind (`adb-workflows` §A). Write the run into
 `project/toolchain-log.md` from the template in `references/verification-and-log.md` §3 — one
 dated entry per run with the before/after matrix, evidence URLs, interims, and skipped elements.

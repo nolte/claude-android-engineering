@@ -21,7 +21,8 @@ than being invented (REQ-6).
 2. **Layers present** (§A pyramid, scope × host): for each of unit, component, feature UI,
    whole-app journey, instrumented, end-to-end — present / planned / deferred, with the host
    (JVM, Robolectric, device) and the tool.
-3. **Runner** — JUnit 4 (§B MUST). JUnit 5 only for a pure-JVM module, recorded as the §B MAY.
+3. **Runner** — JUnit 4 (§B MUST). JUnit 5 is a §B MAY on both hosts (local JVM via
+   `useJUnitPlatform()`, instrumented via the community `android-junit5` plugin); record the choice.
 4. **Coroutines** — `kotlinx-coroutines-test`, `runTest`, `MainDispatcherRule`, injected
    dispatchers (§B MUST). Turbine: adopted or not (§B MAY; open question in the spec).
 5. **Assertion library** — `kotlin.test` by default; an existing single library stays. Mixed
@@ -45,7 +46,7 @@ than being invented (REQ-6).
     E2E/Maestro, benchmark lane (owned by `android-perceived-performance`): each with the
     trigger that would justify it.
 14. **Open spec questions touching this project** — assertion library, screenshot tool,
-    Turbine, coverage thresholds, JUnit 5, Maestro — and the interim choice taken.
+    Turbine, coverage thresholds, Maestro — and the interim choice taken.
 
 ## 2. File layout
 

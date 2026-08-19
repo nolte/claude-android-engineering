@@ -13,7 +13,7 @@ The verify phase (SKILL.md Operation 4). A green `./gradlew build` is the succes
 
 Run in order from the generated project root:
 
-1. `./gradlew build` — the load-bearing gate. Compiles, runs lint on every variant, runs the unit tests, assembles debug + release (release with the shrinker on, RR §A). Must be green.
+1. `./gradlew build` — the load-bearing gate. Compiles, runs lint on the single debug variant (`lintDebug` — TEST §H and the blueprint scope lint to one variant; `checkReleaseBuilds` adds only the fatal-only `lintVitalRelease` pass on the release assemble), runs the unit tests, assembles debug + release (release with the shrinker on, RR §A). Must be green.
 2. `task check` — the aggregate the CI workflow runs (`lintDebug` + `spotlessCheck` + `testDebugUnitTest`); must pass locally on the first run (TEST §G AC). If Task is not installed, run the underlying Gradle tasks and report that `task check` itself was not exercised.
 3. `./gradlew spotlessCheck` — formatting passes on freshly generated code (PS §G, TEST AC). Spotless is applied in `:app` with the ktlint step, so the task exists by construction.
 4. `./gradlew testDebugUnitTest` — the minimum viable JVM suite runs and passes (TEST §H). If product flavors exist, run the variant-aware task, not aggregate `test`.
@@ -65,6 +65,7 @@ Confirm each before reporting success. PS = project-structure, L10N = localizati
 | Lint severities configured (`lint.xml`): `HardcodedText`/`MissingTranslation`/`ExtraTranslation`/`ImpliedQuantity` error | L10N |
 | Pseudolocales enabled in debug; en-XA/ar-XB pass run or reported skipped-and-due; `@PreviewFontScale` present | L10N §E |
 | Every component declares `android:exported` (default false) | SEC |
+| `<application android:theme="@style/Theme.<App>">` points at `res/values/themes.xml` (`Theme.AppCompat.DayNight.NoActionBar`), so the `AppCompatActivity` starts without "You need to use a Theme.AppCompat theme"; Compose theming stays in `AppTheme` | PS / L10N §C |
 | Release build non-debuggable; no secret committed; no cleartext; `HardcodedDebugMode` fatal, security checks error | SEC / RR §E |
 | Minimal permissions; no persistent hardware identifier | SEC |
 | Targeted MAS profile (L1 baseline) recorded with rationale in `docs/decisions.md` | SEC |

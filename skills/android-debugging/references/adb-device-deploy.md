@@ -16,7 +16,7 @@ Load-triggered from `SKILL.md` when the failure is device connection, install, l
 ## Environment and targeting discipline
 
 - **One adb only.** `which -a adb` must show a single `platform-tools` adb; a second adb (often bundled with scrcpy) causes the `adb server version … doesn't match this client` kill loop. Point other tools at the one adb via `ADB=`.
-- **Current platform-tools.** Compare `adb --version` with the platform-tools release notes; behavior is version-gated (shell exit-code propagation ≥ 24, ssh-style quoting ≥ 23, `adb server-status`/Wireless Debugging 2.0 ≥ 37). An outdated adb is a diagnosis in itself — report it before chasing a symptom it explains.
+- **Current platform-tools.** Compare `adb --version` with the platform-tools release notes; behavior is version-gated (shell exit-code propagation ≥ 24, ssh-style quoting ≥ 23, `adb server-status` predates 37 — 36.0.0 extended it with the mDNS state — while the `libadbmdns` default backend / Wireless Debugging 2.0 diagnosis assumes 37.0.0+; spec `adb-workflows` §A). An outdated adb is a diagnosis in itself — report it before chasing a symptom it explains.
 - **Explicit targeting.** The moment more than one device can attach, every call carries `-s <serial>` or a session `ANDROID_SERIAL` export (`-s` overrides the variable). After any emulator retry/restart, all subsequent commands use explicit `-s`.
 - **Enumerate first.** `adb devices -l` lists serials and states before any action.
 

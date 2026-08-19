@@ -70,9 +70,8 @@ decided by `android-notification-derive`; its §E delivery path is implemented h
 - `android-permissions-derive` owns every permission decision (REQ-20): a **device capability**
   from step 2 that may need one is handed there — derivation, ledger row, declaration, denial path.
 - `android-notification-derive` owns every alerting-channel decision (REQ-21) and the ledger,
-  ending at the device-side notification code. The **delivery path** (FCM reception,
-  WorkManager/AlarmManager scheduling, missed-message sync) is data-layer work and stays
-  **here** (step 3, 5.3, `references/layer-templates.md` §5); its ledger row is the input.
+  ending at the device-side notification code; the **delivery path** stays **here** (step 3,
+  5.3, `references/layer-templates.md` §5).
 - `android-barcode-scanner-scaffold` owns scanning; `android-perceived-performance` owns
   performance remediation and measures any regression the step-7 report suspects.
 
@@ -152,10 +151,11 @@ Decide and record, per `references/flat-layer-checklist.md`:
   `android-permissions-derive` first
 - for every ledger row with a channel, the **delivery path** per
   `spec/android/notifications-alerting/` §E — exactly one of **local**, **scheduled**,
-  **pushed** — recorded on the row. This decision is this skill's; checklist §10 carries the
-  rules (WorkManager vs `AlarmManager`, data vs notification message, `priority: high` reserve,
-  missed-message sync), step 5.3 implements them. A pushed row without a server-side event
-  contract is a step-4 trigger
+  **pushed**. Rules: checklist §10; implementation: step 5.3.
+  `Delivery` column ownership: `android-feature-implement` owns the decision (step 3) and
+  the implementation (step 5.3) of the delivery path; `android-notification-derive` owns the
+  ledger row and records the handed-over value (`local` / `scheduled` / `pushed`) — it never
+  decides it. A pushed row without a server-side event contract is a step-4 trigger
 
 Gate: confirm the design before generating code. The **four recorded decisions** — write
 strategy per write, staleness policy per cached type, input-stage split, channel plus delivery

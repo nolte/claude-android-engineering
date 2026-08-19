@@ -40,9 +40,19 @@ This file sits on the agent side of the **Hybrid pattern** in `spec/claude/skill
 
 ## Output shape
 
-Return a single report in this exact structure. Findings are grouped by the eight audit dimensions; each finding carries a `Severity` line using the canonical Title-Case scale from `spec/claude/review-plan/` §Severity scale (`Critical` / `Warning` / `Suggestion` / `Info`) and the four-line finding shape from that spec's §Findings format. This is a deliberate reconciliation: the task asks for grouping by dimension, and `review-plan` fixes the per-finding shape and vocabulary — dimension is the outer grouping, severity is a per-finding tag.
+Return exactly one report in the review-plan file shape so the caller can persist it verbatim as `.audits/android-ux-review/<target-slug>.md` (`<target-slug>` is the kebab-case app or module name) — the same shape `android-security-reviewer` and `android-release-readiness-reviewer` emit. Findings are grouped by the eight audit dimensions; each finding carries a `Severity` line using the canonical Title-Case scale from `spec/claude/review-plan/` §Severity scale (`Critical` / `Warning` / `Suggestion` / `Info`) and the four-line finding shape from that spec's §Findings format. This is a deliberate reconciliation: the task asks for grouping by dimension, and `review-plan` fixes the per-finding shape and vocabulary — dimension is the outer grouping, severity is a per-finding tag.
 
 ````
+---
+review-type: android-ux-review
+target: <repo-relative path>
+target-kind: android-app
+specs-applied: [app-design-navigation@<sha-or-tag>, ui-components@…, screen-formats@…, iconography@…, localization@…, long-list-scrolling@…, user-input-validation@…]
+repo-revision: <sha or unknown>
+created: <YYYY-MM-DD>
+status: open
+---
+
 # Android UX Review
 
 ## Scope
@@ -102,10 +112,14 @@ Go/no-go: <one line — e.g. "No-go for mobile-UX conformance: N Critical open">
 - Surfaces with zero hits: <dimensions that were scanned clean>
 - Deferred scope: <e.g. "runtime state-preservation on rotation → needs a device, spec/android/test-automation/ §D", "./gradlew lint HardcodedText verification → android-compose-ui (needs Bash)">
 
+- Spec gaps (REQ-6): <every question this audit had to answer that no spec covers — the `android-ux-review` review-type slug (no spec under `spec/claude/` or `spec/android/` names one for the UX audit; it is used as the repository convention, matching the other reviewers), and any structural or convention decision met in the target that no `spec/android/` section decides — each with a proposed spec extension. Never decide such a question silently.>
+
+## Processing log
+<empty at creation>
+
 ## Caller follow-ups
+- Persist this report as `.audits/android-ux-review/<target-slug>.md` per `spec/claude/review-plan/`; this read-only agent can't write it.
 - Route each finding through the `android-compose-ui` skill (or a direct edit) to apply the fix; this agent never edits.
-- Persist this report as a review plan under `.audits/android-ux-review/<target-slug>.md` (`<target-slug>` is the kebab-case app or module name) per `spec/claude/review-plan/` if a tracked, worked-off audit trail is wanted — this read-only agent can't write it. The `android-ux-review` slug is a repository convention: no spec under `spec/claude/` or `spec/android/` names a review-plan slug for the UX audit, and this report records that as a spec gap (REQ-6) under **Spec gaps** below.
-- Spec gaps: <every question this audit had to answer that no spec covers — the missing UX-review slug above, and any structural or convention decision met in the target that no `spec/android/` section decides — each with a proposed spec extension. Never decide such a question silently (REQ-6).>
 - Re-invoke after fixes land to confirm the dimension returns clean.
 ````
 

@@ -55,6 +55,7 @@ app/src/main/kotlin/<pkg>/designsystem/theme/Type.kt
 app/src/main/kotlin/<pkg>/ui/language/LanguagePicker.kt
 app/src/main/res/values/strings.xml
 app/src/main/res/values-b+de/strings.xml
+app/src/main/res/values/themes.xml                # Theme.<App>, parent Theme.AppCompat.DayNight.NoActionBar
 app/src/main/res/xml/data_extraction_rules.xml
 app/src/debug/kotlin/<pkg>/StrictModeSetup.kt     # installs the policies
 app/src/release/kotlin/<pkg>/StrictModeSetup.kt   # no-op
@@ -83,7 +84,7 @@ app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 - Aliases in kebab-case; central versions via `version.ref`.
 - Plugins: `android-application` (`com.android.application`), `kotlin-compose` (`org.jetbrains.kotlin.plugin.compose`, `version.ref = "kotlin"`), `ksp` (`com.google.devtools.ksp`, its own version — KSP ≥ 2.3.0 is versioned independently of Kotlin and must be compatible per the KSP compatibility table; only KSP < 2.3.0 uses the Kotlin-prefixed `<kotlin>-<ksp>` scheme), `spotless` (`com.diffplug.spotless`), `foojay-resolver` (`org.gradle.toolchains.foojay-resolver-convention`). **No** `org.jetbrains.kotlin.android` alias on AGP 9 (built-in Kotlin); it would be a Hard-rules violation.
 - The `kotlin` version entry exists for the Compose compiler plugin's `version.ref`; Compose libraries carry **no** individual version — they resolve through `platform(libs.androidx.compose.bom)`.
-- Libraries: Compose BOM, `androidx.activity:activity-compose`, `androidx.appcompat:appcompat` (the picker's `AppCompatDelegate`), `androidx.lifecycle:lifecycle-viewmodel-compose` + `lifecycle-runtime-compose`, `androidx.core:core-ktx`, Material 3, `ui-tooling-preview` (+ `ui-tooling` on `debugImplementation`); test: `junit:junit` (JUnit 4, TEST §B MUST), `kotlinx-coroutines-test`, `kotlin-test` (`org.jetbrains.kotlin:kotlin-test-junit`).
+- Libraries: Compose BOM, `androidx.activity:activity-compose`, `androidx.appcompat:appcompat` (alias `androidx-appcompat`; `AppCompatActivity` + the picker's `AppCompatDelegate`), `androidx.lifecycle:lifecycle-viewmodel-compose` + `lifecycle-runtime-compose`, `androidx.core:core-ktx`, Material 3, `ui-tooling-preview` (+ `ui-tooling` on `debugImplementation`); test: `junit:junit` (JUnit 4, TEST §B MUST), `kotlinx-coroutines-test`, `kotlin-test` (`org.jetbrains.kotlin:kotlin-test-junit`).
 - Annotation processing uses **KSP** (`com.google.devtools.ksp`). No kapt, no `com.android.legacy-kapt`.
 
 ## 4. Settings and root build script
@@ -130,7 +131,7 @@ No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). On
 
 `app/src/main/AndroidManifest.xml` (SEC §A/§C/§D/§F):
 
-- `<application android:name=".App">`: `android:allowBackup` set **explicitly**, `android:dataExtractionRules="@xml/data_extraction_rules"`, `android:supportsRtl="true"` (L10N §D), no `android:usesCleartextTraffic` (cleartext stays off), no `android:debuggable` in source (release build sets `false`).
+- `<application android:name=".App" android:theme="@style/Theme.<App>">`: the `android:theme` points at the AppCompat theme from `res/values/themes.xml` (§10) — `MainActivity` is an `AppCompatActivity` (§8) and crashes at startup with "You need to use a Theme.AppCompat theme" without it; `android:allowBackup` set **explicitly**, `android:dataExtractionRules="@xml/data_extraction_rules"`, `android:supportsRtl="true"` (L10N §D), no `android:usesCleartextTraffic` (cleartext stays off), no `android:debuggable` in source (release build sets `false`).
 - Every `<activity>`/`<service>`/`<receiver>` declares `android:exported` **explicitly**; the launcher activity is the only `exported="true"`, everything else `false`.
 - Request only the minimum permissions in context; a fresh scaffold declares none.
 - Add the `autoStoreLocales` metadata service for per-app language persistence below Android 13 (L10N §C).
@@ -141,7 +142,7 @@ No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). On
 Screen-level Compose code MUST split into a stateful route and a stateless content composable (PS §E):
 
 - `App.kt` — the `Application` subclass; `onCreate()` calls `installStrictMode()` (resolved from the `debug`/`release` source set, §13). Nothing else.
-- `MainActivity.kt` — an `AppCompatActivity` (the language picker needs `AppCompatDelegate`), sets `AppTheme { HomeRoute() }`.
+- `MainActivity.kt` — an `AppCompatActivity` (the language picker needs `AppCompatDelegate`, and `AppCompatDelegate.setApplicationLocales()` only works below API 33 from an AppCompat activity); calls `setContent { AppTheme { HomeRoute() } }`. It relies on the `android:theme` from §7 — without an AppCompat theme the activity crashes at startup.
 - `HomeRoute.kt` — obtains the `HomeViewModel`, collects `uiState` (via `collectAsStateWithLifecycle`), forwards event lambdas to `HomeScreen`.
 - `HomeScreen.kt` — stateless `@Composable HomeScreen(uiState: HomeUiState, onEvent lambdas)`; the `@Preview` targets this composable, lives next to it, and is named `HomeScreenPreview`. Add per-locale previews `@Preview(locale = "de")`, an RTL `@Preview(locale = "ar")` (L10N §F), and `@PreviewFontScale` (`androidx.compose.ui.tooling.preview.PreviewFontScale`, singular) — the 200 % font-scale check L10N §E requires.
 - `HomeViewModel.kt` — exposes `StateFlow<HomeUiState>`; never hard-codes a dispatcher (injected, for `MainDispatcherRule` in tests). Reaches data only through `GreetingRepository` (PS §E).
@@ -156,6 +157,7 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
 
 - `res/values/strings.xml` — the **complete** English source of truth (L10N §B). Every user-visible string externalized (L10N §A); positional placeholders (`%1$s`); `<plurals>` with an `other` case for counts; `translatable="false"` on the app name/brand tokens; feature-prefixed names (`home_greeting_title`, `common_cancel`).
 - `res/values-b+de/strings.xml` — German translation in a BCP-47 directory (L10N §B SHOULD), carrying the **same key set** (L10N §E). Draft translations are acceptable transiently; note in the report that visible strings need human review.
+- `res/values/themes.xml` — `<style name="Theme.<App>" parent="Theme.AppCompat.DayNight.NoActionBar" />`, referenced by `android:theme` on `<application>` (§7). It only satisfies the `AppCompatActivity` requirement (window background, no action bar); all Compose theming still comes from `MaterialTheme` via `AppTheme` in `designsystem/theme/` (§9) — do not add Material colors or attributes here.
 - `res/resources.properties` — `unqualifiedResLocale=en`, paired with `generateLocaleConfig = true` (L10N §C); AGP generates the locale config, so no `locales_config.xml` and no `android:localeConfig` attribute is written.
 - `ui/language/LanguagePicker.kt` — in-app picker calling `AppCompatDelegate.setApplicationLocales()`/`getApplicationLocales()`, offering "system default" (`emptyLocaleList`) (L10N §C).
 

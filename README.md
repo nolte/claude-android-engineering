@@ -26,16 +26,28 @@ UX, code, security, and release-readiness reviews.
 
 ## Usage
 
-Add this repository as a plugin marketplace in Claude Code and install the
-plugin; the `nolte-shared` hub plugin supplies the inherited portfolio specs
-and shared skills:
+The `nolte-shared` hub plugin supplies the inherited portfolio specs and
+shared skills; install it from its marketplace first:
 
 ```shell
 /plugin marketplace add nolte/claude-shared
 /plugin install nolte-shared@nolte-shared
-/plugin marketplace add nolte/claude-android-engineering
-/plugin install claude-android-engineering@claude-android-engineering
 ```
+
+This repository does not yet ship a `.claude-plugin/marketplace.json` and is
+not listed in the `nolte-shared` marketplace, so it cannot be installed via
+`/plugin marketplace add` today. Until a marketplace manifest exists, load the
+plugin locally from a checkout (see the
+[Claude Code plugin docs](https://docs.claude.com/en/docs/claude-code/plugins)):
+
+```shell
+git clone https://github.com/nolte/claude-android-engineering.git
+claude --plugin-dir /path/to/claude-android-engineering
+```
+
+Once a marketplace manifest is published, the install becomes
+`/plugin marketplace add nolte/claude-android-engineering` followed by
+`/plugin install claude-android-engineering@claude-android-engineering`.
 
 Skills are then callable as `/claude-android-engineering:<name>` (for example
 `/claude-android-engineering:android-project-scaffold`); the reviewer agents

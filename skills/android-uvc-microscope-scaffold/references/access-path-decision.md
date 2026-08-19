@@ -62,12 +62,32 @@ exposes; an external camera appears there only when the OEM's HAL supports it. A
 `CameraManager.AvailabilityCallback` in the probe — an external camera can appear a moment after
 attach.
 
-The probe **passes** only when a `LENS_FACING_EXTERNAL` camera is enumerated **and** exposes a
-stream configuration usable for preview and a still (JPEG or YUV output sizes matching the
-descriptor's mode list). An enumerated camera with no usable sizes, or one that disappears on
-reattach, is recorded as a failed probe.
+Enumeration alone is not the measurement spec §A asks for. For every enumerated external camera
+the probe **MUST** then attempt a live preview — CameraX with a `CameraSelector` filtering on
+`LENS_FACING_EXTERNAL` bound to a `Preview` use case, or Camera2 `openCamera` plus a
+`CaptureRequest.TEMPLATE_PREVIEW` session on a `SurfaceTexture` — and record whether frames
+actually arrived (first `onSurfaceTextureUpdated` / `Preview` frame within a bounded timeout):
 
-Record model, OS build, camera ID, formats, and sizes in the run and in the verified-devices row.
+```kotlin
+val selector = CameraSelector.Builder()
+    .addCameraFilter { infos -> infos.filter { Camera2CameraInfo.from(it).getCameraCharacteristic(
+        CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_EXTERNAL } }
+    .build()
+val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
+provider.bindToLifecycle(lifecycleOwner, selector, preview)
+// pass = a frame reached the surface within the timeout; log the outcome
+```
+
+The probe **passes** only when a `LENS_FACING_EXTERNAL` camera is enumerated, exposes a
+stream configuration usable for preview and a still (JPEG or YUV output sizes matching the
+descriptor's mode list), **and** the preview attempt reached live frames. An enumerated camera
+with no usable sizes, one whose preview never delivers a frame (open error, session failure,
+black surface past the timeout), or one that disappears on reattach, is recorded as a failed
+probe.
+
+Record model, OS build, camera ID, formats, sizes, and the preview outcome (reached / not
+reached, with the error if any) in the run and in the verified-devices row — spec §A requires
+all three facts (ID present or absent, stream configurations, live preview reached).
 
 ## 3. The decision
 

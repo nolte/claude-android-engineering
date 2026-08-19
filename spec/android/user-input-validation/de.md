@@ -34,7 +34,7 @@ Leser: Autoren der Android-Skills dieses Repos, die eine Fläche bauen oder prü
 - Nicht vertrauenswürdige Eingaben als Sicherheitskontrollmenge (Abfragen, IPC, WebView, Deep Links) — `spec/android/security/` §D/§F
 - Die Vertrauensgrenze für gescannte Payloads — `spec/android/barcode-scanning/` §F
 - Übersetzung, Plurale und RTL-Layout — `spec/android/localization/`
-- Entwurf des Authentifizierungsprotokolls, Sitzungsführung und Tokenspeicherung — `spec/android/security/` §G („Authentication, session handling, and resilience"), mit der Speichermechanik in dessen §A; §F hier behandelt nur die Eingabefläche der Anmeldung
+- Entwurf des Authentifizierungsprotokolls, Sitzungsführung und Tokenspeicherung — `spec/android/security/` §G („Authentifizierung, Session-Handling und Resilience"), mit der Speichermechanik in dessen §A; §F hier behandelt nur die Eingabefläche der Anmeldung
 
 ## Anforderungen
 

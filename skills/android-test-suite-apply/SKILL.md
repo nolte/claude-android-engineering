@@ -198,9 +198,12 @@ a named trigger and is otherwise recorded as deferred. Gate: confirm each decisi
 
 ### 3. Record the strategy
 
-Write `project/test-strategy.md` from `references/test-strategy-template.md`. When a file
-exists, append to its change log and update the affected sections — never rewrite the history
-(REQ-8). Gate: confirm the write. `plan` ends here.
+Write `project/test-strategy.md` from `references/test-strategy-template.md`. The location is
+a repository convention — `test-automation` §A only asks for "a short document or the
+project's CLAUDE.md" and names no path — so every run that writes it reports the path as a
+spec gap with a proposed extension (REQ-6). When a file exists, append to its change log and
+update the affected sections — never rewrite the history (REQ-8). Gate: confirm the write.
+`plan` ends here.
 
 ### 4. Build the apply plan
 
@@ -287,9 +290,10 @@ keys and lifecycle are load-bearing in the spec and are not duplicated here.
 - **Never** scaffold a new project or its minimum viable suite; route to
   `android-project-scaffold`. Never write a feature's own tests; route to
   `android-feature-implement` or `android-compose-ui`.
-- **Always** report a strategy or tooling choice no spec settles — JUnit 5 in a pure-JVM
-  module, Turbine, coverage thresholds, Maestro — as a gap with a proposed extension instead
-  of deciding silently (REQ-6).
+- **Always** report a strategy or tooling choice no spec settles — Turbine, coverage
+  thresholds, Maestro — as a gap with a proposed extension instead of deciding silently
+  (REQ-6). JUnit 5 is *not* such a gap: §B settles it as a MAY on both hosts; record the
+  project's choice in the strategy file.
 - **Always** close `apply` on green `./gradlew build` and `task check`, and route a red test to
   `android-debugging` (REQ-7).
 - When `spec/android/test-automation/` disagrees with this skill, the spec wins.

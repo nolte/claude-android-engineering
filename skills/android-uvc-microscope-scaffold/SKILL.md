@@ -124,10 +124,11 @@ Walk `references/access-path-decision.md` §1–§3 in order:
 1. **Probe the platform first.** Run the Camera2 `LENS_FACING_EXTERNAL` probe from
    `references/access-path-decision.md` §2 on the target device with the microscope attached and
    permitted. Recent Pixel generations document native UVC support; other OEMs may not. If the
-   probe enumerates the device with a usable stream configuration, the capability is built on
-   CameraX/Camera2 with an external-lens selector, and steps 3–4 shrink to the platform path
-   described there. The probe result — device model, OS build, camera ID, formats — is recorded
-   in the run and in the verified-devices row.
+   probe enumerates the device with a usable stream configuration **and** a preview attempt on
+   that camera reaches live frames (spec §A), the capability is built on CameraX/Camera2 with
+   an external-lens selector, and steps 3–4 shrink to the platform path described there. The
+   probe result — device model, OS build, camera ID, formats, preview reached or not — is
+   recorded in the run and in the verified-devices row.
 2. **Only if the platform does not expose it**, integrate the libuvc engine at the
    `USBMonitor` + `UVCCamera` layer (spec §B). Pin `libuvc:3.2.7`, prove that every artifact of
    the graph resolves as an AAR (a POM alone is not evidence), and never call

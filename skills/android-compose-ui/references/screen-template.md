@@ -319,7 +319,11 @@ fun ExampleFormContent(
         Button(
             onClick = onSubmit,
             enabled = uiState.submission !is Submission.InFlight, // exactly one in flight
-            modifier = Modifier.align(Alignment.End),
+            // testTag is the recorded exception (test-automation §D): while in flight the button
+            // carries no text semantics, so the in-flight test has nothing else to match on.
+            modifier = Modifier
+                .align(Alignment.End)
+                .testTag("form_submit"),
         ) {
             if (uiState.submission is Submission.InFlight) {
                 DelayedLoadingIndicator()             // pending state is visible
@@ -383,16 +387,25 @@ Keys are `@Serializable` and implement `NavKey`; the back stack is app state
 a deep-linkable key is parsed from the intent into this typed key and pushed on top of a
 synthetic parent stack (§E).
 
+One key class per destination — `EntryProviderBuilder` rejects a second `entry<T>` for a class
+it already holds, so list and detail never share a key type.
+
 ```kotlin
 @Serializable
-data class ExampleKey(val id: String? = null) : NavKey
+data object ExampleKey : NavKey                      // the list destination
 
-fun EntryProviderBuilder<NavKey>.exampleEntry(
+@Serializable
+data class ExampleDetailKey(val id: String) : NavKey // one detail destination per item
+
+fun EntryProviderBuilder<NavKey>.exampleEntries(
     onItemClick: (String) -> Unit,
     onCreate: () -> Unit,
 ) {
     entry<ExampleKey> {
         ExampleRoute(onItemClick = onItemClick, onCreate = onCreate)
+    }
+    entry<ExampleDetailKey> { key ->
+        ExampleDetailContent(id = key.id)
     }
 }
 ```

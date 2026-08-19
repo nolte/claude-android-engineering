@@ -3,7 +3,8 @@
 The Robolectric-hosted Compose test generated alongside every screen, per
 `spec/android/test-automation/` §D/§E and, for input surfaces,
 `spec/android/user-input-validation/` §H. It drives the stateless content composable with fake
-`uiState` and no-op lambdas, matches nodes via semantics (not `testTag`), and relies on
+`uiState` and no-op lambdas, matches nodes via semantics (`testTag` only where a node has no
+inherent text semantics — the in-flight submit button in §7), and relies on
 Compose's synchronization — auto-sync by default, `mainClock` for animations,
 `waitUntil`/`waitUntilExactlyOneExists` for external work, never `Thread.sleep`. Assertions
 use `kotlin.test` (`assertTrue`, `assertEquals`), the pure-JVM default of the portfolio.
@@ -261,8 +262,11 @@ fun submitFailure_announcesViaLiveRegion_andPreservesInput() {
 fun submit_ignoresSecondTapWhileInFlight() {
     val repository = FakeExampleRepository(delayCompletion = true)
     composeTestRule.setContent { AppTheme { ExampleFormHost(repository) } }
-    composeTestRule.onNodeWithText(context.getString(R.string.form_submit)).performClick()
-    composeTestRule.onNodeWithText(context.getString(R.string.form_submit)).assertIsNotEnabled()
+    // The in-flight button swaps its label for DelayedLoadingIndicator (screen-template §7), so
+    // the text node disappears; the recorded testTag exception keeps the node addressable.
+    composeTestRule.onNodeWithTag("form_submit").performClick()
+    composeTestRule.onNodeWithTag("form_submit").performClick()   // second tap while in flight
+    composeTestRule.onNodeWithTag("form_submit").assertIsNotEnabled()
     assertEquals(1, repository.submitCalls)
 }
 
@@ -298,23 +302,24 @@ pass around.
 ```kotlin
 @Test
 fun itemClick_pushesDetailKey() {
-    val backStack = mutableStateListOf<NavKey>(ExampleKey())
+    val backStack = mutableStateListOf<NavKey>(ExampleKey)
     composeTestRule.setContent {
         AppTheme {
             NavDisplay(
                 backStack = backStack,
                 onBack = { backStack.removeLastOrNull() },
+                // exampleEntries (screen-template §8) registers ExampleKey and ExampleDetailKey
+                // once each — never add a second entry<T> for a class the builder already holds.
                 entryProvider = entryProvider {
-                    exampleEntry(
-                        onItemClick = { id -> backStack.add(ExampleKey(id)) },
+                    exampleEntries(
+                        onItemClick = { id -> backStack.add(ExampleDetailKey(id)) },
                         onCreate = {},
                     )
-                    entry<ExampleKey> { key -> if (key.id != null) ExampleDetailContent(key.id) }
                 },
             )
         }
     }
     composeTestRule.onNodeWithText(fakeItems.first().title).performClick()
-    assertEquals(ExampleKey(fakeItems.first().id), backStack.last())
+    assertEquals(ExampleDetailKey(fakeItems.first().id), backStack.last())
 }
 ```

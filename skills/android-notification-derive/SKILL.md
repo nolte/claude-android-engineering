@@ -97,13 +97,12 @@ Respond to these (and equivalents) exactly as to their English counterparts; the
   matches, this skill decides *that* the in-app path carries the event and hands the authoring
   there; it does not build screens.
 - `android-feature-implement` owns the feature across layers (REQ-19) and **calls this skill**
-  for the channel step. The delivery path of `spec/android/notifications-alerting/` §E — FCM
-  data messages, the `priority: high` reserve, `onMessageReceived()` handing off to WorkManager,
-  missed-message recovery by state sync, WorkManager versus `AlarmManager` — is implemented by
-  its step 3 (delivery-path decision) and step 5.3 "Sync and delivery path" (see that skill's
-  flat-layer-checklist §10 and layer-templates §5); this skill records `local` /
-  `scheduled` / `pushed` in the ledger's `Delivery` column and ends at the device-side
-  notification code.
+  for the channel step; this skill ends at the device-side notification code. The delivery
+  path of `spec/android/notifications-alerting/` §E lives in that skill's flat-layer-checklist
+  §10 and layer-templates §5. `Delivery` column ownership:
+  `android-feature-implement` owns the decision (step 3) and the implementation (step 5.3) of
+  the delivery path; `android-notification-derive` owns the ledger row and records the
+  handed-over value (`local` / `scheduled` / `pushed`) — it never decides it.
 - `android-ux-reviewer` reviews UI read-only (REQ-14); notification-channel conformance is
   outside its Compose surface and is audited by the `audit` operation here.
 - `android-debugging` diagnoses why a notification never appeared (REQ-16). A wrong channel is
@@ -184,8 +183,8 @@ Gate: confirm the outcome.
 For a channel-bearing outcome, decide and record: the channel ID and user-visible name, its
 **permanent** importance — one channel per type of event the user would want to control
 separately — the `setCategory()` value, lock-screen visibility (with a public version wherever
-the content is sensitive, and the sensitivity classification it applied), the delivery path,
-the group key with the summary behaviour, the update key (recorded as its own ledger column),
+the content is sensitive, and the sensitivity classification it applied), the delivery path
+(recorded as handed over by `android-feature-implement`, never decided here), the group key with the summary behaviour, the update key (recorded as its own ledger column),
 the dismissal and cancellation rule,
 and the degradation behaviour when notifications are off. Where the outcome is the ongoing
 family, add its contract — foreground-service type, or the promotion requirements of a Live

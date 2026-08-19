@@ -36,7 +36,7 @@ The heuristics are grep-grade starting points over `src/test/**`, `src/androidTe
 
 | Rule | Detection heuristic | Severity | Fix (operation) |
 |---|---|---|---|
-| JUnit 4 runner; JUnit 5 not assumed (§B MUST) | `org.junit.jupiter` imports, `de.mannodermaus` plugin, `useJUnitPlatform()` in an Android module | Critical in an Android module; Info in a pure-JVM module (record the MAY in the strategy file) | migrate per class with confirmation, or record the pure-JVM MAY |
+| JUnit 4 runner; JUnit 5 not assumed (§B MUST / MAY) | `org.junit.jupiter` imports, `de.mannodermaus` plugin, `useJUnitPlatform()` — JUnit 5 is a spec MAY on both hosts (local JVM via `useJUnitPlatform()`, instrumented via the community `android-junit5` plugin and its device floor) | Info (record the choice in the strategy file); Warning only when generated code *assumes* JUnit 5 without the host's mechanics (missing `useJUnitPlatform()`, missing plugin on instrumented tests) | record the choice; add the missing host mechanics with confirmation |
 | Coroutine tests run in `runTest` (§B MUST) | `runBlocking {` or `GlobalScope` in `src/test`; `suspend` test bodies without `runTest` | Critical | replace with `runTest` |
 | `MainDispatcherRule` present and applied in every ViewModel test (§B MUST) | `Dispatchers.setMain(` outside a `TestWatcher`; `*ViewModelTest` classes without `@get:Rule val … = MainDispatcherRule()` | Critical | add the rule from `references/test-infrastructure-templates.md` §1 |
 | Dispatchers injected, never hard-coded (§B MUST) | `Dispatchers.IO`, `Dispatchers.Default`, `Dispatchers.Main` in `src/main` outside a DI module or a dispatcher-provider class | Critical | inject a `CoroutineDispatcher` (production change, per-file confirmation) |

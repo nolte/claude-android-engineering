@@ -100,8 +100,12 @@ restriction, or record the conflict — never decide it silently.
 - **Quiet zone:** ZXing's generic `EncodeHintType.MARGIN` documentation says "in pixels", but
   `QRCodeWriter` interprets it in **modules** (its `QUIET_ZONE_SIZE` default is 4), so the
   default already yields the required 4-module quiet zone for QR. Set
-  `EncodeHintType.MARGIN` to `4` explicitly anyway and record the unit — a later change of
-  writer (1D formats do read it as pixels) or of default must not silently shrink the zone.
+  `EncodeHintType.MARGIN` to `4` explicitly anyway and record the unit **at the definition
+  site, in the writer's unit** — the unit is per writer (spec §I), not "pixels" and not
+  "modules" in general: `QRCodeWriter` reads modules, the 1D writers scale the margin in their
+  own narrow-bar (X) units before rendering, and neither is the javadoc's "pixels". A later
+  change of writer or of default must not silently shrink the zone, and a value copied from a
+  1D writer must never be read as a QR module count.
 - **Error correction** (`EncodeHintType.ERROR_CORRECTION`) is a deliberate, recorded trade of
   capacity against damage tolerance. Only the 15 % figure at level M is stated by the
   symbology's originator; the 7 %/25 %/30 % figures for L/Q/H are widely repeated but were not
