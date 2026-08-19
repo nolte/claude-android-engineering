@@ -88,7 +88,7 @@ Leser: Autoren der Android-Skills dieses Repos, die entscheiden müssen, ob eine
 
 ### F. Festhalten
 
-- **MUSS [MUST]** mit der Änderung jede von dieser Spec erlaubte Zwischenabweichung festhalten (eine pauschale Keep-Regel, ein zurückhängendes `targetSdk`, ein übersprungenes Schrankenelement), samt Grund und Bedingung für ihre Entfernung
+- **MUSS [MUST]** mit der Änderung jede von dieser Spec erlaubte Zwischenabweichung festhalten (eine pauschale Keep-Regel, ein zurückhängendes `targetSdk`, ein übersprungenes Schrankenelement), samt Grund und Bedingung für ihre Entfernung; Toolchain- und Dependency-Upgrades werden in `project/toolchain-log.md` festgehalten, neben den übrigen Entscheidungsartefakten des Repositories
 - **MUSS [MUST]** einen nicht abgedeckten Fall melden, statt still zu entscheiden (Repository-REQ-6)
 
 ## Akzeptanzkriterien

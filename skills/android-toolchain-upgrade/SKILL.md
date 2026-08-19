@@ -151,7 +151,9 @@ to `compileSdk` when unset). Gate: confirm the inventory.
 Read `references/inventory-and-research.md` §2 for the primary sources and the evidence record.
 With WebSearch/WebFetch, establish for each inventoried item the current stable version and the
 constraints it imposes on its neighbours — AGP↔Gradle range, AGP↔KGP/KSP floor, Kotlin↔Compose
-compiler plugin (same version) and Kotlin↔KSP (same prefix), Compose BOM↔compiler, the AGP 9
+compiler plugin (same version) and Kotlin↔KSP (per the KSP compatibility table — the
+`<kotlin>-<ksp>` prefix scheme applies only to KSP < 2.3.0; from 2.3.0 KSP is versioned
+independently and each release names its supported Kotlin range), Compose BOM↔compiler, the AGP 9
 built-in-Kotlin migration rules, the K2 status of the Kotlin line, `targetSdk` deadlines and the
 16 KB page-size dates the release-readiness spec carries. Record every fact with URL and date;
 where a source and the spec disagree, the spec wins and the disagreement is reported. Never
@@ -252,16 +254,19 @@ files. Never redo the research of step 2 whose result already sits in `state:`. 
   the closing gate (`release-readiness` §E).
 - **Never** overwrite or delete anything without operator confirmation, and **never** write in
   `audit` (REQ-8).
-- **Always** report a convention no spec covers — the toolchain-log location included — as a gap
-  with a proposed extension instead of deciding silently (REQ-6).
+- **Always** report a convention no spec covers as a gap with a proposed extension instead of
+  deciding silently (REQ-6); the toolchain-log location is spec-fixed
+  (`spec/android/release-readiness/` §F), not a gap.
 - When a `spec/android/` file disagrees with this skill, the spec wins.
 
 ## Gotchas
 
 - **`org.jetbrains.kotlin.android` breaks AGP 9 with the new DSL** — remove it rather than
   pinning `android.newDsl=false`; the KGP still exists in the catalog for the Compose plugin.
-- **KSP and the Compose compiler plugin follow Kotlin, not AGP.** A Kotlin bump without matching
-  KSP (same prefix) and `org.jetbrains.kotlin.plugin.compose` (same version) is a red build.
+- **KSP and the Compose compiler plugin follow Kotlin, not AGP.** A Kotlin bump without a
+  compatible KSP (Kotlin-prefixed only below KSP 2.3.0; independently versioned from 2.3.0 —
+  check the release's supported Kotlin range) and `org.jetbrains.kotlin.plugin.compose`
+  (same version as Kotlin) is a red build.
 - **AGP 9 defaults `targetSdk` to `compileSdk`.** Raising `compileSdk` on a project that never
   set `targetSdk` silently bumps the effective `targetSdk` — a behaviour-change walk is due.
 - **`useLegacyPackaging = false` is not alignment.** A prebuilt `.so` from a dependency can still

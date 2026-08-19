@@ -80,7 +80,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 
 The criteria below are a deliberate representative rollup of §A–§F, not a 1:1 mapping; every requirement bullet above is normative on its own.
 
-- [ ] `lint` passes with `HardcodedText`, `MissingTranslation`, `ExtraTranslation`, and `ImpliedQuantity` at error severity; no user-visible string is inlined in code
+- [ ] `lint` passes with `HardcodedText`, `MissingTranslation`, `ExtraTranslation`, and `ImpliedQuantity` at error severity; no user-visible string is inlined in code; a localization audit that is persisted lands at `.audits/android-localization/<YYYY-MM-DD>.md`
 - [ ] Every parameterized string uses positional placeholders; no runtime string concatenation builds a sentence
 - [ ] Counts render through `<plurals>` with an `other` case and the number in the text
 - [ ] The build declares `localeFilters` matching the supported set, and the system language picker lists the app with exactly those languages

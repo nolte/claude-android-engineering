@@ -138,7 +138,8 @@ of truth: on any conflict the named spec wins. Apply these while writing the scr
 ## 6. Localization
 
 - Every user-visible string in `strings.xml`; `HardcodedText` is error-level. English source
-  in `values/`, German in `values-b+de/`, both complete (`MissingTranslation` error-level).
+  in `values/`, German in `values-b+de/` (or the project's existing legacy `values-de/` —
+  never both, same `de` qualifier), both complete (`MissingTranslation` error-level).
 - Positional placeholders (`%1$s`) everywhere; `<plurals>` with an `other` case and the number
   in the text for counts; never concatenate translated fragments. Non-translatable entries
   (brand names, technical tokens) carry `translatable="false"` and live only in `values/`.

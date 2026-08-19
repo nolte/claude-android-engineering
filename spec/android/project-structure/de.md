@@ -128,11 +128,11 @@ Die Kriterien sind eine repräsentative Zusammenfassung von §A–§G, keine 1:1
 
 Jede Frage nennt die Vorgabe, die die Anforderungen oben bereits kodieren.
 
-- detekt-Adoption: Googles Referenzprojekte verzichten darauf, die Community setzt es breit ein — entscheiden, wenn der Quality-Gate-/Audit-Skill dieses Repos Gestalt annimmt
-- Schwelle für den `:feature:x:api`/`:impl`-Split: ab welcher Projektgröße lohnt sich der Navigation-3-artige Schnitt?
-- Soll der Projekt-Setup-Skill `build-logic/` von Anfang an scaffolden (billig solange leer) oder erst bei der ersten Modularisierung (Single-Module-Reinheit)?
-- Screenshot-Testing-Tool-Wahl: Roborazzi vs. Paparazzi vs. Googles neueres Compose Preview Screenshot Testing (`src/screenshotTest`-Source-Set)
-- Kotlin Multiplatform: Falls KMP je in den Scope kommt, ändert sich das Top-Level-Layout grundlegend (siehe Tivi) und braucht eine eigene Spec
+- detekt-Adoption: Googles Referenzprojekte verzichten darauf, die Community setzt es breit ein — entscheiden, wenn der Quality-Gate-/Audit-Skill dieses Repos Gestalt annimmt. *Default:* §G's **KANN** — detekt wird nicht gescaffoldet; Spotless mit ktlint plus Android Lint sind der ausgelieferte Satz.
+- Schwelle für den `:feature:x:api`/`:impl`-Split: ab welcher Projektgröße lohnt sich der Navigation-3-artige Schnitt? *Default:* §C's **DARF NICHT** — kein Split in Solo- oder kleinen Projekten; ein Feature bleibt ein Modul, bis ein zweiter Konsument seine Navigations-Keys braucht.
+- Soll der Projekt-Setup-Skill `build-logic/` von Anfang an scaffolden (billig solange leer) oder erst bei der ersten Modularisierung (Single-Module-Reinheit)? *Default:* §C bindet `build-logic/` an die Modularisierung, ein Single-Module-Scaffold liefert es also nicht mit.
+- Screenshot-Testing-Tool-Wahl: Roborazzi vs. Paparazzi vs. Googles neueres Compose Preview Screenshot Testing (`src/screenshotTest`-Source-Set). *Default:* §F's **KANN** hält Screenshot-Tests aus dem Scaffold heraus; wird einer ergänzt, gilt der Default aus `spec/android/test-automation/` §E.
+- Kotlin Multiplatform: Falls KMP je in den Scope kommt, ändert sich das Top-Level-Layout grundlegend (siehe Tivi) und braucht eine eigene Spec. *Default:* laut §Nicht-Ziele außerhalb des Scopes — diese Spec zielt auf reine Android-Apps.
 
 ## Referenzen
 

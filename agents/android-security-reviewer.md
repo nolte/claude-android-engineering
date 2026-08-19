@@ -192,7 +192,7 @@ Verdict: <one line — e.g. "MASVS L1 not met: N Critical open">
 - Spec sections checked: <list>
 - Surfaces with zero hits: <dimensions scanned clean>
 - Deferred scope: <e.g. "merged manifest → needs a build (android-feature-implement)", "traffic interception / mobsfscan → dynamic", "Data Safety accuracy → operator">
-- Spec gaps (REQ-6): <e.g. "no review-type slug for this audit in spec/claude/review-plan/", plus any convention decision no spec covers>
+- Spec gaps (REQ-6): <any convention decision no spec covers; the review-type slug is this repository's convention — its upstream `spec/claude/review-plan/` registration is tracked once in the requirements artifact, never re-reported per run — list only genuinely new gaps>
 
 ## Processing log
 <empty at creation>

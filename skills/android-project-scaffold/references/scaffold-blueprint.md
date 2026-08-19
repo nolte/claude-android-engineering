@@ -178,19 +178,27 @@ TEST §H MUST: one CI workflow running the single-variant unit tests plus lint, 
 
 | Task | Command | Purpose |
 |---|---|---|
-| `check` | deps `lint`, `test` | the aggregate gate CI runs |
+| `check` | serial `cmds`: `task lint`, then `task test` — never parallel `deps` (two concurrent `./gradlew` calls serialize on the Gradle project lock and spawn a second daemon JVM) | the aggregate gate CI runs |
 | `lint` | `./gradlew lintDebug spotlessCheck` | Android Lint (one variant) + formatting |
 | `test` | `./gradlew testDebugUnitTest` | exactly one debug variant, never `test` |
 | `format` | `./gradlew spotlessApply` | convenience, not a gate |
 | `build` | `./gradlew build` | the REQ-1 criterion (assembles release with the shrinker) |
 
-`.github/workflows/ci.yml`:
+`.github/workflows/ci.yml`: one job on `ubuntu-latest` that runs `task check` — the same
+entry point as local runs (TEST §G) — with wrapper validation, Gradle caching, and JUnit/lint
+artifacts.
 
-- Triggers: `pull_request` and `push` to the default branch; `permissions: contents: read`; a `concurrency` group per ref with `cancel-in-progress`.
-- One job on `ubuntu-latest`: `actions/checkout`, `actions/setup-java` (Temurin 17), `gradle/actions/wrapper-validation` (PS §B SHOULD), `gradle/actions/setup-gradle` (Gradle caching; on PRs `cache-read-only`), a Task installer (`arduino/setup-task`), then `task check`.
-- Artifacts, `if: ${{ !cancelled() }}`: `app/build/test-results/testDebugUnitTest/*.xml` and `app/build/reports/lint-results-debug.xml` (+ `.html`); a JUnit report action for PR annotations is a SHOULD.
-- Pin every action to a full commit SHA with a version comment (portfolio `github-actions-best-practices` spec inherited from `nolte-shared`), and resolve current major versions at scaffold time.
-- **No** device matrix, emulator job, retry, coverage gate, or benchmark lane (TEST §H MUST NOT). Since no emulator job exists, no KVM step is written.
+**Canonical template: `skills/android-test-suite-apply/references/ci-and-taskfile-templates.md`
+— scaffold the Taskfile and the workflow from there and keep in sync.** Scaffold-specific
+notes on top of the canonical file:
+
+- The scaffold's variant is the fixed single-module `Debug`, so use the concrete artifact
+  paths the canonical file shows (glob fallback noted there for multi-module projects).
+- Pin every action to a full commit SHA with a version comment (portfolio
+  `github-actions-best-practices` spec inherited from `nolte-shared`), and resolve current
+  major versions at scaffold time.
+- **No** device matrix, emulator job, retry, coverage gate, or benchmark lane (TEST §H MUST
+  NOT). Since no emulator job exists, no KVM step is written.
 
 ## 13. Release-readiness baseline
 

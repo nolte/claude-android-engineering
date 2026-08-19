@@ -121,9 +121,9 @@ The criteria below are a deliberate representative rollup of §A–§G, not a 1:
 
 Each question states the working default the requirements above already encode.
 
-- Google's `android` agent CLI: adopt as a first-class dependency of the debugging skill once it stabilizes, or keep adb-only with the CLI as optional acceleration?
-- Unicode input: is ADBKeyBoard (third-party IME) acceptable as a skill dependency, or should skills avoid text-input automation beyond ASCII?
-- Wireless pairing automation: first-time pairing is deliberately interactive; should skills document a USB-first setup path only?
+- Google's `android` agent CLI: adopt as a first-class dependency of the debugging skill once it stabilizes, or keep adb-only with the CLI as optional acceleration? *Default:* adb-only — §A–§E carry every workflow through `adb`, and no skill may depend on the CLI.
+- Unicode input: is ADBKeyBoard (third-party IME) acceptable as a skill dependency, or should skills avoid text-input automation beyond ASCII? *Default:* §E's rule stands — `input text` is ASCII-only, and an IME bridge is a per-run, recorded exception rather than a skill dependency.
+- Wireless pairing automation: first-time pairing is deliberately interactive; should skills document a USB-first setup path only? *Default:* §A's pairing flow is documented as the wireless path with the code entered by the operator; scripts connect by explicit `ip:port` afterwards.
 
 ## References
 

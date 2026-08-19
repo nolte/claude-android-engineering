@@ -128,11 +128,11 @@ The criteria are a representative rollup of §A–§G, not a 1:1 mapping; every 
 
 Each question states the working default the requirements above already encode.
 
-- detekt adoption: Google's reference projects skip it, the community embraces it — decide when this repo's quality-gate/audit skill takes shape
-- Threshold for the `:feature:x:api`/`:impl` split: at what project size does the Navigation-3-style split pay off?
-- Should the project-setup skill scaffold `build-logic/` from day one (cheap while empty) or only on first modularization (single-module purity)?
-- Screenshot-testing tool choice: Roborazzi vs Paparazzi vs Google's newer Compose Preview Screenshot Testing (`src/screenshotTest` source set)
-- Kotlin Multiplatform: if KMP ever enters scope, the top-level layout changes fundamentally (see Tivi) and needs its own spec
+- detekt adoption: Google's reference projects skip it, the community embraces it — decide when this repo's quality-gate/audit skill takes shape. *Default:* §G's **MAY** — detekt is not scaffolded; Spotless with ktlint plus Android Lint is the shipped set.
+- Threshold for the `:feature:x:api`/`:impl` split: at what project size does the Navigation-3-style split pay off? *Default:* §C's **MUST NOT** — no split on solo or small projects; a feature stays one module until a second consumer needs its navigation keys.
+- Should the project-setup skill scaffold `build-logic/` from day one (cheap while empty) or only on first modularization (single-module purity)? *Default:* §C ties `build-logic/` to modularization, so a single-module scaffold ships without it.
+- Screenshot-testing tool choice: Roborazzi vs Paparazzi vs Google's newer Compose Preview Screenshot Testing (`src/screenshotTest` source set). *Default:* §F's **MAY** keeps screenshot tests out of the scaffold; when one is added, `spec/android/test-automation/` §E's default applies.
+- Kotlin Multiplatform: if KMP ever enters scope, the top-level layout changes fundamentally (see Tivi) and needs its own spec. *Default:* out of scope per §Non-Goals — this spec targets Android-only apps.
 
 ## References
 

@@ -37,7 +37,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 - **MUSS [MUST]** mindestens unit-testen: ViewModels (State-Erzeugung für Normal- *und* Edge-Cases — Fehler, leere Daten, korrupte Eingaben), Repositories und Data-Layer-Logik, Use Cases sowie nicht-trivialen Utility-Code
 - **DARF NICHT [MUST NOT]** Framework-Einstiegspunkte (Activities, Services) oder Framework-/Library-Verhalten selbst unit-testen; Logik, die das erfordern würde, wird stattdessen aus dem Einstiegspunkt herausgezogen
 - **MUSS [MUST]** die kritischen Nutzerinteraktionen jedes Screens mit einem UI-Test gegen das zustandslose Content-Composable abdecken und die häufigsten Navigationspfade mit einer kleinen Zahl von Journey-Tests
-- **SOLLTE [SHOULD]** die konkrete Teststrategie des Projekts (welche Ebenen existieren, was einen Merge gatet) in einem kurzen Dokument oder der CLAUDE.md des Projekts festhalten, gemäß Googles Strategie-Guidance
+- **SOLLTE [SHOULD]** die konkrete Teststrategie des Projekts (welche Ebenen existieren, was einen Merge gatet) in einem kurzen Dokument — `project/test-strategy.md` — oder der CLAUDE.md des Projekts festhalten, gemäß Googles Strategie-Guidance
 - **SOLLTE [SHOULD]** die Architektur konstruktiv testbar halten: keine Business-Logik in Framework-Einstiegspunkten, kein `Context` in ViewModels, alle Abhängigkeiten hinter Interfaces injiziert — die Architekturregeln in `spec/android/project-structure/` §E sind der Enabler und werden hier nicht wiederholt
 
 ### B. Lokale Unit-Tests (JVM)

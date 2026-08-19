@@ -121,9 +121,9 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, 
 
 Jede Frage nennt die Vorgabe, die die Anforderungen oben bereits kodieren.
 
-- Googles `android`-Agent-CLI: als First-Class-Abhängigkeit des Debugging-Skills übernehmen, sobald sie stabilisiert, oder adb-only bleiben mit der CLI als optionaler Beschleunigung?
-- Unicode-Eingabe: Ist ADBKeyBoard (Drittanbieter-IME) als Skill-Abhängigkeit akzeptabel, oder sollen Skills Texteingabe-Automatisierung jenseits von ASCII meiden?
-- Wireless-Pairing-Automatisierung: Erst-Pairing ist bewusst interaktiv; sollen Skills nur einen USB-first-Setup-Pfad dokumentieren?
+- Googles `android`-Agent-CLI: als First-Class-Abhängigkeit des Debugging-Skills übernehmen, sobald sie stabilisiert, oder adb-only bleiben mit der CLI als optionaler Beschleunigung? *Default:* adb-only — §A–§E tragen jeden Workflow über `adb`, und kein Skill darf von der CLI abhängen.
+- Unicode-Eingabe: Ist ADBKeyBoard (Drittanbieter-IME) als Skill-Abhängigkeit akzeptabel, oder sollen Skills Texteingabe-Automatisierung jenseits von ASCII meiden? *Default:* §E gilt — `input text` ist ASCII-only, und eine IME-Brücke ist eine pro Lauf aufgezeichnete Ausnahme, keine Skill-Abhängigkeit.
+- Wireless-Pairing-Automatisierung: Erst-Pairing ist bewusst interaktiv; sollen Skills nur einen USB-first-Setup-Pfad dokumentieren? *Default:* §A dokumentiert den Pairing-Flow als Wireless-Pfad mit vom Operator eingegebenem Code; Skripte verbinden sich danach über explizites `ip:port`.
 
 ## Referenzen
 

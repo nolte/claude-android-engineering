@@ -8,6 +8,10 @@ require (SHA pins where the portfolio's GitHub-Actions spec asks for them) and r
 versions at apply time (REQ-5). An existing workflow is merged hunk by hunk with confirmation,
 never replaced (REQ-8).
 
+This file is the **canonical** Taskfile/CI template; `android-project-scaffold`'s
+`references/scaffold-blueprint.md` §12 keeps only a summary and points here — change the
+templates in this file, not there.
+
 ## Table of contents
 
 - [1. Taskfile targets](#1-taskfile-targets)
@@ -56,7 +60,12 @@ tasks:
 
   check:
     desc: Aggregate quality gate — what CI runs
-    deps: [lint, test]
+    # Serial cmds, not deps: go-task runs deps in parallel, and two concurrent
+    # ./gradlew invocations serialize on the Gradle project lock and spawn a
+    # second daemon JVM.
+    cmds:
+      - task: lint
+      - task: test
 
   build:
     desc: Full build, the REQ-1 success criterion
@@ -64,7 +73,8 @@ tasks:
       - ./gradlew build
 ```
 
-Once goldens are committed, `check` gains `test:screenshot:verify` in `deps`. `spotlessCheck`
+Once goldens are committed, `check` gains `- task: test:screenshot:verify` as a third serial
+command (same Gradle-lock rationale — never a parallel dep). `spotlessCheck`
 is present only when the project applies Spotless (project-structure §G SHOULD); drop it from
 `lint` otherwise rather than adding the plugin here — quality tooling is its own decision.
 Existing targets are extended, not renamed.
@@ -87,8 +97,8 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
-  checks: write        # only for the optional JUnit annotation step
+  contents: read       # least privilege; add `checks: write` only together with the
+                       # optional JUnit-annotation step below
 
 jobs:
   check:
@@ -115,28 +125,36 @@ jobs:
       - name: Quality gate (same target as local)
         run: task --yes check
 
+      # Concrete paths when the variant is fixed (the scaffold's single-module
+      # `Debug` shown here); multi-module or renamed-variant projects use the
+      # glob fallback "**/build/test-results/test*UnitTest/TEST-*.xml".
       - name: Upload JUnit XML
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: junit-xml
-          path: "**/build/test-results/test*UnitTest/TEST-*.xml"
+          path: app/build/test-results/testDebugUnitTest/TEST-*.xml
           if-no-files-found: warn
 
+      # Glob fallback: "**/build/reports/lint-results-*.{xml,html}"
       - name: Upload lint reports
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: lint-reports
-          path: "**/build/reports/lint-results-*.html"
+          path: |
+            app/build/reports/lint-results-debug.xml
+            app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
 
-      # SHOULD (§G): surface results as PR annotations
+      # OPTIONAL — SHOULD (§G): surface results as PR annotations. This step is
+      # the sole reason to widen permissions: include it only together with
+      # `checks: write`; omit both when annotations are not wanted.
       - name: JUnit annotations
         if: ${{ !cancelled() }}
         uses: mikepenz/action-junit-report@v5
         with:
-          report_paths: "**/build/test-results/test*UnitTest/TEST-*.xml"
+          report_paths: app/build/test-results/testDebugUnitTest/TEST-*.xml
 ```
 
 Notes:

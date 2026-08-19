@@ -119,9 +119,9 @@ approved the item.
 - **`audit`** — the app exists and its localization conformance is unknown. Runs the audit
   procedure below and **writes nothing at all**: it produces a findings report on the
   canonical `Critical` / `Warning` / `Suggestion` / `Info` scale of `spec/claude/review-plan/`.
-  When the operator wants the report on disk, it goes to `.audits/android-localization/<date>.md`,
-  nowhere else — a repository convention no spec names, reported as a spec gap (REQ-6) in each
-  report.
+  When the operator wants the report on disk, it goes to
+  `.audits/android-localization/<YYYY-MM-DD>.md`, nowhere else — the location is fixed by
+  `spec/android/localization/` §Acceptance Criteria.
 - **`apply`** — findings exist (from this run, a previous `audit`, or an `android-ux-reviewer`
   report) and the missing pieces are to be written. Runs steps 1–7. Without a finding list it
   runs `audit` first and says so.

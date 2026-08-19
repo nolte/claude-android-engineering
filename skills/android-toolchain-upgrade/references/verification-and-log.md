@@ -11,7 +11,7 @@ submission dates and the AGP floor for page size are owned by `spec/android/rele
   artifact alignment check, emulator boot
 - [2. Dependency hygiene](#2-dependency-hygiene) — Renovate/Dependabot, osv-scanner,
   verification metadata
-- [3. The toolchain log](#3-the-toolchain-log) — location, spec gap, entry template
+- [3. The toolchain log](#3-the-toolchain-log) — location (release-readiness §F), entry template
 - [4. Audit procedure (operation `audit`)](#4-audit-procedure-operation-audit) — read-only,
   severity-classified report
 
@@ -73,11 +73,9 @@ step, never a silent addition.
 
 ## 3. The toolchain log
 
-**Location:** `project/toolchain-log.md` — beside `project/permissions-ledger.md` and
-`project/notification-ledger.md`, the repository's existing convention for decision records that
-outlive a run. **No spec names this file:** report it as a spec gap with the proposed extension
-"`spec/android/release-readiness/` §F names `project/toolchain-log.md` as the record for toolchain
-and dependency upgrades" (REQ-6) in every run that writes it, until the spec carries it.
+**Location:** `project/toolchain-log.md` — named normatively by `spec/android/release-readiness/`
+§F, beside `project/permissions-ledger.md` and `project/notification-ledger.md`, the repository's
+existing convention for decision records that outlive a run.
 
 Create the file with the header below when absent (confirm first, REQ-8); append one entry per
 run, newest first.

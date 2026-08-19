@@ -37,7 +37,7 @@ Readers: authors of this repo's Android skills and reviewers judging whether a g
 - **MUST** unit-test, at minimum: ViewModels (state production for normal *and* edge cases — errors, empty data, corrupt input), repositories and data-layer logic, use cases, and non-trivial utility code
 - **MUST NOT** unit-test framework entry points (activities, services) or framework/library behavior itself; logic that would require it is moved out of the entry point instead
 - **MUST** cover each screen's critical user interactions with a UI test against the stateless content composable, and the most common navigation paths with a small number of journey tests
-- **SHOULD** record the project's concrete test strategy (which layers exist, what gates a merge) in a short document or the project's CLAUDE.md, per Google's strategy guidance
+- **SHOULD** record the project's concrete test strategy (which layers exist, what gates a merge) in a short document — `project/test-strategy.md` — or the project's CLAUDE.md, per Google's strategy guidance
 - **SHOULD** keep architecture testable by construction: no business logic in framework entry points, no `Context` in ViewModels, all dependencies injected behind interfaces — the architecture rules in `spec/android/project-structure/` §E are the enabler and are not restated here
 
 ### B. Local unit tests (JVM)

@@ -199,9 +199,7 @@ a named trigger and is otherwise recorded as deferred. Gate: confirm each decisi
 ### 3. Record the strategy
 
 Write `project/test-strategy.md` from `references/test-strategy-template.md`. The location is
-a repository convention — `test-automation` §A only asks for "a short document or the
-project's CLAUDE.md" and names no path — so every run that writes it reports the path as a
-spec gap with a proposed extension (REQ-6). When a file exists, append to its change log and
+fixed by `spec/android/test-automation/` §A. When a file exists, append to its change log and
 update the affected sections — never rewrite the history (REQ-8). Gate: confirm the write.
 `plan` ends here.
 

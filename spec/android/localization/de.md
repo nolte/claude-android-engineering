@@ -80,7 +80,7 @@ Leser: Autoren der Android-Skills dieses Repos sowie Reviewer, die beurteilen, o
 
 Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§F, keine 1:1-Abbildung; jeder Anforderungspunkt oben ist für sich normativ.
 
-- [ ] `lint` besteht mit `HardcodedText`, `MissingTranslation`, `ExtraTranslation` und `ImpliedQuantity` auf Fehler-Stufe; kein nutzersichtbarer String ist im Code inlined
+- [ ] `lint` besteht mit `HardcodedText`, `MissingTranslation`, `ExtraTranslation` und `ImpliedQuantity` auf Fehler-Stufe; kein nutzersichtbarer String ist im Code inlined; ein persistierter Lokalisierungs-Audit landet unter `.audits/android-localization/<YYYY-MM-DD>.md`
 - [ ] Jeder parametrisierte String nutzt positionale Platzhalter; keine Laufzeit-Konkatenation baut einen Satz
 - [ ] Mengen rendern über `<plurals>` mit `other`-Fall und der Zahl im Text
 - [ ] Der Build deklariert `localeFilters` passend zum unterstützten Set, und der System-Sprachwähler listet die App mit genau diesen Sprachen

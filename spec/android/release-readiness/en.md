@@ -88,7 +88,7 @@ Readers: authors of this repository's Android skills who must decide whether a c
 
 ### F. Recording
 
-- **MUST** record, with the change, any interim deviation this spec allows (a blanket keep rule, a lagging `targetSdk`, a skipped gate element) together with the reason and the condition for removing it
+- **MUST** record, with the change, any interim deviation this spec allows (a blanket keep rule, a lagging `targetSdk`, a skipped gate element) together with the reason and the condition for removing it; toolchain and dependency upgrades are recorded in `project/toolchain-log.md`, beside the repository's other decision records
 - **MUST** report an unspecified case rather than deciding silently (repository REQ-6)
 
 ## Acceptance Criteria
