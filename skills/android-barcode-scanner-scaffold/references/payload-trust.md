@@ -17,6 +17,7 @@ network input.
 - [4. Rejection behaviour](#4-rejection-behaviour)
 - [5. Generating a readable code](#5-generating-a-readable-code)
 - [6. Test fixtures](#6-test-fixtures)
+- [7. Logging a payload](#7-logging-a-payload)
 
 ## 1. The boundary
 
@@ -147,3 +148,15 @@ The emulator's virtual scene accepts an imported image, and the documentation na
 an intended use — that covers the mechanical layer. It does **not** evidence focus, low light,
 distance, motion blur, or torch behaviour; those claims require a physical device and must be
 recorded with the device and the capture resolution they were made at.
+
+## 7. Logging a payload
+
+A decoded payload is user-supplied content, so `spec/android/logging/` §C forbids logging it —
+not the raw value and not a truncated prefix. A scanned code can carry a credential, a personal
+identifier, or a `WIFI:` password in plaintext, and a prefix is enough to leak the format plus the
+first characters of a secret.
+
+Log the *outcome* instead, which is what a diagnosis actually needs: the detected format, a length
+bucket rather than the length itself, whether the payload was accepted or rejected, and which rule
+rejected it. That keeps the rejection paths of this file debuggable without putting the content on
+a shared resource other apps may read.

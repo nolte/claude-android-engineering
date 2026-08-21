@@ -35,7 +35,8 @@ resumable: true
 Builds a scanning surface into an app that already exists. The authoritative rules live in
 `spec/android/barcode-scanning/`; this skill operationalizes them and never restates or
 contradicts them. On any conflict the spec wins — report the gap and propose a spec change
-rather than deciding silently (REQ-6).
+rather than deciding silently (REQ-6). A decoded payload is never logged (`spec/android/logging/` §C;
+`references/payload-trust.md`).
 
 Two properties make this capability different from ordinary screen authoring, and both are
 gates in the procedure below:

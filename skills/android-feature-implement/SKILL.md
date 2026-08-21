@@ -47,8 +47,8 @@ Grounding specs, in binding order: `spec/android/app-architecture/`,
 `spec/android/backend-contract/`, `spec/android/release-readiness/`,
 `spec/android/user-input-validation/`, `spec/android/notifications-alerting/` (the channel is
 decided by `android-notification-derive`; its §E delivery path is implemented here), plus
-`spec/android/project-structure/`, `spec/android/test-automation/`, `spec/android/security/`
-— eight specs, distilled in `references/flat-layer-checklist.md`.
+`spec/android/project-structure/`, `spec/android/test-automation/`, `spec/android/security/`,
+and `spec/android/logging/` — nine specs, distilled in `references/flat-layer-checklist.md`.
 
 ## Why this is a skill, not an agent
 

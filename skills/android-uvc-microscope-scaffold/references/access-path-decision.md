@@ -38,7 +38,9 @@ Camera2's `LENS_FACING_EXTERNAL` exists, but its coverage for USB cameras is OEM
 (spec §A). Recent Pixel generations document native UVC support; the answer for the target
 device is measured, not assumed — in either direction. Run this probe **on the target device**
 with the microscope attached and the system USB grant given (a debug activity or an instrumented
-test is enough; it is not shipped):
+test is enough; it is not shipped). Because it is never committed, it calls `android.util.Log`
+directly under the throwaway-diagnostic exception in `spec/android/logging/` §A; anything the
+facade-bound code writes goes through the facade instead:
 
 ```kotlin
 val manager = context.getSystemService(CameraManager::class.java)

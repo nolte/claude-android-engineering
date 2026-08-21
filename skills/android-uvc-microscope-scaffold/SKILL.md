@@ -37,7 +37,8 @@ resumable: true
 Integrates an external USB Video Class camera into an app that already exists. The authoritative
 rules live in `spec/android/uvc-microscope/`; this skill operationalizes them and never restates or
 contradicts them. On any conflict the spec wins — report the gap and propose a spec change rather
-than deciding silently (REQ-6, REQ-27).
+than deciding silently (REQ-6, REQ-27). Logging follows `spec/android/logging/` §A/§C/§D — §C matters most here: a frame, a buffer, or a
+raw descriptor payload is never logged (`references/device-dev-loop.md`).
 
 Three properties make this capability unlike ordinary camera work, and each is a gate below:
 the platform camera framework may or may not see the device (measured per target device, §A);

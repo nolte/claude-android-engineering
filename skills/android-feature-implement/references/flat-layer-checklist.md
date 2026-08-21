@@ -2,8 +2,8 @@
 
 The implementation-time rule set for a feature in a flat, server-authoritative Android client.
 Distilled from `spec/android/app-architecture/`, `spec/android/backend-contract/`,
-`spec/android/release-readiness/`, `spec/android/user-input-validation/`, and
-`spec/android/notifications-alerting/`, with the §B test mechanics of
+`spec/android/release-readiness/`, `spec/android/user-input-validation/`,
+`spec/android/notifications-alerting/`, and `spec/android/logging/`, with the §B test mechanics of
 `spec/android/test-automation/` and the §D platform rules of `spec/android/security/`; the
 specs remain authoritative on every point.
 
@@ -19,6 +19,7 @@ specs remain authoritative on every point.
 8. [Done gate](#8-done-gate)
 9. [Input and alerting decisions](#9-input-and-alerting-decisions)
 10. [Delivery path](#10-delivery-path)
+11. [Logging](#11-logging)
 
 ## 1. The placement test — who decides
 
@@ -297,3 +298,40 @@ ledger row.
       deviceidle force-idle`) — the SHOULD of §E, reported when skipped
 - [ ] Notification text is composed on the device from an event key plus parameters; a
       server-rendered string, where unavoidable, is recorded on the row with its language
+
+## 11. Logging
+
+Per `spec/android/logging/`, five rules bind a feature implementation:
+
+- **§A** — call the project's logging facade, never `android.util.Log`. Domain and data code
+  depends on the facade's platform-free interface; only its implementation module knows Android.
+- **§B** — the level is a contract: `ERROR` only where someone must act, never for an exception the
+  code goes on to handle; no log-and-rethrow; a handled failure logs at `WARN` at most and says what
+  recovery happened; no `Log.wtf()` in shipped code — a real invariant violation is a non-fatal to
+  the crash reporter.
+- **§D** — the message is lazy wherever it is not a compile-time constant, because the argument of
+  a suppressed call is still built. This is the rule with the most call sites in a feature: **never**
+  log unconditionally in a per-frame or per-item hot path — `onBindViewHolder`, a scroll callback,
+  a composition — at any level.
+- **§C** — no personal data, credential, or token reaches a log line. The trap to close while
+  writing model types is the Kotlin `data class` auto-`toString()`: a sensitive field is rendered
+  in full whenever the instance is interpolated, logged, or lands in an exception message. Either
+  the field is a masking wrapper type, or the class overrides `toString()`.
+- **§E** — cancellation is normal control flow, never an error. Write the `Flow.onCompletion`
+  predicate as `cause != null && cause !is CancellationException`, rethrow a `CancellationException`
+  caught by a broad `catch`, and carry correlation on a `CoroutineContext.Element` rather than on
+  `CoroutineName`. That element is not removed — what disappears is kotlinx.coroutines' debug
+  mode, which its shipped R8 rule turns off permanently in optimized builds, and with it the
+  `@name#id` thread-name suffix a debug log line shows. Correlation riding on that suffix is
+  simply absent in release.
+
+Checked before the feature is done:
+
+- [ ] No `android.util.Log`, `System.out`, `println`, or `printStackTrace` was added outside the
+      logging module
+- [ ] Every model type the change adds that carries a credential, personal, or special-category
+      field either wraps it in a masking type or overrides `toString()`
+- [ ] Every `Flow.onCompletion` the change adds excludes `CancellationException` from its error
+      path, and every broad `catch` around a logging site rethrows it
+- [ ] No log call the change adds sits unconditionally in a per-frame or per-item hot path, and
+      every non-constant message is lazy
