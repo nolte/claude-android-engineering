@@ -301,10 +301,18 @@ ledger row.
 
 ## 11. Logging
 
-Per `spec/android/logging/`, three rules bind a feature implementation:
+Per `spec/android/logging/`, five rules bind a feature implementation:
 
 - **§A** — call the project's logging facade, never `android.util.Log`. Domain and data code
   depends on the facade's platform-free interface; only its implementation module knows Android.
+- **§B** — the level is a contract: `ERROR` only where someone must act, never for an exception the
+  code goes on to handle; no log-and-rethrow; a handled failure logs at `WARN` at most and says what
+  recovery happened; no `Log.wtf()` in shipped code — a real invariant violation is a non-fatal to
+  the crash reporter.
+- **§D** — the message is lazy wherever it is not a compile-time constant, because the argument of
+  a suppressed call is still built. This is the rule with the most call sites in a feature: **never**
+  log unconditionally in a per-frame or per-item hot path — `onBindViewHolder`, a scroll callback,
+  a composition — at any level.
 - **§C** — no personal data, credential, or token reaches a log line. The trap to close while
   writing model types is the Kotlin `data class` auto-`toString()`: a sensitive field is rendered
   in full whenever the instance is interpolated, logged, or lands in an exception message. Either
@@ -325,3 +333,5 @@ Checked before the feature is done:
       field either wraps it in a masking type or overrides `toString()`
 - [ ] Every `Flow.onCompletion` the change adds excludes `CancellationException` from its error
       path, and every broad `catch` around a logging site rethrows it
+- [ ] No log call the change adds sits unconditionally in a per-frame or per-item hot path, and
+      every non-constant message is lazy

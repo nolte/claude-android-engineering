@@ -22,7 +22,7 @@ Run in order from the generated project root:
 7. Font scale — `HomeScreen.kt` carries `@PreviewFontScale`; when a device is attached, additionally set `settings put system font_scale 2.0` and check the screen at 200 % (L10N §E). Otherwise report as skipped.
 8. Logging — three checks, because `spec/android/logging/` §G explicitly rejects verifying the rule's presence instead of its effect:
    - **§A** — `grep -rnE 'android\.util\.Log|System\.out|\bprintln\(|printStackTrace' app/src` returns hits only under `core/logging/`. Search `app/src`, not `app/src/main`: the scaffold also writes `src/debug/` and `src/release/` sources, and the hard rule bans `System.out`, `println`, and `printStackTrace` alongside the platform logger.
-   - **§G/§H** — verify against the built artifact, not the keep file (§G sets the obligation, §H names the command): `apkanalyzer dex packages app/build/outputs/apk/release/*.apk` must not list the referenced-method lines `android.util.Log int v(` or `int d(`. Note the return type is `int`, and that `--defined-only` would filter the framework class out entirely and pass regardless.
+   - **§G/§H** — verify against the built artifact *and* read the keep file (§G sets the obligation, §H names the command). Both are needed here: because §A confines the platform logger to the facade and the facade guards its low levels with `BuildConfig.DEBUG`, the dex check below passes even if the keep rule were missing — so confirm the rule is present in `src/release/keepRules/*.keep` as well: `apkanalyzer dex packages app/build/outputs/apk/release/*.apk` must not list the referenced-method lines `android.util.Log int v(` or `int d(`. Note the return type is `int`, and that `--defined-only` would filter the framework class out entirely and pass regardless.
    - **§H** — `lint.xml` names `LogConditional` (it ships disabled), and the run exercises the app's major features while watching `adb logcat`, confirming no personal data appears — the conformance test the Play criterion itself prescribes.
 9. Security lint — `lint.xml` sets `HardcodedDebugMode` fatal and `TrustAllX509TrustManager`/`ExportedContentProvider`/`MissingPermission` to error; confirm the report is clean (SEC §F AC, RR §E).
 10. Release artifact — `app/build/outputs/apk/release/` exists from step 1 with `mapping.txt` under `app/build/outputs/mapping/release/` (RR §A); `unzip -l` shows no debug-only classes when in doubt.
@@ -41,7 +41,7 @@ Per REQ-7, never leave a red build unreported and never silently patch it:
 
 ## 3. Skipped checks
 
-Any step that cannot run in the current environment (no Gradle distribution, no Task binary, no device or emulator for steps 6–8, no `apkanalyzer` on the `PATH` for step 8) is named in the final report **with its reason** — an unrunnable check is never treated as green (RR §E). The report lists: step, reason, and what the operator runs to close it.
+Any step that cannot run in the current environment (no Gradle distribution, no Task binary, no device or emulator for steps 6–7 and for step 8's device-log walkthrough, no `apkanalyzer` on the `PATH` for step 8's dex check) — step 8 is reported per sub-check, never wholesale: its §A grep is pure filesystem and its dex gate runs against the artifact from step 1, so both stay runnable with no device attached is named in the final report **with its reason** — an unrunnable check is never treated as green (RR §E). The report lists: step, reason, and what the operator runs to close it.
 
 ## 4. Spec acceptance-criteria crosswalk
 
@@ -78,4 +78,4 @@ Confirm each before reporting success. PS = project-structure, L10N = localizati
 | `compileSdk`/`targetSdk` latest stable, `minSdk` rationale recorded; 16 KB page-size note for native deps | RR §D |
 | JVM unit tests use JUnit 4, `runTest` + `MainDispatcherRule`; fakes over mocks; no `Thread.sleep`; `kotlin.test` used consistently | TEST |
 | No device-matrix/retry/benchmark CI scaffolded into a fresh solo project | TEST |
-| Logging facade is the only caller of `android.util.Log`; release dex carries no `int v(`/`int d(` reference; `LogConditional` enabled | LOG §A/§G/§H |
+| Logging facade is the only caller of `android.util.Log`; stripping rule present in the release keep file and no `int v(`/`int d(` in the release dex; `LogConditional` enabled; a mechanical §A gate is configured and was seen to fire — or its absence is recorded as an unmet MUST | LOG §A/§G/§H |

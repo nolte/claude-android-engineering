@@ -101,7 +101,7 @@ app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 
 - `applicationId`, `minSdk`, `targetSdk`, `versionCode`, `versionName` live here, not in the manifest (PS §D); `compileSdk` = latest stable, `targetSdk` = latest verified (RR §D).
 - `kotlin { jvmToolchain(17); compilerOptions { … } }` — the AGP 9 form; no `kotlinOptions {}`, no `android.kotlinOptions`. `compileOptions` source/target compatibility follow the toolchain.
-- `buildFeatures { compose = true }`; add both the Compose BOM and its test-configuration BOM (`platform(libs.androidx.compose.bom)` on `implementation` and `androidTestImplementation`).
+- `buildFeatures { compose = true; buildConfig = true }` — `buildConfig` is **not** on by default since AGP 8.0, and the generated `AndroidLogger` guards its platform calls with `BuildConfig.DEBUG` (`spec/android/logging/` §D); without it the scaffold fails to compile on `Unresolved reference: BuildConfig`; add both the Compose BOM and its test-configuration BOM (`platform(libs.androidx.compose.bom)` on `implementation` and `androidTestImplementation`).
 - `androidResources { localeFilters += listOf("en", "de"); generateLocaleConfig = true }` (L10N §B/§C) with `res/resources.properties` `unqualifiedResLocale=en`.
 - `buildTypes`:
   - `release { isDebuggable = false; optimization { enable = true } }` on AGP ≥ 9.3 — enables code shrinking, optimization, obfuscation, and optimized resource shrinking; keep rules in `src/release/keepRules/app.keep`. On AGP < 9.3: `isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")` (RR §A [R1]). Never both forms.
@@ -135,10 +135,12 @@ calls, which §A confines to the facade module, so it guards that module and not
 about.
 
 **The §A gate needs a decision, not a default.** Logging §H makes mechanical enforcement of §A a
-MUST, and the rule has to be expressed against the facade's own API — but the tool that carries it,
-detekt, is a **MAY** in project-structure §G whose adoption that spec leaves as an open question.
-The scaffold does not resolve that silently (REQ-6). Raise it at the file-plan approval gate with
-the rule ready to write:
+MUST and names two carriers: a detekt `ForbiddenMethodCall`/`ForbiddenImport` rule, **or** a
+project-local custom lint check. Only the first collides with project-structure §G, where detekt is
+a **MAY** whose adoption that spec leaves open — the custom lint check carries no such conflict and
+satisfies the MUST on its own. Raise the choice at the file-plan approval gate rather than
+resolving it silently (REQ-6), and record §H's gate as unmet only if the operator declines *both*
+carriers, never merely because detekt was declined. The detekt form, when chosen:
 
 ```yaml
 # config/detekt/detekt.yml — the §A gate, if detekt is adopted
@@ -152,12 +154,32 @@ style:
       - value: 'android.util.Log.i'
       - value: 'android.util.Log.w'
       - value: 'android.util.Log.e'
+      - value: 'android.util.Log.wtf'
+      - value: 'android.util.Log.println'
+      - value: 'java.io.PrintStream.println'
+      - value: 'java.io.PrintStream.print'
       - value: 'java.lang.Throwable.printStackTrace'
       - value: 'kotlin.io.println'
+      - value: 'kotlin.io.print'
 ```
 
-with `core/logging/**` (and any debug-only source set §A's throwaway exception covers) excluded.
-If the operator declines detekt, the scaffold records in `docs/decisions.md` that §H's mechanical
+Two things about this rule decide whether it works at all:
+
+- **`java.io.PrintStream.*` is what catches `System.out`.** `kotlin.io.println` matches only the
+  Kotlin top-level function; `System.out.println(...)` and `System.err.print(...)` resolve to
+  `PrintStream` and would otherwise pass a gate that claims to ban them (§H's ban names
+  `System.out` explicitly).
+- **`ForbiddenMethodCall` needs type resolution.** The plain `detekt` Gradle task runs without it
+  and reports nothing — the rule is silently inert. Wire the gate to the type-resolving tasks
+  (`detektMain`, or a task configured with the compile classpath), and verify once that a
+  deliberate `println("x")` outside the facade actually fails the build. A gate that cannot fire
+  is the "mechanism present but left unconfigured" failure §H itself cites.
+
+with `core/logging/**` excluded — and nothing else. A `src/debug/` source set is *committed*, so
+excluding it would be wider than §A's exception, which covers only code that is never committed;
+§H names that widening as reintroducing the gap the rule closes.
+If the operator declines detekt, offer the custom lint check before recording anything as unmet.
+Only when both are declined does the scaffold record in `docs/decisions.md` that §H's mechanical
 gate is unmet, with the reason and the condition for revisiting — an unmet MUST that is written
 down, never one that is passed over.
 
