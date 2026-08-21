@@ -17,7 +17,7 @@ network input.
 - [4. Rejection behaviour](#4-rejection-behaviour)
 - [5. Generating a readable code](#5-generating-a-readable-code)
 - [6. Test fixtures](#6-test-fixtures)
-- [Logging a payload](#logging-a-payload)
+- [7. Logging a payload](#7-logging-a-payload)
 
 ## 1. The boundary
 
@@ -149,7 +149,7 @@ an intended use — that covers the mechanical layer. It does **not** evidence f
 distance, motion blur, or torch behaviour; those claims require a physical device and must be
 recorded with the device and the capture resolution they were made at.
 
-## Logging a payload
+## 7. Logging a payload
 
 A decoded payload is user-supplied content, so `spec/android/logging/` §C forbids logging it —
 not the raw value and not a truncated prefix. A scanned code can carry a credential, a personal

@@ -198,6 +198,8 @@ suspend fun capture(zoom: Float): CaptureResult = captureMutex.withLock {   // s
     YuvImage(frame.nv21, ImageFormat.NV21, frame.width, frame.height, null)
         .compressToJpeg(crop, JPEG_QUALITY, out)
     val bytes = out.toByteArray()
+    // `log` stands for the host app's facade — resolve its shape before emitting
+    // (`device-dev-loop.md` §6); a Timber facade has no lambda overload and takes the eager form.
     log.i { "capture ${crop.width()}x${crop.height()} ${bytes.size} bytes (frame ${frame.width}x${frame.height})" }
     CaptureResult.Success(bytes, crop.width(), crop.height())
 }

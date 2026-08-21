@@ -21,8 +21,8 @@ Run in order from the generated project root:
 6. Pseudolocale pass (L10N §E MUST) — `isPseudoLocalesEnabled = true` is set in debug; when a device or emulator is attached, install the debug build, switch to `en-XA` and `ar-XB` (`adb shell settings put system system_locales en-XA` or the picker) and check the home screen for clipping/concatenation/RTL mirroring. Without a device, report the pass as skipped-and-due before the first translation round (§3).
 7. Font scale — `HomeScreen.kt` carries `@PreviewFontScale`; when a device is attached, additionally set `settings put system font_scale 2.0` and check the screen at 200 % (L10N §E). Otherwise report as skipped.
 8. Logging — three checks, because `spec/android/logging/` §G explicitly rejects verifying the rule's presence instead of its effect:
-   - **§A** — `grep -rn 'android\.util\.Log' app/src/main` returns hits only under `core/logging/`.
-   - **§G** — verify against the built artifact, not the keep file: `apkanalyzer dex packages app/build/outputs/apk/release/*.apk` must not list the referenced-method lines `android.util.Log int v(` or `int d(`. Note the return type is `int`, and that `--defined-only` would filter the framework class out entirely and pass regardless.
+   - **§A** — `grep -rnE 'android\.util\.Log|System\.out|\bprintln\(|printStackTrace' app/src` returns hits only under `core/logging/`. Search `app/src`, not `app/src/main`: the scaffold also writes `src/debug/` and `src/release/` sources, and the hard rule bans `System.out`, `println`, and `printStackTrace` alongside the platform logger.
+   - **§G/§H** — verify against the built artifact, not the keep file (§G sets the obligation, §H names the command): `apkanalyzer dex packages app/build/outputs/apk/release/*.apk` must not list the referenced-method lines `android.util.Log int v(` or `int d(`. Note the return type is `int`, and that `--defined-only` would filter the framework class out entirely and pass regardless.
    - **§H** — `lint.xml` names `LogConditional` (it ships disabled), and the run exercises the app's major features while watching `adb logcat`, confirming no personal data appears — the conformance test the Play criterion itself prescribes.
 9. Security lint — `lint.xml` sets `HardcodedDebugMode` fatal and `TrustAllX509TrustManager`/`ExportedContentProvider`/`MissingPermission` to error; confirm the report is clean (SEC §F AC, RR §E).
 10. Release artifact — `app/build/outputs/apk/release/` exists from step 1 with `mapping.txt` under `app/build/outputs/mapping/release/` (RR §A); `unzip -l` shows no debug-only classes when in doubt.
@@ -41,7 +41,7 @@ Per REQ-7, never leave a red build unreported and never silently patch it:
 
 ## 3. Skipped checks
 
-Any step that cannot run in the current environment (no Gradle distribution, no Task binary, no device or emulator for steps 6–7) is named in the final report **with its reason** — an unrunnable check is never treated as green (RR §E). The report lists: step, reason, and what the operator runs to close it.
+Any step that cannot run in the current environment (no Gradle distribution, no Task binary, no device or emulator for steps 6–8, no `apkanalyzer` on the `PATH` for step 8) is named in the final report **with its reason** — an unrunnable check is never treated as green (RR §E). The report lists: step, reason, and what the operator runs to close it.
 
 ## 4. Spec acceptance-criteria crosswalk
 

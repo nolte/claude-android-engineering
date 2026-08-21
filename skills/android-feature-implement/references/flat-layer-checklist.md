@@ -2,7 +2,7 @@
 
 The implementation-time rule set for a feature in a flat, server-authoritative Android client.
 Distilled from `spec/android/app-architecture/`, `spec/android/backend-contract/`,
-`spec/android/release-readiness/`, `spec/android/user-input-validation/`, and
+`spec/android/release-readiness/`, `spec/android/user-input-validation/`,
 `spec/android/notifications-alerting/`, and `spec/android/logging/`, with the §B test mechanics of
 `spec/android/test-automation/` and the §D platform rules of `spec/android/security/`; the
 specs remain authoritative on every point.
@@ -312,4 +312,16 @@ Per `spec/android/logging/`, three rules bind a feature implementation:
 - **§E** — cancellation is normal control flow, never an error. Write the `Flow.onCompletion`
   predicate as `cause != null && cause !is CancellationException`, rethrow a `CancellationException`
   caught by a broad `catch`, and carry correlation on a `CoroutineContext.Element` rather than on
-  `CoroutineName`, which R8 strips from release builds.
+  `CoroutineName`. That element is not removed — what disappears is kotlinx.coroutines' debug
+  mode, which its shipped R8 rule turns off permanently in optimized builds, and with it the
+  `@name#id` thread-name suffix a debug log line shows. Correlation riding on that suffix is
+  simply absent in release.
+
+Checked before the feature is done:
+
+- [ ] No `android.util.Log`, `System.out`, `println`, or `printStackTrace` was added outside the
+      logging module
+- [ ] Every model type the change adds that carries a credential, personal, or special-category
+      field either wraps it in a masking type or overrides `toString()`
+- [ ] Every `Flow.onCompletion` the change adds excludes `CancellationException` from its error
+      path, and every broad `catch` around a logging site rethrows it

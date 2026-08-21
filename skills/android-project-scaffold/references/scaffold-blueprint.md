@@ -132,9 +132,34 @@ Root `lint.xml` (PS §G SHOULD "centralize"; the *severities* are MUSTs from L10
 `LogConditional` is listed because it ships **disabled by default** — naming it here is what turns it
 on (`spec/android/logging/` §H). Know its reach before relying on it: it matches `android.util.Log`
 calls, which §A confines to the facade module, so it guards that module and not the call sites §D is
-about. The rule that covers those is expressed against the facade's own API — a Detekt
-`ForbiddenMethodCall` on its eager overloads, or a project-local lint check — and is recorded beside
-the facade decision in `docs/decisions.md`.
+about.
+
+**The §A gate needs a decision, not a default.** Logging §H makes mechanical enforcement of §A a
+MUST, and the rule has to be expressed against the facade's own API — but the tool that carries it,
+detekt, is a **MAY** in project-structure §G whose adoption that spec leaves as an open question.
+The scaffold does not resolve that silently (REQ-6). Raise it at the file-plan approval gate with
+the rule ready to write:
+
+```yaml
+# config/detekt/detekt.yml — the §A gate, if detekt is adopted
+style:
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - reason: 'logging §A — call the facade, not the platform'
+        value: 'android.util.Log.v'
+      - value: 'android.util.Log.d'
+      - value: 'android.util.Log.i'
+      - value: 'android.util.Log.w'
+      - value: 'android.util.Log.e'
+      - value: 'java.lang.Throwable.printStackTrace'
+      - value: 'kotlin.io.println'
+```
+
+with `core/logging/**` (and any debug-only source set §A's throwaway exception covers) excluded.
+If the operator declines detekt, the scaffold records in `docs/decisions.md` that §H's mechanical
+gate is unmet, with the reason and the condition for revisiting — an unmet MUST that is written
+down, never one that is passed over.
 
 No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). Once `build-logic/` exists (§14) the same configuration moves into a convention plugin.
 
