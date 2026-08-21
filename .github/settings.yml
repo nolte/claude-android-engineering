@@ -15,16 +15,32 @@ repository:
 # `GET /branches/develop/protection` answered 404 while every other field from
 # the same commons file (merge strategy, delete-on-merge, labels) did apply.
 # Overriding the block with `restrictions: null` drops the field that cannot be
-# honoured here. The commons also require consumers to name their own required
-# check contexts, which is `check` — the job key in .github/workflows/ci.yml.
-# `automerge` is deliberately absent: making it required would deadlock, since
-# it only runs once the required checks are already green.
+# honoured here.
+#
+# The commons also require consumers to name their own required check contexts.
+# Ours is `check` — the job key in .github/workflows/ci.yml. That job key is a
+# protection contract: renaming or splitting it stops the context from ever being
+# reported, and every PR then waits forever on a status that no longer exists.
+# With `enforce_admins: true` and the ruleset's pull-request rule carrying no
+# bypass actors, there is no in-repo way back from that state — it would take an
+# API or UI edit. A note in ci.yml points back here.
+#
+# `automerge` is not a required context, for two reasons: its reported name is
+# `automerge / automerge` (it is a reusable-workflow call), and requiring the job
+# that performs the merge would deadlock the merge on itself.
+#
+# `strict: false` is deliberate. Requiring the branch to be up to date would make
+# a green, automerge-labelled PR unmergeable the moment a sibling PR lands — and
+# .github/workflows/automerge.yaml has no `push` trigger, so no event would ever
+# re-evaluate it. The PR would sit there silently. Adding `push: branches:
+# [develop]` to that workflow would allow `strict: true` later; until then the
+# gate this file cares about is that CI is green, not that the branch is current.
 branches:
   - name: develop
     protection:
       required_pull_request_reviews: null
       required_status_checks:
-        strict: true
+        strict: false
         contexts:
           - check
       enforce_admins: true

@@ -13,6 +13,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The job key `check` is a branch-protection contract: it is the required status
+  # context for `develop` in .github/settings.yml. Renaming or splitting this job
+  # stops that context from being reported, and every pull request then waits on a
+  # status that never arrives. Change both files together, or not at all.
   check:
     runs-on: ubuntu-latest
     steps:
