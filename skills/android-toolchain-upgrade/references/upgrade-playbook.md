@@ -53,6 +53,15 @@ implausible, then re-run with the cache), a checkpoint, and — for the plan —
 5. Re-run the build with `--warning-mode all` once and clear the AGP 9 deprecation output
    relevant to the migration (variant API removals `applicationVariants`/`libraryVariants`,
    `getDefaultProguardFile("proguard-android.txt")` → `proguard-android-optimize.txt`).
+6. Crossing **AGP 9.3** relocates the shrinker configuration, and rules left behind are read by
+   nothing — the build stays green while the rules silently stop applying. Move keep rules from
+   `proguardFiles(...)` to `src/<variant>/keepRules/*.keep` and switch activation from
+   `isMinifyEnabled`/`isShrinkResources` to `optimization { enable = true }` (`release-readiness`
+   §A). Carry every rule over, not just the ones you recognise. The log-stripping rule is the one
+   whose loss is invisible in a green build: `-maximumremovedandroidloglevel 3` (or the project's
+   `-assumenosideeffects` fallback) must arrive in the new location, and `spec/android/logging/`
+   §H's dex check — `apkanalyzer dex packages <apk>` showing no `android.util.Log int v(` or
+   `int d(` — is what proves it did.
 
 ## 2. The `targetSdk` behaviour-change walk
 

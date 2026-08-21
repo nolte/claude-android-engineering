@@ -17,6 +17,7 @@ network input.
 - [4. Rejection behaviour](#4-rejection-behaviour)
 - [5. Generating a readable code](#5-generating-a-readable-code)
 - [6. Test fixtures](#6-test-fixtures)
+- [Logging a payload](#logging-a-payload)
 
 ## 1. The boundary
 

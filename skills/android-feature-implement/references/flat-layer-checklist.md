@@ -3,7 +3,7 @@
 The implementation-time rule set for a feature in a flat, server-authoritative Android client.
 Distilled from `spec/android/app-architecture/`, `spec/android/backend-contract/`,
 `spec/android/release-readiness/`, `spec/android/user-input-validation/`, and
-`spec/android/notifications-alerting/`, with the §B test mechanics of
+`spec/android/notifications-alerting/`, and `spec/android/logging/`, with the §B test mechanics of
 `spec/android/test-automation/` and the §D platform rules of `spec/android/security/`; the
 specs remain authoritative on every point.
 
@@ -19,6 +19,7 @@ specs remain authoritative on every point.
 8. [Done gate](#8-done-gate)
 9. [Input and alerting decisions](#9-input-and-alerting-decisions)
 10. [Delivery path](#10-delivery-path)
+11. [Logging](#11-logging)
 
 ## 1. The placement test — who decides
 
@@ -298,7 +299,7 @@ ledger row.
 - [ ] Notification text is composed on the device from an event key plus parameters; a
       server-rendered string, where unavoidable, is recorded on the row with its language
 
-## Logging
+## 11. Logging
 
 Per `spec/android/logging/`, three rules bind a feature implementation:
 

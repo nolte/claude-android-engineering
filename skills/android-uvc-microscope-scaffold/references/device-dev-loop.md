@@ -12,6 +12,7 @@ port.
 - [3. Diagnostics and evidence capture](#3-diagnostics-and-evidence-capture)
 - [4. The verified-devices row](#4-the-verified-devices-row)
 - [5. Smoke test and test lanes](#5-smoke-test-and-test-lanes)
+- [6. Logging in the code this skill writes](#6-logging-in-the-code-this-skill-writes)
 
 ## 1. Network ADB before the peripheral is attached
 
@@ -118,12 +119,22 @@ crop rounding and JPEG encoding are unit tests in the per-commit suite
 
 `spec/android/logging/` binds the generated code, not just the diagnosis:
 
-- **§A** — call the app's logging facade, never `android.util.Log`. The one exception is the
-  throwaway device probe in `references/access-path-decision.md`: it is never committed and never
-  shipped, which §A names explicitly.
+- **§A** — call the app's logging facade, never `android.util.Log`. This skill integrates into an
+  app that already exists, so the facade's shape is the host project's, not this file's: the
+  snippets write `log.d { … }` as a placeholder for *whatever that project already uses*. Resolve
+  it before emitting code — an injected logger reachable in the class, a static facade, or Timber
+  (`Timber.d("…")`, which has no lambda overload and takes the eager form). If the host app has no
+  facade at all, that is a §A gap in the host: report it and hand the decision back rather than
+  inventing one here. The one exception is the throwaway device probe in
+  `references/access-path-decision.md`: it is never committed and never shipped, which §A names
+  explicitly.
 - **§D** — every log call in a frame path or a UVC event callback is lazy, so the message is built
   only when the level is enabled. `setButtonCallback` and `setStatusCallback` fire per event and
   `Log.*` arguments are constructed even when the line is filtered out; an eager string here is
-  work done on every callback for output nobody reads.
+  work done on every callback for output nobody reads. Lazy is necessary but not sufficient: §D
+  notes that only an `inline` facade overload is genuinely allocation-free on the disabled path —
+  a lambda crossing a non-inline boundary still allocates a capturing closure before the level
+  check. Where the host facade's overload is not `inline`, say so in the report rather than
+  implying the callback is free.
 - **§C** — a frame, a buffer, or a raw descriptor payload is never logged. Log the shape instead:
   dimensions, byte count, format, and the decision taken.

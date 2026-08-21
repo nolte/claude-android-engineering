@@ -43,6 +43,8 @@ app/src/release/keepRules/app.keep                # AGP >= 9.3; app/proguard-rul
                                                   # carries -maximumremovedandroidloglevel 3 (logging §G)
 app/src/main/AndroidManifest.xml
 app/src/main/res/resources.properties             # unqualifiedResLocale=en (generateLocaleConfig)
+app/src/main/kotlin/<pkg>/core/logging/Logger.kt   # facade interface, no Android types (logging §A)
+app/src/main/kotlin/<pkg>/core/logging/AndroidLogger.kt  # the only file calling android.util.Log
 app/src/main/kotlin/<pkg>/App.kt
 app/src/main/kotlin/<pkg>/MainActivity.kt
 app/src/main/kotlin/<pkg>/ui/home/HomeRoute.kt
@@ -213,7 +215,7 @@ notes on top of the canonical file:
 
 Greenfield subset of `spec/android/release-readiness/`; the per-change gate (§E) is owned by `android-feature-implement`.
 
-- **Shrinker on release only** with optimization and resource shrinking (§5); keep rules specific and located per AGP generation — `src/release/keepRules/*.keep` on AGP ≥ 9.3, `proguard-rules.pro` before (RR §A). The scaffold ships an empty, commented keep file: no blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`.
+- **Shrinker on release only** with optimization and resource shrinking (§5); keep rules specific and located per AGP generation — `src/release/keepRules/*.keep` on AGP ≥ 9.3, `proguard-rules.pro` before (RR §A). The scaffold ships a keep file that carries exactly one rule — `-maximumremovedandroidloglevel 3`, which strips `DEBUG` and `VERBOSE` from the release build (`spec/android/logging/` §G) — and is otherwise commented: no blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`. On a pinned toolchain that does not recognise the option, fall back to `-assumenosideeffects` with each method named individually and record the deviation.
 - **`mapping.txt`** — note in `docs/decisions.md` that every release build leaving the machine retains `app/build/outputs/mapping/release/mapping.txt` (RR §A); release *publishing* stays out of scope.
 - **StrictMode in debug only** (RR §B): `src/debug/.../StrictModeSetup.kt` sets a `ThreadPolicy` with `detectDiskReads/Writes` + `detectNetwork` and a `VmPolicy` with `detectLeakedClosableObjects` + `detectActivityLeaks` (leak detection), both `penaltyLog()`; `src/release/.../StrictModeSetup.kt` is a no-op. A violation is **fixed, never suppressed** — record that wording in the generated file's comment.
 - **Currency** (RR §D): `compileSdk`/`targetSdk` at the latest stable, `minSdk` with rationale recorded; dependencies via the catalog and kept current (Renovate SHOULD, §2).
