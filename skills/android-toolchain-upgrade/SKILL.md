@@ -50,7 +50,9 @@ mechanics — built-in Kotlin, KGP/KSP floor, JDK 17 toolchain, wrapper, catalog
 dependency verification), `spec/android/release-readiness/` §D (platform and dependency currency
 including the dated Play deadlines and 16 KB page size), §E (the gate) and §F (recording),
 `spec/android/security/` §F (Renovate/Dependabot and osv-scanner), `spec/android/adb-workflows/`
-§A (platform-tools currency), and `spec/android/screen-formats/` §B/§D plus
+§A (platform-tools currency), `spec/android/logging/` §G (an AGP move across 9.3 relocates the
+log-stripping rule from `proguardFiles` to `src/<variant>/keepRules/*.keep` — carry the rule over
+rather than leaving it in a file the newer DSL no longer reads), and `spec/android/screen-formats/` §B/§D plus
 `spec/android/app-design-navigation/` §A for the adaptive and edge-to-edge obligations a
 `targetSdk` bump activates. On any conflict the spec wins — report the gap and propose a spec
 change rather than deciding silently (REQ-6).

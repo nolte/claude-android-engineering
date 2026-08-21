@@ -20,9 +20,10 @@ Run in order from the generated project root:
 5. Localization lint gate — `lint.xml` sets `HardcodedText`, `MissingTranslation`, `ExtraTranslation`, `ImpliedQuantity` to **error**; confirm the debug lint report (`app/build/reports/lint-results-debug.xml`) is clean of them (L10N AC).
 6. Pseudolocale pass (L10N §E MUST) — `isPseudoLocalesEnabled = true` is set in debug; when a device or emulator is attached, install the debug build, switch to `en-XA` and `ar-XB` (`adb shell settings put system system_locales en-XA` or the picker) and check the home screen for clipping/concatenation/RTL mirroring. Without a device, report the pass as skipped-and-due before the first translation round (§3).
 7. Font scale — `HomeScreen.kt` carries `@PreviewFontScale`; when a device is attached, additionally set `settings put system font_scale 2.0` and check the screen at 200 % (L10N §E). Otherwise report as skipped.
-8. Security lint — `lint.xml` sets `HardcodedDebugMode` fatal and `TrustAllX509TrustManager`/`ExportedContentProvider`/`MissingPermission` to error; confirm the report is clean (SEC §F AC, RR §E).
-9. Release artifact — `app/build/outputs/apk/release/` exists from step 1 with `mapping.txt` under `app/build/outputs/mapping/release/` (RR §A); `unzip -l` shows no debug-only classes when in doubt.
-10. Repository hygiene — `git ls-files` shows no `local.properties`, keystore, or `google-services.json`; `.github/workflows/ci.yml`, `Taskfile.yml`, `lint.xml`, `docs/decisions.md` are present.
+8. Logging — the generated facade is the only place calling `android.util.Log`; `grep -rn 'android.util.Log' app/src/main` returns hits only under the logging module. The release keep file carries `-maximumremovedandroidloglevel 3`, and `lint.xml` names `LogConditional` (`spec/android/logging/` §A/§G/§H).
+9. Security lint — `lint.xml` sets `HardcodedDebugMode` fatal and `TrustAllX509TrustManager`/`ExportedContentProvider`/`MissingPermission` to error; confirm the report is clean (SEC §F AC, RR §E).
+10. Release artifact — `app/build/outputs/apk/release/` exists from step 1 with `mapping.txt` under `app/build/outputs/mapping/release/` (RR §A); `unzip -l` shows no debug-only classes when in doubt.
+11. Repository hygiene — `git ls-files` shows no `local.properties`, keystore, or `google-services.json`; `.github/workflows/ci.yml`, `Taskfile.yml`, `lint.xml`, `docs/decisions.md` are present.
 
 The wrapper must exist for step 1: generate with `gradle wrapper --gradle-version <current-stable>` if `gradle/wrapper/gradle-wrapper.jar` is absent. If no Gradle distribution is reachable in the environment, report that `./gradlew build` could not be executed here and that the operator must run it — do not claim green without having run it.
 

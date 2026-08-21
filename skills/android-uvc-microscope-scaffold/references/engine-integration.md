@@ -198,7 +198,7 @@ suspend fun capture(zoom: Float): CaptureResult = captureMutex.withLock {   // s
     YuvImage(frame.nv21, ImageFormat.NV21, frame.width, frame.height, null)
         .compressToJpeg(crop, JPEG_QUALITY, out)
     val bytes = out.toByteArray()
-    Log.i(TAG, "capture ${crop.width()}x${crop.height()} ${bytes.size} bytes (frame ${frame.width}x${frame.height})")
+    log.i { "capture ${crop.width()}x${crop.height()} ${bytes.size} bytes (frame ${frame.width}x${frame.height})")
     CaptureResult.Success(bytes, crop.width(), crop.height())
 }
 ```
@@ -237,14 +237,14 @@ on `UVCCamera`, no reflection (spec §F):
 ```kotlin
 private fun attachEngineCallbacks(cam: UVCCamera) {
     cam.setButtonCallback { button, state ->
-        Log.d(TAG, "uvc button=$button state=$state")          // raw log for every event, mapped or not
+        log.d { "uvc button=$button state=$state" }             // lazy: the message is built only when enabled
         when (button to state) {
             MEASURED_SHUTTER_PRESS -> buttonEvents.tryEmit(ButtonEvent.ShutterPressed)   // 1 to 1 on 1b3f:2002
             else -> Unit                                          // unmapped: logged, never guessed
         }
     }
     cam.setStatusCallback { statusClass, event, selector, statusAttribute, data ->
-        Log.d(TAG, "uvc status class=$statusClass event=$event selector=$selector attr=$statusAttribute")
+        log.d { "uvc status class=$statusClass event=$event selector=$selector attr=$statusAttribute" }
     }
 }
 ```

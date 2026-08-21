@@ -40,6 +40,7 @@ gradlew
 gradlew.bat
 app/build.gradle.kts
 app/src/release/keepRules/app.keep                # AGP >= 9.3; app/proguard-rules.pro before that
+                                                  # carries -maximumremovedandroidloglevel 3 (logging §G)
 app/src/main/AndroidManifest.xml
 app/src/main/res/resources.properties             # unqualifiedResLocale=en (generateLocaleConfig)
 app/src/main/kotlin/<pkg>/App.kt
@@ -122,8 +123,16 @@ Root `lint.xml` (PS §G SHOULD "centralize"; the *severities* are MUSTs from L10
   <issue id="TrustAllX509TrustManager" severity="error" />
   <issue id="ExportedContentProvider" severity="error" />
   <issue id="MissingPermission" severity="error" />
+  <issue id="LogConditional" severity="warning" />
 </lint>
 ```
+
+`LogConditional` is listed because it ships **disabled by default** — naming it here is what turns it
+on (`spec/android/logging/` §H). Know its reach before relying on it: it matches `android.util.Log`
+calls, which §A confines to the facade module, so it guards that module and not the call sites §D is
+about. The rule that covers those is expressed against the facade's own API — a Detekt
+`ForbiddenMethodCall` on its eager overloads, or a project-local lint check — and is recorded beside
+the facade decision in `docs/decisions.md`.
 
 No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). Once `build-logic/` exists (§14) the same configuration moves into a convention plugin.
 

@@ -45,7 +45,9 @@ question: `app-design-navigation` (§A–§F, incl. deep links), `ui-components`
 `screen-formats` (incl. foldables and input tiers), `iconography`, `localization`,
 `long-list-scrolling`, `user-input-validation` (§A–§H, incl. submission), plus
 `perceived-performance` §A (TTFD, `ReportDrawnWhen`), `test-automation` §D/§E (Compose tests,
-ATF), and `project-structure` §D/§E (placement, route/content split).
+ATF), `project-structure` §D/§E (placement, route/content split), and `logging` §E — a composable
+body never logs, because it may re-run every frame, be skipped, discarded, or reordered; a log
+belongs in a callback, in a keyed `LaunchedEffect`, or below the UI layer.
 
 ## Why this is a skill, not an agent
 

@@ -297,3 +297,18 @@ ledger row.
       deviceidle force-idle`) — the SHOULD of §E, reported when skipped
 - [ ] Notification text is composed on the device from an event key plus parameters; a
       server-rendered string, where unavoidable, is recorded on the row with its language
+
+## Logging
+
+Per `spec/android/logging/`, three rules bind a feature implementation:
+
+- **§A** — call the project's logging facade, never `android.util.Log`. Domain and data code
+  depends on the facade's platform-free interface; only its implementation module knows Android.
+- **§C** — no personal data, credential, or token reaches a log line. The trap to close while
+  writing model types is the Kotlin `data class` auto-`toString()`: a sensitive field is rendered
+  in full whenever the instance is interpolated, logged, or lands in an exception message. Either
+  the field is a masking wrapper type, or the class overrides `toString()`.
+- **§E** — cancellation is normal control flow, never an error. Write the `Flow.onCompletion`
+  predicate as `cause != null && cause !is CancellationException`, rethrow a `CancellationException`
+  caught by a broad `catch`, and carry correlation on a `CoroutineContext.Element` rather than on
+  `CoroutineName`, which R8 strips from release builds.

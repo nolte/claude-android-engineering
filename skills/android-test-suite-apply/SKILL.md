@@ -58,7 +58,10 @@ Grounding specs, in the order they bind this skill: `spec/android/test-automatio
 accessibility lane), §F (instrumented boundary), §G/§H (CI wiring and the solo default);
 `spec/android/project-structure/` §F/§G (test placement, quality-tooling layout);
 `spec/android/screen-formats/` §D (the reference matrix the forced-size tests cover);
-`spec/android/release-readiness/` (what "done" means for the touched build).
+`spec/android/release-readiness/` (what "done" means for the touched build); and
+`spec/android/logging/` §H — where the log *is* the observable behaviour, assert against a fake
+sink (an injected fake, or a recording `Tree` where the facade is Timber), never by mocking the
+logging facade.
 
 ## Why this is a skill, not an agent
 

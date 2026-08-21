@@ -113,3 +113,17 @@ explicitly rather than letting a green run imply coverage (spec §I,
 crop rounding and JPEG encoding are unit tests in the per-commit suite
 (`engine-integration.md` §9). Then `./gradlew build` — red state reported, never left silent
 (REQ-1, REQ-7).
+
+## 6. Logging in the code this skill writes
+
+`spec/android/logging/` binds the generated code, not just the diagnosis:
+
+- **§A** — call the app's logging facade, never `android.util.Log`. The one exception is the
+  throwaway device probe in `references/access-path-decision.md`: it is never committed and never
+  shipped, which §A names explicitly.
+- **§D** — every log call in a frame path or a UVC event callback is lazy, so the message is built
+  only when the level is enabled. `setButtonCallback` and `setStatusCallback` fire per event and
+  `Log.*` arguments are constructed even when the line is filtered out; an eager string here is
+  work done on every callback for output nobody reads.
+- **§C** — a frame, a buffer, or a raw descriptor payload is never logged. Log the shape instead:
+  dimensions, byte count, format, and the decision taken.
