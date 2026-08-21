@@ -8,7 +8,7 @@ Die Skills dieses Repositories arbeiten CLI-first (REQ-3): Sie deployen Apps auf
 
 Der Inhalt ist aus einem Recherche-Durchlauf (August 2026) über drei Quellklassen destilliert: die offizielle ADB-/Platform-Tools-Dokumentation (developer.android.com und die AOSP-Quellen — hochaktuell mit Stand Platform-Tools 37.x: `adb server-status`, mDNS-Backend `libadbmdns`, Wireless-Debugging 2.0), die offizielle Logcat-/Debugging-/Bugreport-Dokumentation (inklusive des AOSP-`logcat --help`-Texts, der die maßgebliche Optionsreferenz ist, seit die Webseite die Optionen nicht mehr vollständig listet) sowie Community- und Produktionspraxis (Agent-Runbooks in realen Repos, die kanonische CI-Emulator-Action, Tool-Status von scrcpy/pidcat/adb-enhanced und Googles neue agentenorientierte `android`-CLI).
 
-Grenzen: Die Test-*Ausführungs*-Strategie gehört `spec/android/test-automation/`; das Lesen von Traces für ein Performance-Urteil gehört `spec/android/perceived-performance/` (der Aufzeichnungsaufruf bleibt in dieser ADB-Spec); die Regeln zu `debuggable` in Release-Builds teilen sich mit `spec/android/security/` §F.
+Grenzen: Die Test-*Ausführungs*-Strategie gehört `spec/android/test-automation/`; das Lesen von Traces für ein Performance-Urteil gehört `spec/android/perceived-performance/` (der Aufzeichnungsaufruf bleibt in dieser ADB-Spec); die Regeln zu `debuggable` in Release-Builds teilen sich mit `spec/android/security/` §F; das app-seitige Logging — Fassade, Level-Policy, Redaktion und Release-Stripping — gehört `spec/android/logging/`, worauf §C verweist, statt es zu wiederholen.
 
 Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Projekt-Setup-Skill) sowie Reviewer, die beurteilen, ob die Geräteinteraktion eines Skills konform ist.
 
@@ -57,8 +57,8 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 - **MUSS [MUST]** die Buffer kennen: `main`, `system`, `crash` (Teil des `default`-Sets), `events` (binär, `-v descriptive`), `radio`; Crash-Diagnose liest `-b crash`
 - **SOLLTE [SHOULD]** `-v threadtime` (Default) plus Modifier nach Bedarf nutzen (`color` für Menschen, `epoch`/`UTC` zur Korrelation); Datei-Logging via `-f` mit `-r`/`-n`-Rotation
 - **MUSS [MUST]** `adb logcat --help` auf dem Zielgerät als maßgebliche Optionsreferenz behandeln — die aktuelle Webseite listet die Optionen nicht mehr vollständig
-- **DARF NICHT [MUST NOT]** PII, Credentials oder Tokens im App-Code loggen (offizielle Security-Guidance); Release-Builds strippen Debug-Logs via R8 `-assumenosideeffects` auf `android.util.Log` — was nur mit aktivierter Minification und vorhandener Regel geschieht, nie per Default
-- **SOLLTE [SHOULD]** verbose Logging über zur Laufzeit schaltbare Tags führen (`adb shell setprop log.tag.<TAG> VERBOSE`); Timber bleibt der De-facto-Standard fürs App-seitige Logging in Android-only-Apps (stabil, aber eingefroren; Trees nur in Debug-Builds pflanzen)
+- **MUSS [MUST]** jede erzeugerseitige Frage, die eine Diagnose aufwirft — was die App loggt, auf welchem Level, mit welcher Redaktion und wie ein Release-Build Debug-Logging strippt —, gegen `spec/android/logging/` §A–§H auflösen, statt sie hier zu entscheiden; eine Skill, die während der Diagnose App-Logging-Code ändert, **MUSS [MUST]** jener Spec entsprechen. Der zur Laufzeit schaltbare Tag, den die Leser dieser Spec brauchen, ist `adb shell setprop log.tag.<TAG> VERBOSE`, dessen Semantik jene Spec in §B fixiert
+- **DARF NICHT [MUST NOT]** erfasste Loginhalte mit personenbezogenen Daten aus der Diagnose heraustragen: Ein Logabzug kann Daten zutage fördern, die nie hätten geloggt werden dürfen (`spec/android/logging/` §C), und sie in einen Report, ein Artefakt oder ein Issue zu kopieren veröffentlicht sie erneut
 
 ### D. Debugging-Oberflächen
 
@@ -107,7 +107,7 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, 
 - [ ] Jedes skill-ausgegebene adb-Kommando im Multi-Device-Kontext trägt `-s` (oder einen dokumentierten `ANDROID_SERIAL`-Export); nach einem Emulator-Neustart folgt kein nacktes adb-Kommando
 - [ ] Ein wiederholt installierender Skill übergibt immer `-r` und wendet bei `INSTALL_FAILED_*`-Ausgaben den dokumentierten Fix aus §B an, statt blind zu wiederholen
 - [ ] Log-Sammlung in Skills nutzt das Clear-then-Dump-Muster (`-c` … `-d`) oder `--pid`-/Tag-Eingrenzung; kein unbegrenzt blockierendes `logcat` ohne `-m`/Timeout in Skripten
-- [ ] Kein generierter oder skill-verfasster App-Code loggt PII; Release-Build-Konfigurationen tragen die R8-Log-Stripping-Regel, wenn über Warnungen hinaus geloggt wird
+- [ ] Jeder App-Logging-Code, den eine Skill während einer Diagnose schreibt oder ändert, entspricht `spec/android/logging/`; erfasste Loginhalte mit personenbezogenen Daten werden nicht in einen Report, ein Artefakt oder ein Issue kopiert
 - [ ] Crash-Triage-Anweisungen referenzieren Crash-Buffer und `retrace`; ANR-Triage referenziert Bugreport-`FS/`-Pfade, nie ein nacktes `adb pull /data/anr`
 - [ ] Deep-Link-Tests nutzen `am start -W -a android.intent.action.VIEW`; State-Restaurationstests nutzen `am kill`, nicht `am force-stop`
 - [ ] Boot-Wartezeiten pollen `sys.boot_completed`; kein Skript behandelt `wait-for-device` als „gebootet", und kein Test-Gate liest den Exit-Code von `am instrument`

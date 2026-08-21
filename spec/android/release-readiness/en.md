@@ -48,7 +48,7 @@ Readers: authors of this repository's Android skills who must decide whether a c
 ### B. No development affordance survives
 
 - **MUST** confine debug-only dependencies (leak detectors, network inspectors, debug UI overlays, test-only libraries) to `debugImplementation`/`testImplementation`; a debug library reachable from the release variant is non-conformant [R2]
-- **MUST** remove verbose and debug logging from the release build — either by stripping it in the shrinker (which only works with minification enabled and the rule present, per `spec/android/security/` §A) or by routing logging through a release-safe implementation that drops those levels
+- **MUST** remove verbose and debug logging from the release build — either by stripping it in the shrinker (which only works with the shrinker enabled per §A and the rule present — `spec/android/logging/` §G owns which rule and where it goes) or by routing logging through a release-safe implementation that drops those levels
 - **MUST NOT** log personal data, credentials, tokens, or request/response payloads at any level (`spec/android/security/` §A, `spec/android/backend-contract/` §B)
 - **MUST NOT** leave a non-production endpoint, a feature bypass, a fake-data switch, or a hidden developer screen reachable in the release variant; environment selection happens through build types or flavors, resolved at build time, never through a runtime toggle shipped to users
 - **MUST** enable StrictMode in debug builds only, with disk and network detection on the thread policy and leak detection on the VM policy, and **MUST** fix a violation rather than suppress it — a StrictMode hit in the touched flow is a defect, not a warning [R3][R2]
