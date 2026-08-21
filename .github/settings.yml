@@ -8,3 +8,24 @@ repository:
   description: Claude Code skills and agents for native Android engineering
   homepage: https://nolte.github.io/claude-android-engineering
   topics: claude-code, claude-plugin, android, jetpack-compose, skills
+
+# The inherited commons declare branch protection for `develop`, but its
+# `restrictions.apps` entry only applies to organisation-owned repositories.
+# This repository belongs to a user account, and the protection never arrived —
+# `GET /branches/develop/protection` answered 404 while every other field from
+# the same commons file (merge strategy, delete-on-merge, labels) did apply.
+# Overriding the block with `restrictions: null` drops the field that cannot be
+# honoured here. The commons also require consumers to name their own required
+# check contexts, which is `check` — the job key in .github/workflows/ci.yml.
+# `automerge` is deliberately absent: making it required would deadlock, since
+# it only runs once the required checks are already green.
+branches:
+  - name: develop
+    protection:
+      required_pull_request_reviews: null
+      required_status_checks:
+        strict: true
+        contexts:
+          - check
+      enforce_admins: true
+      restrictions: null
