@@ -57,7 +57,7 @@ Readers: authors of this repo's Android skills (especially the debugging and pro
 - **MUST** know the buffers: `main`, `system`, `crash` (part of the `default` set), `events` (binary, `-v descriptive`), `radio`; crash diagnosis reads `-b crash`
 - **SHOULD** use `-v threadtime` (default) plus modifiers as needed (`color` for humans, `epoch`/`UTC` for correlation); file logging via `-f` with `-r`/`-n` rotation
 - **MUST** treat `adb logcat --help` on the target device as the authoritative option reference — the current web page no longer lists the full option set
-- **MUST NOT** restate the producer-side rules here: what the app logs, at which level, with which redaction, and how a release build strips debug logging are owned by `spec/android/logging/` §A–§H. The runtime tag toggle this spec's readers need is `adb shell setprop log.tag.<TAG> VERBOSE`, whose semantics that spec's §B fixes
+- **MUST** resolve any producer-side question a diagnosis raises — what the app logs, at which level, with which redaction, and how a release build strips debug logging — against `spec/android/logging/` §A–§H rather than deciding it here; a skill that changes app logging code while diagnosing **MUST** conform to that spec. The runtime tag toggle this spec's readers need is `adb shell setprop log.tag.<TAG> VERBOSE`, whose semantics that spec's §B fixes
 - **MUST NOT** carry captured log content containing personal data out of the diagnosis: a log read may surface data that should never have been logged (`spec/android/logging/` §C), and pasting it into a report, an artifact, or an issue re-publishes it
 
 ### D. Debugging surfaces
@@ -107,7 +107,7 @@ The criteria below are a deliberate representative rollup of §A–§G, not a 1:
 - [ ] Every skill-issued adb command in a multi-device context carries `-s` (or a documented `ANDROID_SERIAL` export); no bare adb call follows an emulator restart
 - [ ] A skill that installs repeatedly always passes `-r`, and on any `INSTALL_FAILED_*` output applies the documented fix from §B instead of retrying blindly
 - [ ] Log collection in skills uses the clear-then-dump pattern (`-c` … `-d`) or `--pid`/tag scoping; no unbounded blocking `logcat` without `-m`/timeout in scripts
-- [ ] Producer-side logging rules are not restated here but deferred to `spec/android/logging/`; captured log content carrying personal data is not pasted into a report, artifact, or issue
+- [ ] Any app logging code a skill writes or changes during a diagnosis conforms to `spec/android/logging/`; captured log content carrying personal data is not pasted into a report, artifact, or issue
 - [ ] Crash triage instructions reference the crash buffer and `retrace`; ANR triage references bugreport `FS/` paths, never a bare `adb pull /data/anr`
 - [ ] Deep-link tests use `am start -W -a android.intent.action.VIEW`; state-restoration tests use `am kill`, not `am force-stop`
 - [ ] Boot waits poll `sys.boot_completed`; no script treats `wait-for-device` as "booted" and no test gate reads `am instrument`'s exit code

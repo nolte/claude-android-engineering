@@ -57,7 +57,7 @@ Leser: Autoren der Android-Skills dieses Repos (insbesondere Debugging- und Proj
 - **MUSS [MUST]** die Buffer kennen: `main`, `system`, `crash` (Teil des `default`-Sets), `events` (binär, `-v descriptive`), `radio`; Crash-Diagnose liest `-b crash`
 - **SOLLTE [SHOULD]** `-v threadtime` (Default) plus Modifier nach Bedarf nutzen (`color` für Menschen, `epoch`/`UTC` zur Korrelation); Datei-Logging via `-f` mit `-r`/`-n`-Rotation
 - **MUSS [MUST]** `adb logcat --help` auf dem Zielgerät als maßgebliche Optionsreferenz behandeln — die aktuelle Webseite listet die Optionen nicht mehr vollständig
-- **DARF NICHT [MUST NOT]** die erzeugerseitigen Regeln hier wiederholen: Was die App loggt, auf welchem Level, mit welcher Redaktion und wie ein Release-Build Debug-Logging strippt, gehört `spec/android/logging/` §A–§H. Der zur Laufzeit schaltbare Tag, den die Leser dieser Spec brauchen, ist `adb shell setprop log.tag.<TAG> VERBOSE`, dessen Semantik jene Spec in §B fixiert
+- **MUSS [MUST]** jede erzeugerseitige Frage, die eine Diagnose aufwirft — was die App loggt, auf welchem Level, mit welcher Redaktion und wie ein Release-Build Debug-Logging strippt —, gegen `spec/android/logging/` §A–§H auflösen, statt sie hier zu entscheiden; eine Skill, die während der Diagnose App-Logging-Code ändert, **MUSS [MUST]** jener Spec entsprechen. Der zur Laufzeit schaltbare Tag, den die Leser dieser Spec brauchen, ist `adb shell setprop log.tag.<TAG> VERBOSE`, dessen Semantik jene Spec in §B fixiert
 - **DARF NICHT [MUST NOT]** erfasste Loginhalte mit personenbezogenen Daten aus der Diagnose heraustragen: Ein Logabzug kann Daten zutage fördern, die nie hätten geloggt werden dürfen (`spec/android/logging/` §C), und sie in einen Report, ein Artefakt oder ein Issue zu kopieren veröffentlicht sie erneut
 
 ### D. Debugging-Oberflächen
@@ -107,7 +107,7 @@ Die folgenden Kriterien sind ein bewusst repräsentatives Rollup von §A–§G, 
 - [ ] Jedes skill-ausgegebene adb-Kommando im Multi-Device-Kontext trägt `-s` (oder einen dokumentierten `ANDROID_SERIAL`-Export); nach einem Emulator-Neustart folgt kein nacktes adb-Kommando
 - [ ] Ein wiederholt installierender Skill übergibt immer `-r` und wendet bei `INSTALL_FAILED_*`-Ausgaben den dokumentierten Fix aus §B an, statt blind zu wiederholen
 - [ ] Log-Sammlung in Skills nutzt das Clear-then-Dump-Muster (`-c` … `-d`) oder `--pid`-/Tag-Eingrenzung; kein unbegrenzt blockierendes `logcat` ohne `-m`/Timeout in Skripten
-- [ ] Erzeugerseitige Logging-Regeln werden hier nicht wiederholt, sondern an `spec/android/logging/` delegiert; erfasste Loginhalte mit personenbezogenen Daten werden nicht in einen Report, ein Artefakt oder ein Issue kopiert
+- [ ] Jeder App-Logging-Code, den eine Skill während einer Diagnose schreibt oder ändert, entspricht `spec/android/logging/`; erfasste Loginhalte mit personenbezogenen Daten werden nicht in einen Report, ein Artefakt oder ein Issue kopiert
 - [ ] Crash-Triage-Anweisungen referenzieren Crash-Buffer und `retrace`; ANR-Triage referenziert Bugreport-`FS/`-Pfade, nie ein nacktes `adb pull /data/anr`
 - [ ] Deep-Link-Tests nutzen `am start -W -a android.intent.action.VIEW`; State-Restaurationstests nutzen `am kill`, nicht `am force-stop`
 - [ ] Boot-Wartezeiten pollen `sys.boot_completed`; kein Skript behandelt `wait-for-device` als „gebootet", und kein Test-Gate liest den Exit-Code von `am instrument`

@@ -11,7 +11,7 @@
 | android | barcode-scanning | QR and Barcode Scanning | QR- und Barcode-Scannen | draft | local | 2026-08-19 |
 | android | iconography | Iconography | Ikonografie | draft | local | 2026-08-19 |
 | android | localization | Localization | Lokalisierung | draft | local | 2026-08-19 |
-| android | logging | Logging | Logging | draft | local | unversioned |
+| android | logging | Logging | Logging | draft | local | 2026-08-21 |
 | android | long-list-scrolling | Long Lists and Continuous Scrolling | Lange Listen und stufenloses Scrollen | draft | local | 2026-08-19 |
 | android | notifications-alerting | Notifications and Alerting | Benachrichtigungen und Alerting | draft | local | 2026-08-19 |
 | android | perceived-performance | Perceived Performance — Startup and Jank | Gefühlte Performance — Start und Jank | draft | local | 2026-08-19 |
