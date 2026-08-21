@@ -57,7 +57,7 @@ If the target contains no Android Gradle module (no `com.android.application`/`c
 
 Verify with `Read` and `Glob` only:
 
-1. `spec/android/security/en.md` exists and is readable, plus the specs it delegates to: `spec/android/permissions/en.md` (§E), `spec/android/adb-workflows/en.md` (§C log access), `spec/android/project-structure/en.md` (§B Gradle build conventions, dependency hygiene), `spec/android/release-readiness/en.md` (§B no development affordance, §D platform and dependency currency), `spec/android/app-design-navigation/en.md` §F (denial UX). Resolve the canonical language from `spec/.spec-config.yml` (fall back to `en`). If `security` is missing, stop — without the oracle the audit is opinion.
+1. `spec/android/security/en.md` exists and is readable, plus the specs it delegates to: `spec/android/permissions/en.md` (§E), `spec/android/adb-workflows/en.md` (§C log access), `spec/android/project-structure/en.md` (§B Gradle build conventions, dependency hygiene), `spec/android/release-readiness/en.md` (§B no development affordance, §D platform and dependency currency), `spec/android/app-design-navigation/en.md` §F (denial UX), `spec/android/logging/en.md` (§C log content, §F sinks — cited by Dimension 7). Resolve the canonical language from `spec/.spec-config.yml` (fall back to `en`). If `security` is missing, stop — without the oracle the audit is opinion.
 2. Reread `spec/android/security/` before auditing and cite the violated § and bullet verbatim from the file on disk; when a checklist item below has no bullet in the spec, cite the closest existing bullet and record the gap under `## Health` (REQ-6). The spec always wins over the checklist below.
 3. The target resolves to at least one Android module.
 

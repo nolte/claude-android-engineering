@@ -56,7 +56,7 @@ If the target contains no Android Gradle module (no `com.android.application`/`c
 
 Verify with `Read` and `Glob` only:
 
-1. `spec/android/release-readiness/en.md` exists and is readable, plus the specs it delegates to: `spec/android/security/en.md` (§F), `spec/android/project-structure/en.md` (§B, §G), `spec/android/perceived-performance/en.md` (§F), `spec/android/app-architecture/en.md` (§B, §E). Resolve the canonical language from `spec/.spec-config.yml` (fall back to `en`). If `release-readiness` is missing, stop — without the oracle the audit is opinion.
+1. `spec/android/release-readiness/en.md` exists and is readable, plus the specs it delegates to: `spec/android/security/en.md` (§F), `spec/android/project-structure/en.md` (§B, §G), `spec/android/perceived-performance/en.md` (§F), `spec/android/app-architecture/en.md` (§B, §E), `spec/android/logging/en.md` (§G release stripping, cited by Dimension 2). Resolve the canonical language from `spec/.spec-config.yml` (fall back to `en`). If `release-readiness` is missing, stop — without the oracle the audit is opinion.
 2. Reread `spec/android/release-readiness/` §D before auditing currency: another change may have added dated deadline values there. When the spec carries a value, the spec wins over the table in §Currency facts below.
 3. The target resolves to at least one Android module.
 
