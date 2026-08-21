@@ -46,12 +46,13 @@ and rules left behind are read by nothing: the build stays green while they sile
   (`release-readiness` §A). Carry every rule over, not just the ones you recognise.
 - The log-stripping rule is the one whose loss is invisible in a green build:
   `-maximumremovedandroidloglevel 3` (or the project's `-assumenosideeffects` fallback) must arrive
-  in the new location. Prove it by reading the new keep file, not by the dex check alone: in a
-  project conforming to `spec/android/logging/` §A the platform logger is called only inside the
-  facade, and a spec-conforming facade already keeps its low levels behind `BuildConfig.DEBUG`, so
-  `android.util.Log int v(`/`int d(` are absent from the release dex whether or not the rule
-  survived the move. §H's dex check catches a *direct* caller that survived; it cannot catch a
-  keep rule left behind in `proguardFiles`.
+  in the new location. Prove it by reading the new keep file; whether the dex check adds anything
+  depends on which of §G's two conforming facade variants the project uses. Where the facade drops
+  the low levels in a release implementation (a `BuildConfig.DEBUG` guard), `android.util.Log int v(`
+  / `int d(` are absent from the release dex whether or not the keep rule survived the move — a
+  green dex check proves nothing there. Where the facade instead relies on a stripping rule for its
+  own class, a rule left behind in `proguardFiles` does bring those methods back and §H's dex check
+  catches it. Run it either way; just do not read a green result as proof on the guarded variant.
 
 **Built-in-Kotlin migration (step 4), in this order, one gate each:**
 

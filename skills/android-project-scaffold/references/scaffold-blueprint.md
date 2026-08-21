@@ -45,6 +45,7 @@ app/src/main/AndroidManifest.xml
 app/src/main/res/resources.properties             # unqualifiedResLocale=en (generateLocaleConfig)
 app/src/main/kotlin/<pkg>/core/logging/Logger.kt   # facade interface, no Android types (logging §A)
 app/src/main/kotlin/<pkg>/core/logging/AndroidLogger.kt  # the only file calling android.util.Log
+                                                  # interface shape is pinned below (§8a)
 app/src/main/kotlin/<pkg>/App.kt
 app/src/main/kotlin/<pkg>/MainActivity.kt
 app/src/main/kotlin/<pkg>/ui/home/HomeRoute.kt
@@ -101,7 +102,7 @@ app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 
 - `applicationId`, `minSdk`, `targetSdk`, `versionCode`, `versionName` live here, not in the manifest (PS §D); `compileSdk` = latest stable, `targetSdk` = latest verified (RR §D).
 - `kotlin { jvmToolchain(17); compilerOptions { … } }` — the AGP 9 form; no `kotlinOptions {}`, no `android.kotlinOptions`. `compileOptions` source/target compatibility follow the toolchain.
-- `buildFeatures { compose = true; buildConfig = true }` — `buildConfig` is **not** on by default since AGP 8.0, and the generated `AndroidLogger` guards its platform calls with `BuildConfig.DEBUG` (`spec/android/logging/` §D); without it the scaffold fails to compile on `Unresolved reference: BuildConfig`; add both the Compose BOM and its test-configuration BOM (`platform(libs.androidx.compose.bom)` on `implementation` and `androidTestImplementation`).
+- `buildFeatures { compose = true; buildConfig = true }` — `buildConfig` is **not** on by default since AGP 8.0, and the generated `AndroidLogger` guards its platform calls with `BuildConfig.DEBUG`, which is §G's "release implementation that drops the low levels" (the guard itself is §D's laziness rule applied); without it the scaffold fails to compile on `Unresolved reference: BuildConfig`. Add both the Compose BOM and its test-configuration BOM (`platform(libs.androidx.compose.bom)` on `implementation` and `androidTestImplementation`).
 - `androidResources { localeFilters += listOf("en", "de"); generateLocaleConfig = true }` (L10N §B/§C) with `res/resources.properties` `unqualifiedResLocale=en`.
 - `buildTypes`:
   - `release { isDebuggable = false; optimization { enable = true } }` on AGP ≥ 9.3 — enables code shrinking, optimization, obfuscation, and optimized resource shrinking; keep rules in `src/release/keepRules/app.keep`. On AGP < 9.3: `isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")` (RR §A [R1]). Never both forms.
@@ -134,6 +135,30 @@ on (`spec/android/logging/` §H). Know its reach before relying on it: it matche
 calls, which §A confines to the facade module, so it guards that module and not the call sites §D is
 about.
 
+**§8a — the facade's interface shape is pinned, not left to the generator.** `spec/android/logging/`
+§D makes message laziness a MUST at every non-constant call site, and the only construction verified
+allocation-free on the disabled path is an `inline` function whose message lambda is inlined into
+the branch. An eager `fun d(tag: String, message: String)` would build every interpolated message
+even where the platform call is later stripped, and sibling skills already emit the lambda form
+(`android-uvc-microscope-scaffold`'s engine templates call `log.d { … }`). Generate:
+
+```kotlin
+interface Logger {                                  // no Android types — logging §A
+    fun isLoggable(level: Level): Boolean
+    fun log(level: Level, throwable: Throwable?, message: String)
+    enum class Level { VERBOSE, DEBUG, INFO, WARN, ERROR }
+}
+
+// Lazy call sites: the lambda is inlined, so nothing is built when the level is off (§D).
+inline fun Logger.d(throwable: Throwable? = null, message: () -> String) {
+    if (isLoggable(Logger.Level.DEBUG)) log(Logger.Level.DEBUG, throwable, message())
+}
+```
+
+with `v`/`i`/`w`/`e` following the same shape. `AndroidLogger` implements `log` and guards its
+`Log.d`/`Log.v` calls with `BuildConfig.DEBUG` (§G), which is what keeps the low levels out of the
+release build and out of `LogConditional`'s way.
+
 **The §A gate needs a decision, not a default.** Logging §H makes mechanical enforcement of §A a
 MUST and names two carriers: a detekt `ForbiddenMethodCall`/`ForbiddenImport` rule, **or** a
 project-local custom lint check. Only the first collides with project-structure §G, where detekt is
@@ -161,6 +186,7 @@ style:
       - value: 'java.lang.Throwable.printStackTrace'
       - value: 'kotlin.io.println'
       - value: 'kotlin.io.print'
+    excludes: ['**/core/logging/**']
 ```
 
 Two things about this rule decide whether it works at all:
@@ -170,14 +196,16 @@ Two things about this rule decide whether it works at all:
   `PrintStream` and would otherwise pass a gate that claims to ban them (§H's ban names
   `System.out` explicitly).
 - **`ForbiddenMethodCall` needs type resolution.** The plain `detekt` Gradle task runs without it
-  and reports nothing — the rule is silently inert. Wire the gate to the type-resolving tasks
-  (`detektMain`, or a task configured with the compile classpath), and verify once that a
-  deliberate `println("x")` outside the facade actually fails the build. A gate that cannot fire
+  and reports nothing — the rule is silently inert. Wire the gate to the type-resolving tasks: on an
+  Android module those are per-variant (`detektDebug`, `detektRelease`, `detektDebugUnitTest`), not
+  the JVM `detektMain`, which does not exist here and fails with `Task 'detektMain' not found`.
+  Verify once that a deliberate `println("x")` outside the facade actually fails the build. A gate that cannot fire
   is the "mechanism present but left unconfigured" failure §H itself cites.
 
-with `core/logging/**` excluded — and nothing else. A `src/debug/` source set is *committed*, so
-excluding it would be wider than §A's exception, which covers only code that is never committed;
-§H names that widening as reintroducing the gap the rule closes.
+The `excludes` glob is `**/core/logging/**`, not `core/logging/**`: detekt matches the whole file
+path, and the facade's real path is `app/src/main/kotlin/<pkg>/core/logging/AndroidLogger.kt`. It
+excludes that package and nothing else — a `src/debug/` source set is *committed*, so excluding it
+would be wider than §A's exception, which covers only code that is never committed.
 If the operator declines detekt, offer the custom lint check before recording anything as unmet.
 Only when both are declined does the scaffold record in `docs/decisions.md` that §H's mechanical
 gate is unmet, with the reason and the condition for revisiting — an unmet MUST that is written
