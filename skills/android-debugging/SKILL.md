@@ -30,7 +30,7 @@ resumable: true
 
 # Android Debugging
 
-Diagnoses native Android **build errors** and **runtime defects** from evidence, CLI-first (no Android Studio). A triage entry point classifies the symptom and routes it to one of three diagnosis surfaces — Gradle build-error, ADB device/deploy, or runtime-defect — each grounded in `spec/android/adb-workflows/`, `spec/android/test-automation/`, `spec/android/project-structure/` §B, `spec/android/release-readiness/` §B/§E (StrictMode, the build gate after a fix), and `spec/android/security/` §A. Performance *symptoms* are captured here (Perfetto) and judged by `android-perceived-performance`. Every diagnosis names the evidence it reads (build output, device state, logcat buffer, bugreport path, dumpsys service); the skill never guesses, and never leaves a red state unreported.
+Diagnoses native Android **build errors** and **runtime defects** from evidence, CLI-first (no Android Studio). A triage entry point classifies the symptom and routes it to one of three diagnosis surfaces — Gradle build-error, ADB device/deploy, or runtime-defect — each grounded in `spec/android/adb-workflows/`, `spec/android/test-automation/`, `spec/android/project-structure/` §B, `spec/android/release-readiness/` §B/§E (StrictMode, the build gate after a fix), `spec/android/security/` §A, and `spec/android/logging/` §C (what a log line may carry, which the guardrails cite). Performance *symptoms* are captured here (Perfetto) and judged by `android-perceived-performance`. Every diagnosis names the evidence it reads (build output, device state, logcat buffer, bugreport path, dumpsys service); the skill never guesses, and never leaves a red state unreported.
 
 ## Why this is a skill, not an agent
 

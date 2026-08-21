@@ -17,7 +17,7 @@
 | android | perceived-performance | Perceived Performance — Startup and Jank | Gefühlte Performance — Start und Jank | draft | local | 2026-08-19 |
 | android | permissions | App Permissions | App-Berechtigungen | draft | local | 2026-08-19 |
 | android | project-structure | Android Project Structure | Android-Projektstruktur | draft | local | 2026-08-19 |
-| android | release-readiness | Release Readiness of the Source | Release-Reife des Quellcodes | draft | local | 2026-08-19 |
+| android | release-readiness | Release Readiness of the Source | Release-Reife des Quellcodes | draft | local | 2026-08-21 |
 | android | screen-formats | Screen Formats | Bildschirmformate | draft | local | 2026-08-19 |
 | android | security | App Security | App-Sicherheit | draft | local | 2026-08-21 |
 | android | test-automation | Android Test Automation | Android-Testautomatisierung | draft | local | 2026-08-19 |
