@@ -20,9 +20,15 @@ Run in order from the generated project root:
 5. Localization lint gate — `lint.xml` sets `HardcodedText`, `MissingTranslation`, `ExtraTranslation`, `ImpliedQuantity` to **error**; confirm the debug lint report (`app/build/reports/lint-results-debug.xml`) is clean of them (L10N AC).
 6. Pseudolocale pass (L10N §E MUST) — `isPseudoLocalesEnabled = true` is set in debug; when a device or emulator is attached, install the debug build, switch to `en-XA` and `ar-XB` (`adb shell settings put system system_locales en-XA` or the picker) and check the home screen for clipping/concatenation/RTL mirroring. Without a device, report the pass as skipped-and-due before the first translation round (§3).
 7. Font scale — `HomeScreen.kt` carries `@PreviewFontScale`; when a device is attached, additionally set `settings put system font_scale 2.0` and check the screen at 200 % (L10N §E). Otherwise report as skipped.
-8. Security lint — `lint.xml` sets `HardcodedDebugMode` fatal and `TrustAllX509TrustManager`/`ExportedContentProvider`/`MissingPermission` to error; confirm the report is clean (SEC §F AC, RR §E).
-9. Release artifact — `app/build/outputs/apk/release/` exists from step 1 with `mapping.txt` under `app/build/outputs/mapping/release/` (RR §A); `unzip -l` shows no debug-only classes when in doubt.
-10. Repository hygiene — `git ls-files` shows no `local.properties`, keystore, or `google-services.json`; `.github/workflows/ci.yml`, `Taskfile.yml`, `lint.xml`, `docs/decisions.md` are present.
+8. Logging — five sub-checks, because `spec/android/logging/` §G rejects verifying the rule's presence instead of its effect. Report them individually, never step 8 wholesale: only the last needs a device.
+   - **§A source** — `grep -rnE --include='*.kt' 'android\.util\.Log|System\.(out|err)|\bprintln?\(|printStackTrace' app/src` returns hits only under `app/src/main/**/core/logging/`. Three details: search `app/src`, not `app/src/main`, because the scaffold also writes `src/debug/` and `src/release/` sources; restrict to `*.kt` so the keep file, which names `android.util.Log` on the fallback path, is not itself a hit; and accept hits only under the **main** facade package, matching the detekt exclusion — the `FakeLogger` under `app/src/test/.../core/logging/` is not exempt, so a `println` there must surface here as it does in the gate.
+   - **§G rule** — two parts, because presence alone is what §G rejects. The stripping rule is present where this project keeps it (`app/src/release/keepRules/*.keep` on AGP ≥ 9.3, `app/proguard-rules.pro` below that, or the recorded `-assumenosideeffects` fallback — check the location the project actually uses, not all three); **and** the toolchain was confirmed to recognise it, per blueprint §13: read what the shrinker step reports on a release assemble, or where that is inconclusive, verify by effect with a throwaway direct `Log.d`. Skipping the second part is how an older pinned toolchain passes every sub-check while stripping nothing.
+   - **§G effect** — `apkanalyzer dex packages app/build/outputs/apk/release/*.apk` lists no `android.util.Log int v(` or `int d(` referenced-method line. Note the return type is `int`; and `--defined-only` would filter the framework class out entirely and pass regardless. This check alone proves little here, because the facade already guards those calls with `BuildConfig.DEBUG` — it catches a *direct* caller that survived, which is why the rule check above stands beside it.
+   - **§H gate** — `docs/decisions.md` records the §A-gate decision: the carrier the operator chose, or the gate as an unmet MUST with its reason and the condition for revisiting. The scaffold does not wire a carrier itself (blueprint §6), so what this check confirms is that the decision was taken and written down, not that a gate runs.
+   - **§C content** — exercise the app's major features while watching `adb logcat` and confirm no personal data appears; this is the conformance test the Play criterion itself prescribes.
+9. Security lint — `lint.xml` sets `HardcodedDebugMode` fatal and `TrustAllX509TrustManager`/`ExportedContentProvider`/`MissingPermission` to error; confirm the report is clean (SEC §F AC, RR §E).
+10. Release artifact — `app/build/outputs/apk/release/` exists from step 1 with `mapping.txt` under `app/build/outputs/mapping/release/` (RR §A); `unzip -l` shows no debug-only classes when in doubt.
+11. Repository hygiene — `git ls-files` shows no `local.properties`, keystore, or `google-services.json`; `.github/workflows/ci.yml`, `Taskfile.yml`, `lint.xml`, `docs/decisions.md` are present.
 
 The wrapper must exist for step 1: generate with `gradle wrapper --gradle-version <current-stable>` if `gradle/wrapper/gradle-wrapper.jar` is absent. If no Gradle distribution is reachable in the environment, report that `./gradlew build` could not be executed here and that the operator must run it — do not claim green without having run it.
 
@@ -37,7 +43,7 @@ Per REQ-7, never leave a red build unreported and never silently patch it:
 
 ## 3. Skipped checks
 
-Any step that cannot run in the current environment (no Gradle distribution, no Task binary, no device or emulator for steps 6–7) is named in the final report **with its reason** — an unrunnable check is never treated as green (RR §E). The report lists: step, reason, and what the operator runs to close it.
+Any step that cannot run in the current environment (no Gradle distribution, no Task binary, no device or emulator for steps 6–7 and for step 8's `adb logcat` sub-check, no `apkanalyzer` on the `PATH` for step 8's dex sub-check) is named in the final report **with its reason** — an unrunnable check is never treated as green (RR §E). The report lists: step, reason, and what the operator runs to close it.
 
 ## 4. Spec acceptance-criteria crosswalk
 
@@ -74,3 +80,4 @@ Confirm each before reporting success. PS = project-structure, L10N = localizati
 | `compileSdk`/`targetSdk` latest stable, `minSdk` rationale recorded; 16 KB page-size note for native deps | RR §D |
 | JVM unit tests use JUnit 4, `runTest` + `MainDispatcherRule`; fakes over mocks; no `Thread.sleep`; `kotlin.test` used consistently | TEST |
 | No device-matrix/retry/benchmark CI scaffolded into a fresh solo project | TEST |
+| Facade is the only caller of `android.util.Log`; stripping rule present where this AGP generation keeps it; no `int v(`/`int d(` in the release dex; `LogConditional` enabled; the §A-gate decision recorded in `docs/decisions.md` | LOG §A/§G/§H |

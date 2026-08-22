@@ -40,8 +40,11 @@ gradlew
 gradlew.bat
 app/build.gradle.kts
 app/src/release/keepRules/app.keep                # AGP >= 9.3; app/proguard-rules.pro before that
+                                                  # carries -maximumremovedandroidloglevel 3 (logging §G)
 app/src/main/AndroidManifest.xml
 app/src/main/res/resources.properties             # unqualifiedResLocale=en (generateLocaleConfig)
+app/src/main/kotlin/<pkg>/core/logging/Logger.kt   # facade interface, no Android types (logging §A)
+app/src/main/kotlin/<pkg>/core/logging/AndroidLogger.kt  # the only file calling android.util.Log
 app/src/main/kotlin/<pkg>/App.kt
 app/src/main/kotlin/<pkg>/MainActivity.kt
 app/src/main/kotlin/<pkg>/ui/home/HomeRoute.kt
@@ -60,6 +63,7 @@ app/src/main/res/xml/data_extraction_rules.xml
 app/src/debug/kotlin/<pkg>/StrictModeSetup.kt     # installs the policies
 app/src/release/kotlin/<pkg>/StrictModeSetup.kt   # no-op
 app/src/test/kotlin/<pkg>/ui/home/HomeViewModelTest.kt
+app/src/test/kotlin/<pkg>/core/logging/FakeLogger.kt   # recording fake, never a mock (logging §H)
 app/src/test/kotlin/<pkg>/data/FakeGreetingRepository.kt
 app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 ```
@@ -98,7 +102,7 @@ app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 
 - `applicationId`, `minSdk`, `targetSdk`, `versionCode`, `versionName` live here, not in the manifest (PS §D); `compileSdk` = latest stable, `targetSdk` = latest verified (RR §D).
 - `kotlin { jvmToolchain(17); compilerOptions { … } }` — the AGP 9 form; no `kotlinOptions {}`, no `android.kotlinOptions`. `compileOptions` source/target compatibility follow the toolchain.
-- `buildFeatures { compose = true }`; add both the Compose BOM and its test-configuration BOM (`platform(libs.androidx.compose.bom)` on `implementation` and `androidTestImplementation`).
+- `buildFeatures { compose = true; buildConfig = true }` — `buildConfig` is off by default since AGP 8.0, and `AndroidLogger` (§8) reads `BuildConfig.DEBUG`; without it the scaffold fails to compile on `Unresolved reference: BuildConfig` (`spec/android/logging/` §D); add both the Compose BOM and its test-configuration BOM (`platform(libs.androidx.compose.bom)` on `implementation` and `androidTestImplementation`).
 - `androidResources { localeFilters += listOf("en", "de"); generateLocaleConfig = true }` (L10N §B/§C) with `res/resources.properties` `unqualifiedResLocale=en`.
 - `buildTypes`:
   - `release { isDebuggable = false; optimization { enable = true } }` on AGP ≥ 9.3 — enables code shrinking, optimization, obfuscation, and optimized resource shrinking; keep rules in `src/release/keepRules/app.keep`. On AGP < 9.3: `isMinifyEnabled = true; isShrinkResources = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")` (RR §A [R1]). Never both forms.
@@ -122,8 +126,35 @@ Root `lint.xml` (PS §G SHOULD "centralize"; the *severities* are MUSTs from L10
   <issue id="TrustAllX509TrustManager" severity="error" />
   <issue id="ExportedContentProvider" severity="error" />
   <issue id="MissingPermission" severity="error" />
+  <issue id="LogConditional" severity="error" />
 </lint>
 ```
+
+`LogConditional` ships **disabled by default**; naming it here is what turns it on
+(`spec/android/logging/` §H). It is set to `error`, not `warning`, for the same reason the L10N and
+SEC entries above are: `lint { abortOnError = true }` acts on errors, so a warning would be reported
+and then ignored by every gate the project runs. Know its reach: it matches `android.util.Log` calls, which §A confines
+to `core/logging/`, so it guards that package and not the call sites §D is about. A fresh project passes it. `AndroidLogger`'s `VERBOSE`/`DEBUG` calls sit behind `BuildConfig.DEBUG`
+(§8), and its `INFO` branch — an unguarded `Log.i(tag, message)` — does not trigger the detector
+either: `LogConditional` fires only where the message argument "does work that will not
+constant-fold" (§H), and `message` is a plain parameter reference, neither concatenated nor
+computed. Application code, which builds its messages inside the inline lambdas, never reaches
+`android.util.Log` at all.
+
+`spec/android/logging/` §H makes mechanical enforcement of §A a MUST, and names two carriers: a
+detekt `ForbiddenMethodCall`/`ForbiddenImport` rule, or a project-local custom lint check. Neither
+is scaffolded here yet, and the choice is not one this file can make silently (REQ-6): detekt is a
+**MAY** in `project-structure` §G with an open adoption question, and a custom lint check needs its
+own Gradle module against §C's single-module MUST for a fresh project.
+
+Raise it at the file-plan approval gate, and record the outcome in `docs/decisions.md` — either the
+carrier the operator chose, or §H's gate as an unmet MUST with its reason and the condition for
+revisiting. §H's SHOULD for `LogInfoDisclosure`, which needs its own opt-in artifact, belongs in the
+same record.
+
+Until a carrier is wired up, `LogConditional` above plus verification step 8's §A grep are what
+stand between the project and a stray `android.util.Log`. Both are real checks; neither is the
+mechanical gate §H asks for, and the decision record is where that gap stays visible.
 
 No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). Once `build-logic/` exists (§14) the same configuration moves into a convention plugin.
 
@@ -148,6 +179,72 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
 - `HomeViewModel.kt` — exposes `StateFlow<HomeUiState>`; never hard-codes a dispatcher (injected, for `MainDispatcherRule` in tests). Reaches data only through `GreetingRepository` (PS §E).
 - `HomeUiState.kt` — the immutable UI state model.
 - `data/GreetingRepository.kt` — named `<DataType>Repository`; UI never touches a data source directly (PS §E).
+- `core/logging/Logger.kt` and `core/logging/AndroidLogger.kt` — the logging facade required by
+  `spec/android/logging/` §A. Single-module means a package boundary, not a Gradle module; it moves
+  into its own module if and when `project-structure` §C's modularization trigger fires. The shape is fixed, because §D
+  makes message laziness a MUST and only an `inline` function whose lambda is inlined into the
+  branch is allocation-free on the disabled path:
+
+  ```kotlin
+  // Logger.kt — no Android types, so domain and data code can depend on it
+  interface Logger {
+      fun isLoggable(level: Level): Boolean
+      fun log(level: Level, throwable: Throwable?, message: String)
+      enum class Level { VERBOSE, DEBUG, INFO, WARN, ERROR }
+  }
+
+  inline fun Logger.d(throwable: Throwable? = null, message: () -> String) {
+      if (isLoggable(Logger.Level.DEBUG)) log(Logger.Level.DEBUG, throwable, message())
+  }
+  ```
+
+  `v`, `i`, `w` and `e` follow the same shape. Two details decide whether the laziness actually
+  holds in a release build, and both belong in `AndroidLogger`:
+
+  - **`isLoggable` answers from the build, not from the platform.** It returns `BuildConfig.DEBUG`
+    for `VERBOSE`/`DEBUG` and `true` from `INFO` upward. Not because `Log.isLoggable` would answer
+    wrongly — its default level is `INFO`, so it already returns `false` for DEBUG on a stock build
+    — but because `BuildConfig.DEBUG` is a compile-time constant: the branch folds away entirely in
+    release, while `Log.isLoggable` stays a real JNI call with a UTF-8 tag copy at every call site
+    (§D). The trade-off is that the runtime toggle §B SHOULDs for `VERBOSE`
+    (`setprop log.tag.<TAG> VERBOSE` instead of a rebuild) is gone; record that in
+    `docs/decisions.md` as a deliberate deviation. A `Log.isLoggable` fallback for `VERBOSE` does
+    not buy the toggle back: §G's own rule text says `-maximumremovedandroidloglevel` removes
+    "`Log.w(...)` and `Log.isLoggable(...)`" alike, so in a release build the guard folds to `false`
+    and the `Log.v` calls are gone with it; in a debug build `BuildConfig.DEBUG` is already true.
+    The toggle returns only where the stripping rule is switched off.
+  - **`log` guards only the low levels**, which is §G's "release implementation that drops the low
+    levels". `VERBOSE` and `DEBUG` go through `BuildConfig.DEBUG`; `INFO`, `WARN` and `ERROR` always
+    reach the platform, because §B makes `INFO` the release floor and `-maximumremovedandroidloglevel 3`
+    deliberately leaves them standing. Guarding the whole method would ship a release build that logs
+    nothing at all — an `ERROR` on a failed payment would never appear, and step 8's `adb logcat`
+    check would pass trivially because there is nothing left to see.
+
+  `AndroidLogger` derives its tag from a single constant, not per call site, and keeps it to 23
+  characters or fewer. §A leaves a gap the scaffold must not walk into: `LongLogTag` only reports at
+  `minSdk <= 23`, while the runtime `IllegalArgumentException` covers API ≤ 25 — a project on
+  `minSdk` 24 or 25 gets no warning for a tag that still throws.
+
+  Application code calls the facade and never `android.util.Log`. What holds that in place today is
+  the hard rule in `SKILL.md` plus verification step 8's §A grep; the mechanical gate §H asks for is
+  the decision §6 raises, not something this scaffold wires up.
+
+  Reaching the call sites uses the manual constructor DI this scaffold already prescribes — no
+  framework, since Hilt only arrives with modularization. `Logger` is a plain constructor parameter
+  (`class HomeViewModel(private val log: Logger, …)`) and travels the same route as
+  `GreetingRepository` and the dispatcher, which face the identical question: a `ViewModel` is
+  created by a `ViewModelProvider`, not by its caller, so whatever supplies those two supplies the
+  logger. `App.kt` is not that place — its own bullet above says it does nothing beyond
+  `installStrictMode()`. **If the blueprint has not yet fixed how the scaffolded `ViewModel`
+  receives its constructor arguments, that gap is reported rather than filled here** (REQ-6): it
+  predates logging and would otherwise be decided silently for three parameters at once. What this
+  section does fix is that the parameter carries **no** default reading a global.
+  A default like `= App.logger` would be a service locator rather than §A's injected form, and it
+  would break the generated tests: a JVM unit test never runs `Application.onCreate()`, so the first
+  log call fails on an uninitialised instance or on "Method d in android.util.Log not mocked" — and
+  `./gradlew build` is red straight after scaffolding, against REQ-1. The generated
+  `HomeViewModelTest` therefore passes `FakeLogger()` explicitly, the same way it already passes
+  `FakeGreetingRepository()`.
 
 ## 9. Design system / theme
 
@@ -168,6 +265,7 @@ TEST §H — the solo-developer floor, in `app/src/test/` (JVM, no emulator):
 - `HomeViewModelTest.kt` — JUnit 4, `runTest` + `MainDispatcherRule`, exercising at least one error/edge case, asserting against `HomeUiState` with `kotlin.test` (`assertEquals`, `assertIs`). No `Thread.sleep`, no wall-clock wait. Test names follow the recorded scheme (`` fun `emits greeting when repository succeeds`() ``).
 - `FakeGreetingRepository.kt` — a **fake** (test implementation with test hooks), preferred over a mocking library (TEST §C, PS §F).
 - `util/MainDispatcherRule.kt` — swaps `Dispatchers.Main` for a test dispatcher; applied in every ViewModel test.
+- `core/logging/FakeLogger.kt` — a `Logger` recording `level`/`message` into a list, the same fake-over-mock choice as `FakeGreetingRepository`. `spec/android/logging/` §H requires asserting against a fake sink and never mocking the facade; scaffolding the fake is what makes that possible without the test author building one first. Its `isLoggable` returns `true` for every level: the inline extensions short-circuit on that call, so a fake mirroring `AndroidLogger`'s build-dependent answer would record nothing for `d`/`v` and every assertion on a debug log would pass silently instead of failing. It carries no assertion of its own — a fresh project has no log worth asserting on yet — but it exists the moment one does.
 - One assertion library (`kotlin.test`), used consistently. JVM screenshot tests (Roborazzi) are a SHOULD second layer — offer them, don't force them. MUST NOT scaffold device-matrix CI, retry machinery, or benchmark lanes into a fresh solo project.
 
 ## 12. Taskfile and CI workflow
@@ -204,7 +302,19 @@ notes on top of the canonical file:
 
 Greenfield subset of `spec/android/release-readiness/`; the per-change gate (§E) is owned by `android-feature-implement`.
 
-- **Shrinker on release only** with optimization and resource shrinking (§5); keep rules specific and located per AGP generation — `src/release/keepRules/*.keep` on AGP ≥ 9.3, `proguard-rules.pro` before (RR §A). The scaffold ships an empty, commented keep file: no blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`.
+- **Shrinker on release only** with optimization and resource shrinking (§5); keep rules specific and located per AGP generation — `src/release/keepRules/*.keep` on AGP ≥ 9.3, `proguard-rules.pro` before (RR §A). The scaffold ships a keep file carrying exactly one rule — `-maximumremovedandroidloglevel 3`, which
+removes `DEBUG` and `VERBOSE` from the release build (`spec/android/logging/` §G; level 3 covers
+both, level 2 would strip only `VERBOSE` and ship every `Log.d`) — and is otherwise commented: no
+blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`. Whether the toolchain recognises the option is established, not assumed (§G makes that a MUST) —
+but *how* R8 signals an unrecognised option is not something this file asserts: the spec deliberately
+says only that "an unrecognised option strips nothing and ships every `Log.d`", and guessing between
+a fatal parse error and a silent skip is the kind of restated tooling fact that has already gone
+wrong here. Establish it for the toolchain in hand: assemble the release once and read what the
+shrinker step reports, and if that is inconclusive, verify by effect — put a direct `Log.d` in a
+throwaway class, assemble, and check the release dex for `android.util.Log int d(`. Only then fall
+back to `-assumenosideeffects` with each method named individually, and record the deviation. The rule matches `android.util.Log`, not the facade, so it only reaches the calls
+inside `AndroidLogger`; what keeps the facade's own call sites out of release is the
+`BuildConfig.DEBUG` guard of §8.
 - **`mapping.txt`** — note in `docs/decisions.md` that every release build leaving the machine retains `app/build/outputs/mapping/release/mapping.txt` (RR §A); release *publishing* stays out of scope.
 - **StrictMode in debug only** (RR §B): `src/debug/.../StrictModeSetup.kt` sets a `ThreadPolicy` with `detectDiskReads/Writes` + `detectNetwork` and a `VmPolicy` with `detectLeakedClosableObjects` + `detectActivityLeaks` (leak detection), both `penaltyLog()`; `src/release/.../StrictModeSetup.kt` is a no-op. A violation is **fixed, never suppressed** — record that wording in the generated file's comment.
 - **Currency** (RR §D): `compileSdk`/`targetSdk` at the latest stable, `minSdk` with rationale recorded; dependencies via the catalog and kept current (Renovate SHOULD, §2).

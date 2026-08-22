@@ -37,7 +37,7 @@ resumable: true
 
 # Android Project Scaffold
 
-Generates a new native Android app project that conforms to `spec/android/project-structure/<canonical_language>.md`, with the bilingual, security, test, and release baselines from `spec/android/localization/`, `spec/android/security/`, `spec/android/test-automation/` §G/§H, and `spec/android/release-readiness/` §A/§B/§D folded in from the first screen. The skill proposes the file plan, writes files with per-group operator consent, and verifies the result with `./gradlew build` and `task check`. It is CLI-first: no Android Studio dependency at any step.
+Generates a new native Android app project that conforms to `spec/android/project-structure/<canonical_language>.md`, with the bilingual, security, test, and release baselines from `spec/android/localization/`, `spec/android/security/`, `spec/android/test-automation/` §G/§H, `spec/android/release-readiness/` §A/§B/§D, and `spec/android/logging/` §A/§G/§H (the facade it generates, the stripping rule, and the §A-gate decision) folded in from the first screen. The skill proposes the file plan, writes files with per-group operator consent, and verifies the result with `./gradlew build` and `task check`. It is CLI-first: no Android Studio dependency at any step.
 
 ## Why this is a skill, not an agent
 
@@ -74,7 +74,8 @@ Choices the specs leave to a SHOULD or a working default; each is applied as-is 
 - **Resource directories:** BCP-47 qualifiers for new dirs (`values-b+de/`), localization §B SHOULD.
 - **Test naming:** one scheme repo-wide — `` `<unit> <condition> <expected>` `` backtick names (project-structure §F: the scheme is free, mixing is not).
 - **Toolchain:** `kotlin { jvmToolchain(17) }` plus the foojay resolver in `settings.gradle.kts` (AGP 9 minimum JDK; a toolchain, not the ambient JDK).
-- **Decision record:** `docs/decisions.md` in the target project holds the MAS profile (L1) with rationale, the `minSdk` rationale, the test-naming scheme, any modularization trigger, and any recorded deviation (project-structure §A `docs/`; release-readiness §D/§F).
+- **Decision record:** `docs/decisions.md` in the target project holds the MAS profile (L1) with rationale, the `minSdk` rationale, the test-naming scheme, any modularization trigger, and any recorded deviation (project-structure §A `docs/`; release-readiness §D/§F). It also holds the log policy `spec/android/logging/` §G/§H asks for as a durable artifact: which levels ship, which sinks exist per variant, which rule strips what (`-maximumremovedandroidloglevel` or the recorded `-assumenosideeffects` fallback), and which carrier enforces §A — or that the gate is an unmet MUST.
+- **Logging facade:** scaffolded per `spec/android/logging/` §A — a platform-free `Logger` interface plus an `AndroidLogger` implementation under `core/logging/`, a package boundary rather than a Gradle module because `project-structure` §C keeps a fresh project single-module. Exposed as an injected dependency (§A SHOULD), recorded in `docs/decisions.md`. Its release behaviour is stated as §G requires: `AndroidLogger` answers `isLoggable` from `BuildConfig.DEBUG` for `VERBOSE`/`DEBUG` and guards exactly those platform calls the same way — `INFO`, `WARN` and `ERROR` always pass through, since §B makes `INFO` the release floor. Guarding every level would ship a release build that logs nothing. The `isLoggable` half is the one that keeps *facade* call sites out of release — the shrinker rule matches `android.util.Log` and never a `Logger.d { … }` call, so without it every message lambda still runs.
 - **`build-logic/`:** only on modularization (project-structure §C MUST single-module; the spec's Open Question stays open — report it, don't pre-scaffold).
 
 ## Preconditions
@@ -103,7 +104,7 @@ Write files per the confirmed plan and `references/scaffold-blueprint.md`. Resol
 
 ### 4. Verify the build (approval gate on failure)
 
-Run the verify loop in `references/verification.md`: `./gradlew build`, then `task check` (lint + single-variant unit tests, the same entry point CI runs), the Spotless/ktlint check, and the localization/security lint gates plus the pseudolocale and font-scale checks. A green `./gradlew build` is the success criterion; a green `task check` is the test-automation §G acceptance criterion. If anything is red, **report every failure** and propose a fix; never leave a red state unreported or silently patched. Any check that cannot run in this environment (no device, no Gradle distribution) is named as skipped with its reason (release-readiness §E). Checkpoint after the verify phase; set the run `completed` only on green.
+Run the verify loop in `references/verification.md`: `./gradlew build`, then `task check` (lint + single-variant unit tests, the same entry point CI runs), the Spotless/ktlint check, the localization/security lint gates plus the pseudolocale and font-scale checks, and the logging checks of `spec/android/logging/` §A/§G/§H — whose dex sub-check needs `apkanalyzer` on the `PATH` and whose §C pass needs a device, both named as skipped with their reason when unavailable. A green `./gradlew build` is the success criterion; a green `task check` is the test-automation §G acceptance criterion. If anything is red, **report every failure** and propose a fix; never leave a red state unreported or silently patched. Any check that cannot run in this environment (no device, no Gradle distribution) is named as skipped with its reason (release-readiness §E). Checkpoint after the verify phase; set the run `completed` only on green.
 
 ## Examples
 
@@ -119,6 +120,8 @@ Per `spec/claude/resumable-work/`, this skill is `resumable: true`. State persis
 
 ## Hard rules
 
+- **Never** write an `android.util.Log`, `System.out`, `println`, or `printStackTrace` call into generated sources outside `src/main/**/core/logging/` (`spec/android/logging/` §A) — the test-source `FakeLogger` is not exempt; application code calls the generated facade.
+- **Never** leave the release build without the log-stripping rule: `-maximumremovedandroidloglevel 3` in the keep file this AGP generation uses (`spec/android/logging/` §G), with the `-assumenosideeffects` fallback recorded as a deviation where the option is unrecognised.
 - **Never** make a structural decision that no `spec/android/` requirement covers. Report the gap and ask; the spec is the only source of structural authority (REQ-6).
 - **Never** leave a red `./gradlew build` or `task check` unreported. A failed verify is surfaced with its full output and a proposed fix, never swallowed (REQ-7).
 - **Never** overwrite an existing file without explicit per-file operator confirmation. Merge into existing config rather than replacing wholesale (REQ-8).
