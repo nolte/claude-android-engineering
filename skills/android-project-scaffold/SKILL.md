@@ -75,6 +75,7 @@ Choices the specs leave to a SHOULD or a working default; each is applied as-is 
 - **Test naming:** one scheme repo-wide — `` `<unit> <condition> <expected>` `` backtick names (project-structure §F: the scheme is free, mixing is not).
 - **Toolchain:** `kotlin { jvmToolchain(17) }` plus the foojay resolver in `settings.gradle.kts` (AGP 9 minimum JDK; a toolchain, not the ambient JDK).
 - **Decision record:** `docs/decisions.md` in the target project holds the MAS profile (L1) with rationale, the `minSdk` rationale, the test-naming scheme, any modularization trigger, and any recorded deviation (project-structure §A `docs/`; release-readiness §D/§F).
+- **Logging facade:** scaffolded per `spec/android/logging/` §A — a platform-free `Logger` interface plus an `AndroidLogger` implementation under `core/logging/`, a package boundary rather than a Gradle module because §C keeps a fresh project single-module. Exposed as an injected dependency (§A SHOULD), recorded in `docs/decisions.md`. Its release behaviour is stated as §G requires: `AndroidLogger` answers `isLoggable` from `BuildConfig.DEBUG` and guards its platform calls the same way, because the shrinker rule matches `android.util.Log` and never a facade.
 - **`build-logic/`:** only on modularization (project-structure §C MUST single-module; the spec's Open Question stays open — report it, don't pre-scaffold).
 
 ## Preconditions
@@ -119,6 +120,8 @@ Per `spec/claude/resumable-work/`, this skill is `resumable: true`. State persis
 
 ## Hard rules
 
+- **Never** write an `android.util.Log`, `System.out`, `println`, or `printStackTrace` call into generated sources outside `core/logging/` (`spec/android/logging/` §A); application code calls the generated facade.
+- **Never** leave the release build without the log-stripping rule: `-maximumremovedandroidloglevel 3` in the keep file this AGP generation uses (`spec/android/logging/` §G), with the `-assumenosideeffects` fallback recorded as a deviation where the option is unrecognised.
 - **Never** make a structural decision that no `spec/android/` requirement covers. Report the gap and ask; the spec is the only source of structural authority (REQ-6).
 - **Never** leave a red `./gradlew build` or `task check` unreported. A failed verify is surfaced with its full output and a proposed fix, never swallowed (REQ-7).
 - **Never** overwrite an existing file without explicit per-file operator confirmation. Merge into existing config rather than replacing wholesale (REQ-8).
