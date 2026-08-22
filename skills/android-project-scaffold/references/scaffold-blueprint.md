@@ -63,6 +63,7 @@ app/src/main/res/xml/data_extraction_rules.xml
 app/src/debug/kotlin/<pkg>/StrictModeSetup.kt     # installs the policies
 app/src/release/kotlin/<pkg>/StrictModeSetup.kt   # no-op
 app/src/test/kotlin/<pkg>/ui/home/HomeViewModelTest.kt
+app/src/test/kotlin/<pkg>/core/logging/FakeLogger.kt   # recording fake, never a mock (logging §H)
 app/src/test/kotlin/<pkg>/data/FakeGreetingRepository.kt
 app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 ```
@@ -247,6 +248,12 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
 
   Application code calls the facade and never `android.util.Log`; that is what §6's gate enforces.
 
+  Reaching the call sites uses the manual constructor DI this scaffold already prescribes — no
+  framework, since Hilt only arrives with modularization: `App.kt` holds a single `AndroidLogger`
+  instance, and types that log take `Logger` as a constructor parameter defaulted to it
+  (`class HomeViewModel(private val log: Logger = App.logger)`). The default keeps the call sites
+  short; the parameter is what lets a test pass a fake instead (§11).
+
 ## 9. Design system / theme
 
 `designsystem/theme/` package (PS §E/§C): `Theme.kt` (the `AppTheme` composable, Material 3, dynamic color where wanted), `Color.kt`, `Type.kt`. This is the single home for theming; once modularized it becomes `:core:designsystem`. Component-level rules (spacing, tokens, specific components) belong to the compose-ui skill's specs — do **not** duplicate them here; scaffold only the theme scaffold and typed accessors.
@@ -266,6 +273,7 @@ TEST §H — the solo-developer floor, in `app/src/test/` (JVM, no emulator):
 - `HomeViewModelTest.kt` — JUnit 4, `runTest` + `MainDispatcherRule`, exercising at least one error/edge case, asserting against `HomeUiState` with `kotlin.test` (`assertEquals`, `assertIs`). No `Thread.sleep`, no wall-clock wait. Test names follow the recorded scheme (`` fun `emits greeting when repository succeeds`() ``).
 - `FakeGreetingRepository.kt` — a **fake** (test implementation with test hooks), preferred over a mocking library (TEST §C, PS §F).
 - `util/MainDispatcherRule.kt` — swaps `Dispatchers.Main` for a test dispatcher; applied in every ViewModel test.
+- `core/logging/FakeLogger.kt` — a `Logger` recording `level`/`message` into a list, the same fake-over-mock choice as `FakeGreetingRepository`. `spec/android/logging/` §H requires asserting against a fake sink and never mocking the facade; scaffolding the fake is what makes that possible without the test author building one first. It carries no assertion of its own — a fresh project has no log worth asserting on yet — but it exists the moment one does.
 - One assertion library (`kotlin.test`), used consistently. JVM screenshot tests (Roborazzi) are a SHOULD second layer — offer them, don't force them. MUST NOT scaffold device-matrix CI, retry machinery, or benchmark lanes into a fresh solo project.
 
 ## 12. Taskfile and CI workflow
