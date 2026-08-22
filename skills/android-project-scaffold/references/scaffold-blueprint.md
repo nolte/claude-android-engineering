@@ -134,9 +134,17 @@ Root `lint.xml` (PS §G SHOULD "centralize"; the *severities* are MUSTs from L10
 
 `LogConditional` ships **disabled by default**; naming it here is what turns it on
 (`spec/android/logging/` §H). Know its reach: it matches `android.util.Log` calls, which §A confines
-to `core/logging/`, so it guards that package and not the call sites §D is about. The generated
-`AndroidLogger` guards its calls with `BuildConfig.DEBUG` (§8), which is also what stops this check
-from firing on the scaffold's own output — a fresh project starts with a clean lint run.
+to `core/logging/`, so it guards that package and not the call sites §D is about. `AndroidLogger`'s `VERBOSE`/`DEBUG` calls sit behind `BuildConfig.DEBUG` (§8), so those never trigger
+it. Its `INFO` branch does not: `LogConditional` fires for `Log.i` with a non-constant message, which
+is exactly what `log()` passes. Either accept that one warning and record it, or route the `INFO`
+call through a constant-message shape — but do not promise a fresh project a clean lint run without
+checking which of the two the generated implementation does.
+
+`spec/android/logging/` §H also carries a SHOULD for `LogInfoDisclosure`, the only first-party
+mechanical check for the §C PII rule. It is not part of AGP: add
+`lintChecks("com.android.security.lint:lint:<current>")` to the app module beside the `lint.xml`
+entry. Where the operator declines the extra dependency, record it in `docs/decisions.md` as a
+deviation from a SHOULD rather than dropping it silently.
 
 ### The §A gate — a decision, not a default
 
@@ -164,7 +172,7 @@ never executed is the "mechanism present but left unconfigured" failure §H itse
    style:
      ForbiddenMethodCall:
        active: true
-       excludes: ['**/core/logging/**']
+       excludes: ['**/main/**/core/logging/**']
        methods:
          - reason: 'logging §A — call the facade, not the platform'
            value: 'android.util.Log.v'
@@ -184,15 +192,20 @@ never executed is the "mechanism present but left unconfigured" failure §H itse
          # bypasses the inline extensions and with them §D's laziness.
          - reason: 'logging §D — use the inline extensions, not the eager entry point'
            value: '<pkg>.core.logging.Logger.log'
+         # detekt resolves against the static receiver type, so the interface
+         # entry alone misses a call through a variable typed AndroidLogger.
+         - value: '<pkg>.core.logging.AndroidLogger.log'
    ```
 
    Three details are load-bearing. `excludes` belongs **inside** the rule, not in prose beside it,
    and its glob is `**/core/logging/**` because detekt matches the whole file path — the facade sits
    at `app/src/main/kotlin/<pkg>/core/logging/`. `java.io.PrintStream.*` is what catches
    `System.out.println`; `kotlin.io.println` matches only the Kotlin top-level function. And the
-   exclusion covers the facade package and nothing else — a `src/debug/` source set is committed, so
-   excluding it would be wider than §A's throwaway-diagnostic exception, which covers code that is
-   never committed.
+   exclusion is anchored to the main source set — `**/main/**/core/logging/**`, not
+   `**/core/logging/**`, which would also exempt the `FakeLogger` §11 scaffolds under
+   `app/src/test/kotlin/<pkg>/core/logging/` and let a `println` there pass silently. A `src/debug/`
+   source set is committed too, so excluding it would likewise be wider than §A's
+   throwaway-diagnostic exception, which covers code that is never committed.
 4. **Execution** (§12) — `ForbiddenMethodCall` requires type resolution. The plain `detekt` task runs
    without it and reports nothing, so the `lint` task runs the type-resolving variant tasks (on an
    Android module they are per-variant; `detektMain` is the JVM name and does not exist here). One
@@ -227,7 +240,7 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
 - `data/GreetingRepository.kt` — named `<DataType>Repository`; UI never touches a data source directly (PS §E).
 - `core/logging/Logger.kt` and `core/logging/AndroidLogger.kt` — the logging facade required by
   `spec/android/logging/` §A. Single-module means a package boundary, not a Gradle module; it moves
-  into its own module if and when §C's modularization trigger fires. The shape is fixed, because §D
+  into its own module if and when `project-structure` §C's modularization trigger fires. The shape is fixed, because §D
   makes message laziness a MUST and only an `inline` function whose lambda is inlined into the
   branch is allocation-free on the disabled path:
 
@@ -247,10 +260,15 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
   `v`, `i`, `w` and `e` follow the same shape. Two details decide whether the laziness actually
   holds in a release build, and both belong in `AndroidLogger`:
 
-  - **`isLoggable` must answer for the build, not for the platform.** Returning
-    `Log.isLoggable(tag, level)` still yields `true` for DEBUG in release, so the lambda runs and
-    the string is built before `log()` no-ops. It returns `BuildConfig.DEBUG` for `VERBOSE`/`DEBUG`
-    and `true` from `INFO` upward.
+  - **`isLoggable` answers from the build, not from the platform.** It returns `BuildConfig.DEBUG`
+    for `VERBOSE`/`DEBUG` and `true` from `INFO` upward. Not because `Log.isLoggable` would answer
+    wrongly — its default level is `INFO`, so it already returns `false` for DEBUG on a stock build
+    — but because `BuildConfig.DEBUG` is a compile-time constant: the branch folds away entirely in
+    release, while `Log.isLoggable` stays a real JNI call with a UTF-8 tag copy at every call site
+    (§D). The trade-off is that the runtime toggle §B SHOULDs for `VERBOSE`
+    (`setprop log.tag.<TAG> VERBOSE` instead of a rebuild) is gone; record that in
+    `docs/decisions.md` as a deliberate deviation, or keep a `Log.isLoggable` fallback for
+    `VERBOSE` alone.
   - **`log` guards only the low levels**, which is §G's "release implementation that drops the low
     levels". `VERBOSE` and `DEBUG` go through `BuildConfig.DEBUG`; `INFO`, `WARN` and `ERROR` always
     reach the platform, because §B makes `INFO` the release floor and `-maximumremovedandroidloglevel 3`
@@ -261,9 +279,15 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
   Application code calls the facade and never `android.util.Log`; that is what §6's gate enforces.
 
   Reaching the call sites uses the manual constructor DI this scaffold already prescribes — no
-  framework, since Hilt only arrives with modularization. `App.kt` constructs the single
-  `AndroidLogger` and passes it down; types that log take `Logger` as a plain constructor parameter
-  (`class HomeViewModel(private val log: Logger, …)`), **without** a default that reads a global.
+  framework, since Hilt only arrives with modularization. `Logger` is a plain constructor parameter
+  (`class HomeViewModel(private val log: Logger, …)`) and travels the same route as
+  `GreetingRepository` and the dispatcher, which face the identical question: a `ViewModel` is
+  created by a `ViewModelProvider`, not by its caller, so whatever supplies those two supplies the
+  logger. `App.kt` is not that place — its own bullet above says it does nothing beyond
+  `installStrictMode()`. **If the blueprint has not yet fixed how the scaffolded `ViewModel`
+  receives its constructor arguments, that gap is reported rather than filled here** (REQ-6): it
+  predates logging and would otherwise be decided silently for three parameters at once. What this
+  section does fix is that the parameter carries **no** default reading a global.
   A default like `= App.logger` would be a service locator rather than §A's injected form, and it
   would break the generated tests: a JVM unit test never runs `Application.onCreate()`, so the first
   log call fails on an uninitialised instance or on "Method d in android.util.Log not mocked" — and
@@ -302,7 +326,7 @@ TEST §H MUST: one CI workflow running the single-variant unit tests plus lint, 
 | Task | Command | Purpose |
 |---|---|---|
 | `check` | serial `cmds`: `task lint`, then `task test` — never parallel `deps` (two concurrent `./gradlew` calls serialize on the Gradle project lock and spawn a second daemon JVM) | the aggregate gate CI runs |
-| `lint` | `./gradlew lintDebug spotlessCheck` — plus `detektDebug` when the §6 gate was adopted | Android Lint (one variant) + formatting + the §A gate |
+| `lint` | `./gradlew lintDebug spotlessCheck` — plus `detektDebug detektRelease detektDebugUnitTest` when the §6 gate was adopted (all three; see §6 item 4) | Android Lint (one variant) + formatting + the §A gate across every committed source set |
 | `test` | `./gradlew testDebugUnitTest` | exactly one debug variant, never `test` |
 | `format` | `./gradlew spotlessApply` | convenience, not a gate |
 | `build` | `./gradlew build` | the REQ-1 criterion (assembles release with the shrinker) |
