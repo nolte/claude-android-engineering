@@ -126,12 +126,14 @@ Root `lint.xml` (PS §G SHOULD "centralize"; the *severities* are MUSTs from L10
   <issue id="TrustAllX509TrustManager" severity="error" />
   <issue id="ExportedContentProvider" severity="error" />
   <issue id="MissingPermission" severity="error" />
-  <issue id="LogConditional" severity="warning" />
+  <issue id="LogConditional" severity="error" />
 </lint>
 ```
 
 `LogConditional` ships **disabled by default**; naming it here is what turns it on
-(`spec/android/logging/` §H). Know its reach: it matches `android.util.Log` calls, which §A confines
+(`spec/android/logging/` §H). It is set to `error`, not `warning`, for the same reason the L10N and
+SEC entries above are: `lint { abortOnError = true }` acts on errors, so a warning would be reported
+and then ignored by every gate the project runs. Know its reach: it matches `android.util.Log` calls, which §A confines
 to `core/logging/`, so it guards that package and not the call sites §D is about. A fresh project passes it. `AndroidLogger`'s `VERBOSE`/`DEBUG` calls sit behind `BuildConfig.DEBUG`
 (§8), and its `INFO` branch — an unguarded `Log.i(tag, message)` — does not trigger the detector
 either: `LogConditional` fires only where the message argument "does work that will not
@@ -223,7 +225,9 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
   `minSdk <= 23`, while the runtime `IllegalArgumentException` covers API ≤ 25 — a project on
   `minSdk` 24 or 25 gets no warning for a tag that still throws.
 
-  Application code calls the facade and never `android.util.Log`; that is what §6's gate enforces.
+  Application code calls the facade and never `android.util.Log`. What holds that in place today is
+  the hard rule in `SKILL.md` plus verification step 8's §A grep; the mechanical gate §H asks for is
+  the decision §6 raises, not something this scaffold wires up.
 
   Reaching the call sites uses the manual constructor DI this scaffold already prescribes — no
   framework, since Hilt only arrives with modularization. `Logger` is a plain constructor parameter
@@ -301,12 +305,14 @@ Greenfield subset of `spec/android/release-readiness/`; the per-change gate (§E
 - **Shrinker on release only** with optimization and resource shrinking (§5); keep rules specific and located per AGP generation — `src/release/keepRules/*.keep` on AGP ≥ 9.3, `proguard-rules.pro` before (RR §A). The scaffold ships a keep file carrying exactly one rule — `-maximumremovedandroidloglevel 3`, which
 removes `DEBUG` and `VERBOSE` from the release build (`spec/android/logging/` §G; level 3 covers
 both, level 2 would strip only `VERBOSE` and ship every `Log.d`) — and is otherwise commented: no
-blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`. Whether the toolchain recognises the option is established, not assumed (§G makes that a MUST):
-assemble the release once and read the shrinker's output — R8 reports an unknown rule rather than
-failing, so silence there is the confirmation and a warning naming the option is the trigger. Only
-then fall back to `-assumenosideeffects` with each method named individually, and record the
-deviation. Without that step an older pinned toolchain ignores the rule, every verification
-sub-check still passes, and the first direct `Log.d` a feature adds ships in release. The rule matches `android.util.Log`, not the facade, so it only reaches the calls
+blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`. Whether the toolchain recognises the option is established, not assumed (§G makes that a MUST) —
+but *how* R8 signals an unrecognised option is not something this file asserts: the spec deliberately
+says only that "an unrecognised option strips nothing and ships every `Log.d`", and guessing between
+a fatal parse error and a silent skip is the kind of restated tooling fact that has already gone
+wrong here. Establish it for the toolchain in hand: assemble the release once and read what the
+shrinker step reports, and if that is inconclusive, verify by effect — put a direct `Log.d` in a
+throwaway class, assemble, and check the release dex for `android.util.Log int d(`. Only then fall
+back to `-assumenosideeffects` with each method named individually, and record the deviation. The rule matches `android.util.Log`, not the facade, so it only reaches the calls
 inside `AndroidLogger`; what keeps the facade's own call sites out of release is the
 `BuildConfig.DEBUG` guard of §8.
 - **`mapping.txt`** — note in `docs/decisions.md` that every release build leaving the machine retains `app/build/outputs/mapping/release/mapping.txt` (RR §A); release *publishing* stays out of scope.
