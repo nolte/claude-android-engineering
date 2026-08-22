@@ -39,6 +39,7 @@ gradle/wrapper/gradle-wrapper.jar
 gradlew
 gradlew.bat
 app/build.gradle.kts
+config/detekt/detekt.yml                          # only when the §6 §A-gate decision chose detekt
 app/src/release/keepRules/app.keep                # AGP >= 9.3; app/proguard-rules.pro before that
                                                   # carries -maximumremovedandroidloglevel 3 (logging §G)
 app/src/main/AndroidManifest.xml
@@ -95,7 +96,7 @@ app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 ## 4. Settings and root build script
 
 - `settings.gradle.kts` — `pluginManagement { repositories { google { content { … } }; mavenCentral(); gradlePluginPortal() } }`, then `plugins { id("org.gradle.toolchains.foojay-resolver-convention") version "<catalog>" }` (the toolchain resolver; a settings plugin cannot use the catalog alias, so pin the same version string the catalog carries), set `rootProject.name`; declare repositories centrally via `dependencyResolutionManagement` with `RepositoriesMode.FAIL_ON_PROJECT_REPOS` and content filtering (`google()` scoped to `com.android.*`, `androidx.*`, `com.google.*`). Include `:app`. `enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")` is a SHOULD. For a modularized project add `pluginManagement { includeBuild("build-logic") }` (§14).
-- `build.gradle.kts` (root) — **only** a `plugins {}` block declaring every submodule plugin with `apply false` (`android-application`, `kotlin-compose`, `ksp`, `spotless`). No `allprojects {}` / `subprojects {}`, no `buildscript {}`, no other code (PS §B). Spotless is configured in `:app` (single-module) — a root-level Spotless block would be "other code".
+- `build.gradle.kts` (root) — **only** a `plugins {}` block declaring every submodule plugin with `apply false` (`android-application`, `kotlin-compose`, `ksp`, `spotless`, plus `detekt` when the §6 gate decision chose it). No `allprojects {}` / `subprojects {}`, no `buildscript {}`, no other code (PS §B). Spotless is configured in `:app` (single-module) — a root-level Spotless block would be "other code".
 
 ## 5. The :app module build script
 
@@ -178,6 +179,11 @@ never executed is the "mechanism present but left unconfigured" failure §H itse
          - value: 'java.lang.Throwable.printStackTrace'
          - value: 'kotlin.io.println'
          - value: 'kotlin.io.print'
+         # logging §H's second MUST: a rule against the facade's own eager API.
+         # `log()` is public and takes a built String, so calling it directly
+         # bypasses the inline extensions and with them §D's laziness.
+         - reason: 'logging §D — use the inline extensions, not the eager entry point'
+           value: '<pkg>.core.logging.Logger.log'
    ```
 
    Three details are load-bearing. `excludes` belongs **inside** the rule, not in prose beside it,
@@ -188,10 +194,13 @@ never executed is the "mechanism present but left unconfigured" failure §H itse
    excluding it would be wider than §A's throwaway-diagnostic exception, which covers code that is
    never committed.
 4. **Execution** (§12) — `ForbiddenMethodCall` requires type resolution. The plain `detekt` task runs
-   without it and reports nothing, so the `lint` task runs `detektDebug` (on an Android module the
-   type-resolving tasks are per-variant; `detektMain` is the JVM name and does not exist here).
-   Verify once that a deliberate `println("x")` outside the facade fails the build — a gate never
-   seen firing is indistinguishable from one that cannot.
+   without it and reports nothing, so the `lint` task runs the type-resolving variant tasks (on an
+   Android module they are per-variant; `detektMain` is the JVM name and does not exist here). One
+   task is not enough: `detektDebug` analyses `main` + `debug`, so the committed
+   `src/release/…/StrictModeSetup.kt` and the test sources stay unseen while `verification.md`'s §A
+   grep scans all of `app/src` — gate and check would contradict each other. Run `detektDebug`,
+   `detektRelease` and `detektDebugUnitTest`. Verify once that a deliberate `println("x")` outside
+   the facade fails the build — a gate never seen firing is indistinguishable from one that cannot.
 
 No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). Once `build-logic/` exists (§14) the same configuration moves into a convention plugin.
 
@@ -242,17 +251,25 @@ Screen-level Compose code MUST split into a stateful route and a stateless conte
     `Log.isLoggable(tag, level)` still yields `true` for DEBUG in release, so the lambda runs and
     the string is built before `log()` no-ops. It returns `BuildConfig.DEBUG` for `VERBOSE`/`DEBUG`
     and `true` from `INFO` upward.
-  - **`log` guards its platform call the same way**, which is §G's "release implementation that
-    drops the low levels" — the shrinker rule of §13 matches `android.util.Log`, never a facade, so
-    without this guard every `logger.d { … }` call site survives into release.
+  - **`log` guards only the low levels**, which is §G's "release implementation that drops the low
+    levels". `VERBOSE` and `DEBUG` go through `BuildConfig.DEBUG`; `INFO`, `WARN` and `ERROR` always
+    reach the platform, because §B makes `INFO` the release floor and `-maximumremovedandroidloglevel 3`
+    deliberately leaves them standing. Guarding the whole method would ship a release build that logs
+    nothing at all — an `ERROR` on a failed payment would never appear, and step 8's `adb logcat`
+    check would pass trivially because there is nothing left to see.
 
   Application code calls the facade and never `android.util.Log`; that is what §6's gate enforces.
 
   Reaching the call sites uses the manual constructor DI this scaffold already prescribes — no
-  framework, since Hilt only arrives with modularization: `App.kt` holds a single `AndroidLogger`
-  instance, and types that log take `Logger` as a constructor parameter defaulted to it
-  (`class HomeViewModel(private val log: Logger = App.logger)`). The default keeps the call sites
-  short; the parameter is what lets a test pass a fake instead (§11).
+  framework, since Hilt only arrives with modularization. `App.kt` constructs the single
+  `AndroidLogger` and passes it down; types that log take `Logger` as a plain constructor parameter
+  (`class HomeViewModel(private val log: Logger, …)`), **without** a default that reads a global.
+  A default like `= App.logger` would be a service locator rather than §A's injected form, and it
+  would break the generated tests: a JVM unit test never runs `Application.onCreate()`, so the first
+  log call fails on an uninitialised instance or on "Method d in android.util.Log not mocked" — and
+  `./gradlew build` is red straight after scaffolding, against REQ-1. The generated
+  `HomeViewModelTest` therefore passes `FakeLogger()` explicitly, the same way it already passes
+  `FakeGreetingRepository()`.
 
 ## 9. Design system / theme
 
@@ -273,7 +290,7 @@ TEST §H — the solo-developer floor, in `app/src/test/` (JVM, no emulator):
 - `HomeViewModelTest.kt` — JUnit 4, `runTest` + `MainDispatcherRule`, exercising at least one error/edge case, asserting against `HomeUiState` with `kotlin.test` (`assertEquals`, `assertIs`). No `Thread.sleep`, no wall-clock wait. Test names follow the recorded scheme (`` fun `emits greeting when repository succeeds`() ``).
 - `FakeGreetingRepository.kt` — a **fake** (test implementation with test hooks), preferred over a mocking library (TEST §C, PS §F).
 - `util/MainDispatcherRule.kt` — swaps `Dispatchers.Main` for a test dispatcher; applied in every ViewModel test.
-- `core/logging/FakeLogger.kt` — a `Logger` recording `level`/`message` into a list, the same fake-over-mock choice as `FakeGreetingRepository`. `spec/android/logging/` §H requires asserting against a fake sink and never mocking the facade; scaffolding the fake is what makes that possible without the test author building one first. It carries no assertion of its own — a fresh project has no log worth asserting on yet — but it exists the moment one does.
+- `core/logging/FakeLogger.kt` — a `Logger` recording `level`/`message` into a list, the same fake-over-mock choice as `FakeGreetingRepository`. `spec/android/logging/` §H requires asserting against a fake sink and never mocking the facade; scaffolding the fake is what makes that possible without the test author building one first. Its `isLoggable` returns `true` for every level: the inline extensions short-circuit on that call, so a fake mirroring `AndroidLogger`'s build-dependent answer would record nothing for `d`/`v` and every assertion on a debug log would pass silently instead of failing. It carries no assertion of its own — a fresh project has no log worth asserting on yet — but it exists the moment one does.
 - One assertion library (`kotlin.test`), used consistently. JVM screenshot tests (Roborazzi) are a SHOULD second layer — offer them, don't force them. MUST NOT scaffold device-matrix CI, retry machinery, or benchmark lanes into a fresh solo project.
 
 ## 12. Taskfile and CI workflow
