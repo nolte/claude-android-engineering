@@ -120,7 +120,7 @@ Per `spec/claude/resumable-work/`, this skill is `resumable: true`. State persis
 
 ## Hard rules
 
-- **Never** write an `android.util.Log`, `System.out`, `println`, or `printStackTrace` call into generated sources outside `core/logging/` (`spec/android/logging/` §A); application code calls the generated facade.
+- **Never** write an `android.util.Log`, `System.out`, `println`, or `printStackTrace` call into generated sources outside `src/main/**/core/logging/` (`spec/android/logging/` §A) — the test-source `FakeLogger` is not exempt; application code calls the generated facade.
 - **Never** leave the release build without the log-stripping rule: `-maximumremovedandroidloglevel 3` in the keep file this AGP generation uses (`spec/android/logging/` §G), with the `-assumenosideeffects` fallback recorded as a deviation where the option is unrecognised.
 - **Never** make a structural decision that no `spec/android/` requirement covers. Report the gap and ask; the spec is the only source of structural authority (REQ-6).
 - **Never** leave a red `./gradlew build` or `task check` unreported. A failed verify is surfaced with its full output and a proposed fix, never swallowed (REQ-7).

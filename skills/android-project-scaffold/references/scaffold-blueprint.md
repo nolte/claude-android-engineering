@@ -39,7 +39,6 @@ gradle/wrapper/gradle-wrapper.jar
 gradlew
 gradlew.bat
 app/build.gradle.kts
-config/detekt/detekt.yml                          # only when the §6 §A-gate decision chose detekt
 app/src/release/keepRules/app.keep                # AGP >= 9.3; app/proguard-rules.pro before that
                                                   # carries -maximumremovedandroidloglevel 3 (logging §G)
 app/src/main/AndroidManifest.xml
@@ -91,12 +90,11 @@ app/src/test/kotlin/<pkg>/util/MainDispatcherRule.kt
 - The `kotlin` version entry exists for the Compose compiler plugin's `version.ref`; Compose libraries carry **no** individual version — they resolve through `platform(libs.androidx.compose.bom)`.
 - Libraries: Compose BOM, `androidx.activity:activity-compose`, `androidx.appcompat:appcompat` (alias `androidx-appcompat`; `AppCompatActivity` + the picker's `AppCompatDelegate`), `androidx.lifecycle:lifecycle-viewmodel-compose` + `lifecycle-runtime-compose`, `androidx.core:core-ktx`, Material 3, `ui-tooling-preview` (+ `ui-tooling` on `debugImplementation`); test: `junit:junit` (JUnit 4, TEST §B MUST), `kotlinx-coroutines-test`, `kotlin-test` (`org.jetbrains.kotlin:kotlin-test-junit`).
 - Annotation processing uses **KSP** (`com.google.devtools.ksp`). No kapt, no `com.android.legacy-kapt`.
-- `detekt` appears here only when the §6 §A-gate decision chose it — version under `[versions]`, plugin alias under `[plugins]`. Otherwise the catalog carries no detekt entry.
 
 ## 4. Settings and root build script
 
 - `settings.gradle.kts` — `pluginManagement { repositories { google { content { … } }; mavenCentral(); gradlePluginPortal() } }`, then `plugins { id("org.gradle.toolchains.foojay-resolver-convention") version "<catalog>" }` (the toolchain resolver; a settings plugin cannot use the catalog alias, so pin the same version string the catalog carries), set `rootProject.name`; declare repositories centrally via `dependencyResolutionManagement` with `RepositoriesMode.FAIL_ON_PROJECT_REPOS` and content filtering (`google()` scoped to `com.android.*`, `androidx.*`, `com.google.*`). Include `:app`. `enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")` is a SHOULD. For a modularized project add `pluginManagement { includeBuild("build-logic") }` (§14).
-- `build.gradle.kts` (root) — **only** a `plugins {}` block declaring every submodule plugin with `apply false` (`android-application`, `kotlin-compose`, `ksp`, `spotless`, plus `detekt` when the §6 gate decision chose it). No `allprojects {}` / `subprojects {}`, no `buildscript {}`, no other code (PS §B). Spotless is configured in `:app` (single-module) — a root-level Spotless block would be "other code".
+- `build.gradle.kts` (root) — **only** a `plugins {}` block declaring every submodule plugin with `apply false` (`android-application`, `kotlin-compose`, `ksp`, `spotless`). No `allprojects {}` / `subprojects {}`, no `buildscript {}`, no other code (PS §B). Spotless is configured in `:app` (single-module) — a root-level Spotless block would be "other code".
 
 ## 5. The :app module build script
 
@@ -141,83 +139,20 @@ constant-fold" (§H), and `message` is a plain parameter reference, neither conc
 computed. Application code, which builds its messages inside the inline lambdas, never reaches
 `android.util.Log` at all.
 
-`spec/android/logging/` §H also carries a SHOULD for `LogInfoDisclosure`, the only first-party
-mechanical check for the §C PII rule. It is not part of AGP: add the coordinate to `libs.versions.toml` like every other dependency
-(PS §B forbids hard-coded versions, and `verification.md` checks exactly that) and reference it as
-`lintChecks(libs.android.security.lint)` in the app module, beside the `lint.xml` entry. Where the operator declines the extra dependency, record it in `docs/decisions.md` as a
-deviation from a SHOULD rather than dropping it silently.
+`spec/android/logging/` §H makes mechanical enforcement of §A a MUST, and names two carriers: a
+detekt `ForbiddenMethodCall`/`ForbiddenImport` rule, or a project-local custom lint check. Neither
+is scaffolded here yet, and the choice is not one this file can make silently (REQ-6): detekt is a
+**MAY** in `project-structure` §G with an open adoption question, and a custom lint check needs its
+own Gradle module against §C's single-module MUST for a fresh project.
 
-### The §A gate — a decision, not a default
+Raise it at the file-plan approval gate, and record the outcome in `docs/decisions.md` — either the
+carrier the operator chose, or §H's gate as an unmet MUST with its reason and the condition for
+revisiting. §H's SHOULD for `LogInfoDisclosure`, which needs its own opt-in artifact, belongs in the
+same record.
 
-Logging §H makes mechanical enforcement of §A a MUST and names two carriers. They differ in what
-they cost here:
-
-- **detekt** — `project-structure` §G lists it as a **MAY** and leaves adoption as an open question,
-  so the scaffold does not adopt it silently (REQ-6).
-- **A project-local custom lint check** — carries no §G conflict, but needs its own Gradle module for
-  the `IssueRegistry`, which collides with §C's single-module MUST for a fresh project.
-
-Raise the choice at the file-plan approval gate. Record §H's gate as unmet in `docs/decisions.md`
-only if the operator declines **both** — never merely because detekt was declined.
-
-**If detekt is chosen, scaffold all four parts.** A rule that is configured but never installed or
-never executed is the "mechanism present but left unconfigured" failure §H itself cites:
-
-1. **Catalog** (§3) — `detekt = "<current stable>"` under `[versions]`, plugin alias
-   `detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }` under `[plugins]`.
-2. **Plugin** — `alias(libs.plugins.detekt)` in `app/build.gradle.kts` (§5), plus
-   `detekt { buildUponDefaultConfig = true; config.setFrom(rootProject.file("config/detekt/detekt.yml")) }` — `buildUponDefaultConfig` defaults to `false`, which would replace detekt's whole ruleset with the fragment below and leave the gate silently inert.
-3. **Config** — `config/detekt/detekt.yml`, the path `project-structure` §G prescribes:
-
-   ```yaml
-   style:
-     ForbiddenMethodCall:
-       active: true
-       excludes: ['**/main/**/core/logging/**']
-       methods:
-         - reason: 'logging §A — call the facade, not the platform'
-           value: 'android.util.Log.v'
-         - value: 'android.util.Log.d'
-         - value: 'android.util.Log.i'
-         - value: 'android.util.Log.w'
-         - value: 'android.util.Log.e'
-         - value: 'android.util.Log.wtf'
-         - value: 'android.util.Log.println'
-         - value: 'java.io.PrintStream.println'
-         - value: 'java.io.PrintStream.print'
-         - value: 'java.lang.Throwable.printStackTrace'
-         - value: 'kotlin.io.println'
-         - value: 'kotlin.io.print'
-         # logging §H's second MUST: a rule against the facade's own eager API.
-         # `log()` is public and takes a built String, so calling it directly
-         # bypasses the inline extensions and with them §D's laziness.
-         - reason: 'logging §D — use the inline extensions, not the eager entry point'
-           value: '<pkg>.core.logging.Logger.log'
-         # detekt resolves against the static receiver type, so the interface
-         # entry alone misses a call through a variable typed AndroidLogger.
-         - value: '<pkg>.core.logging.AndroidLogger.log'
-         # same reasoning for the test double, which detektDebugUnitTest sees
-         - value: '<pkg>.core.logging.FakeLogger.log'
-   ```
-
-   Three details are load-bearing. `excludes` belongs **inside** the rule, not in prose beside it,
-   and its glob is `**/core/logging/**` because detekt matches the whole file path — the facade sits
-   at `app/src/main/kotlin/<pkg>/core/logging/`. `java.io.PrintStream.*` is what catches
-   `System.out.println`; `kotlin.io.println` matches only the Kotlin top-level function. And the
-   exclusion is anchored to the main source set — `**/main/**/core/logging/**`, not
-   `**/core/logging/**`, which would also exempt the `FakeLogger` §11 scaffolds under
-   `app/src/test/kotlin/<pkg>/core/logging/` and let a `println` there pass silently. A `src/debug/`
-   source set is committed too, so excluding it would likewise be wider than §A's
-   throwaway-diagnostic exception, which covers code that is never committed.
-4. **Execution** (§12) — `ForbiddenMethodCall` requires type resolution. The plain `detekt` task runs
-   without it and reports nothing, so the `lint` task runs the type-resolving variant tasks (on an
-   Android module they are per-variant; `detektMain` is the JVM name and does not exist here). One
-   task is not enough: `detektDebug` analyses `main` + `debug`, so the committed
-   `src/release/…/StrictModeSetup.kt` and the test sources stay unseen while `verification.md`'s §A
-   grep scans all of `app/src` — gate and check would contradict each other. Run `detektDebug`,
-   `detektRelease`, `detektDebugUnitTest` and `detektDebugAndroidTest` — `androidTest` is a configured
-   source set here too (§5 adds `androidTestImplementation`). Verify once that a deliberate `println("x")` outside
-   the facade fails the build — a gate never seen firing is indistinguishable from one that cannot.
+Until a carrier is wired up, `LogConditional` above plus verification step 8's §A grep are what
+stand between the project and a stray `android.util.Log`. Both are real checks; neither is the
+mechanical gate §H asks for, and the decision record is where that gap stays visible.
 
 No `lint-baseline.xml` — new projects start baseline-free (PS §G, RR §E). Once `build-logic/` exists (§14) the same configuration moves into a convention plugin.
 
@@ -338,7 +273,7 @@ TEST §H MUST: one CI workflow running the single-variant unit tests plus lint, 
 | Task | Command | Purpose |
 |---|---|---|
 | `check` | serial `cmds`: `task lint`, then `task test` — never parallel `deps` (two concurrent `./gradlew` calls serialize on the Gradle project lock and spawn a second daemon JVM) | the aggregate gate CI runs |
-| `lint` | `./gradlew lintDebug spotlessCheck` — plus `detektDebug detektRelease detektDebugUnitTest detektDebugAndroidTest` when the §6 gate was adopted (all four; see §6 item 4) | Android Lint (one variant) + formatting + the §A gate across every committed source set |
+| `lint` | `./gradlew lintDebug spotlessCheck` | Android Lint (one variant) + formatting |
 | `test` | `./gradlew testDebugUnitTest` | exactly one debug variant, never `test` |
 | `format` | `./gradlew spotlessApply` | convenience, not a gate |
 | `build` | `./gradlew build` | the REQ-1 criterion (assembles release with the shrinker) |
@@ -366,9 +301,12 @@ Greenfield subset of `spec/android/release-readiness/`; the per-change gate (§E
 - **Shrinker on release only** with optimization and resource shrinking (§5); keep rules specific and located per AGP generation — `src/release/keepRules/*.keep` on AGP ≥ 9.3, `proguard-rules.pro` before (RR §A). The scaffold ships a keep file carrying exactly one rule — `-maximumremovedandroidloglevel 3`, which
 removes `DEBUG` and `VERBOSE` from the release build (`spec/android/logging/` §G; level 3 covers
 both, level 2 would strip only `VERBOSE` and ship every `Log.d`) — and is otherwise commented: no
-blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`. On a toolchain that does not
-recognise the option, fall back to `-assumenosideeffects` naming each method individually and record
-the deviation. The rule matches `android.util.Log`, not the facade, so it only reaches the calls
+blanket `-keep class ** { *; }`, no `-dontobfuscate`/`-dontoptimize`. Whether the toolchain recognises the option is established, not assumed (§G makes that a MUST):
+assemble the release once and read the shrinker's output — R8 reports an unknown rule rather than
+failing, so silence there is the confirmation and a warning naming the option is the trigger. Only
+then fall back to `-assumenosideeffects` with each method named individually, and record the
+deviation. Without that step an older pinned toolchain ignores the rule, every verification
+sub-check still passes, and the first direct `Log.d` a feature adds ships in release. The rule matches `android.util.Log`, not the facade, so it only reaches the calls
 inside `AndroidLogger`; what keeps the facade's own call sites out of release is the
 `BuildConfig.DEBUG` guard of §8.
 - **`mapping.txt`** — note in `docs/decisions.md` that every release build leaving the machine retains `app/build/outputs/mapping/release/mapping.txt` (RR §A); release *publishing* stays out of scope.
